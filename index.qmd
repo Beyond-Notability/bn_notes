@@ -42,6 +42,8 @@ The site does not contain live wikibase data but will be quite frequently update
 # will need to check this actually works...
 #latest_knit <- Sys.Date()
 #Latest data update: ``r latest_knit``
+
+#there is a problem with tags filtering... need to try to work out why
 ```
 
 

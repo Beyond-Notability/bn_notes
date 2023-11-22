@@ -69,7 +69,7 @@ WHERE {
     optional {
      ?s ?pq ?qual .      
         ?qual_prop wikibase:qualifier ?pq;    
-              wikibase:propertyType ?qual_prop_type. # this drops dates ???? only if you fuck up the naming
+              wikibase:propertyType ?qual_prop_type. # this drops dates ???? only if you screw up the naming
         SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en". 
                             ?qual_prop rdfs:label ?qual_propLabel .  # what kind of thing
                 } # /label service
