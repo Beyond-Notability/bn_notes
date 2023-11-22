@@ -1,0 +1,92 @@
+Beyond Notability slides notes
+==================
+
+look at data about Soc of Antiquaries elections of women fellows using example queries in the wikibase. (dropped RAI, added gender for signatories) - 
+
+interesting moments - candidates' need to have several supporters to vouch for them. creates a lot of interesting data to work with
+
+[People whose elections were proposed to SAL , with proposers, and 'personal knowledge' signatures, including the date the proposals were made
+plus outcome of election, and added gender of signers.]
+
+
+1. total fellows 1921-50 using BN sample by Ammandeep Mahal
+
+- for context- note that while women numbers are v small, they're growing fast, especially after about 1940, c.8% in 1950
+
+
+2. elections chronology overview 
+
+- interesting patterns 
+1. not continuous growth but two distinct surges 1930s and more sustained 1940s
+2. in 1940s big growth in women fellows proposing women, way above % of fellows overall
+
+V. small numbers before mid 1930s, 
+sudden spurt of growth which suddenly stops again - perhaps disruption of WW2.
+but then steps up again in 1940s and *maybe* slowing again in early 1950s 
+ 
+
+3. comparing men and women fellows as supporters
+
+overall numbers similarities
+33 women (about a third of those elected during the period) support women candidates with either proposing or personal knowledge signatures. 
+317 men - seems similarish % of male fellows 
+
+BUT women fellows clearly more *concentrated* support activities
+- average number of proposals/signatures per fellow
+- overlap between proposing and signing
+
+early on this just reflects that they're a v small group, but more to it than that?
+(women: 12 do both) (men: 44 do both)
+
+
+4. who are the most active proposers... start putting names to numbers
+
+(a really classic sort of distribution here... a few women doing most of the work)
+
+5. who are the most active signers
+
+some correlation between lots of signing activity and also being a proposer, but not entirely. slightly different rankings; some active signers don't propose at all... intriguing
+
+6. time from election to proposing
+
+a bit experimental, but just first thoughts about timelines for individuals
+
+order by length of interval to see what patterns might appear
+- clusters by date of election: latest fellows def get going quicker
+- some correlation between interval and overall level of proposing
+
+[RG starts signing for women much sooner than proposing]
+
+
+7. network graph: women and men supporters
+
+(left out men who only co-occur with other men)
+
+some women (perhaps esp early cohorts?) who are associated (mainly) with men - might be expected given numbers
+so all the more interesting to see clusters of women (orange) - formation of distinctly female networks (for further exploration)
+
+- underlining sense that not just growth of numbers of elected women but also intensification of engagement and work to support other women
+
+
+
+
+(nb use of correlation rather than just counting number of co-occurrences)
+JS: "correlation among words, which indicates how often they appear together relative to how often they appear separately" or TTM "The focus of the phi coefficient is how much more likely it is that either both word X and Y appear, or neither do, than that one appears without the other."
+
+
+from tattoos:
+
+- the method used for correlations is the phi coefficient or Pearson correlation
+- NB that it's perfectly possible to have *negative* correlations (in fact dot has a lot more negative than positive), because you're measuring how often terms appear together *relative to* how often they appear separately. So eg, if you have two terms that both occur 10,000 times and appear together 300 times vs two terms that occur 1000 times each and together 250 times, the latter pair are *much* more strongly correlated even though in terms of raw counts they appear together less often. A positive correlation means that two terms are more likely to appear together than apart, whereas a negative correlation means they're more likely to appear separately than together. (Pairs that *never* occur are not considered.)
+- if the "minimum count" has had to be set very low to get any results (it's usually 20), the results are less likely to be meaningful
+- the darker the line the stronger the correlation (or in the case of pair counts, the larger the number of co-occurrences)
+
+Many (most?) of the correlations on the graphs are weak by statisticians' standards
+
+- .00 - .19 = "very weak" (positive or negative)
+- .20 - .39 = "weak"
+- .40 - .59 = "moderate"
+- .60 - .79 = "strong"
+- .80 - 1.0 = "very strong"
+
+

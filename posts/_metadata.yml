@@ -1,0 +1,24 @@
+
+# listing:  doesn't do anything here...
+#   sort: "date desc"
+#   type: default
+#   categories: true
+#   sort-ui: false
+#   filter-ui: false
+#   fields: [date, title, file-modified, categories]
+#  contents: posts/**/*.qmd
+
+date-format: "D MMMM YYYY"
+page-layout: full
+
+# date-format in this file doesn't seem to do anything. may have to specify for every post.
+# or maybe experiment to see if you only need it in the listing page.
+# but at least you can, so it's better than distill.
+#   feed: true doesn't work here either - needs to be in blog listing page qmd
+
+# freeze computational output
+# (see https://quarto.org/docs/projects/code-execution.html#freeze)
+# freeze: auto
+
+# Enable banner style title blocks
+#title-block-banner: false

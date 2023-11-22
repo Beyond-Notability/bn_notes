@@ -1,0 +1,598 @@
+---
+title: "Women at the Royal Archaeological Institute"
+description: "Initial exploration of the main forms of women's engagement with RAI"
+author: "Sharon Howard"
+date: "2023-10-22"
+date-modified: today
+categories: 
+  - RAI
+  - ppa
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+Update: 
+
+- Some improvements to the elections query to capture a few women who were being omitted. 
+- Correction of my confusion about Members/Fellows.
+
+Todo:
+
+- Chart about "non-interacting" members (ie those for whom there is *only* a record of election/member of).
+- Improve timelines to distinguish members from non-members
+
+## Wikibase query
+
+- [Women's interactions with RAI](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women's_interactions_with_RAI_(Q35_and_Q29))
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+```{r}
+bn_women_rai_elected_sparql <-
+  'SELECT distinct ?person ?personLabel  ?date ?RAIstatement ?successLabel
+WHERE {
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P7 ?RAIstatement .
+  ?RAIstatement bnpq:P1 ?date .
+  optional {?RAIstatement bnpq:P22 ?success . }  # successful=q36 unsuccessful=q37  # successful=q36 not successful q37 (only one) but quite a few blank. handle as successful?
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  }'
+
+bn_women_rai_elected_query <-
+  bn_std_query(bn_women_rai_elected_sparql) |>
+  make_bn_item_id(person) |>
+  make_date_year() |>
+  make_bn_ids(RAIstatement) |>
+  # blank is still "" but don't go making it NA without tweaking this!
+  filter(successLabel !="not successful") |>
+  rename(elected_name=personLabel)
+
+bn_women_rai_sparql <-
+'SELECT distinct ?person ?personLabel  ?prop ?propLabel ?prop_type  ?pq_value ?pq_valueLabel ?qual_prop_label ?qual_prop_type ?rai ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person ?p ?s .
+
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps;   
+         wikibase:statementValue ?psv;
+         wikibase:propertyType ?prop_type.    
+    
+      # to get both q35 and q29 union query 
+      { ?s ?ps bnwd:Q35 . }  union { ?s ?ps bnwd:Q29 . }
+       ?s ?ps ?rai.
+
+       # qualifiers. 
+       optional { 
+         ?s ?pq ?pq_value .   
+         
+         ?qual_prop wikibase:qualifier ?pq .   
+         ?qual_prop rdfs:label ?qual_prop_label. filter(lang(?qual_prop_label)="en-gb") . 
+         ?qual_prop wikibase:propertyType ?qual_prop_type .
+         
+       } # /qualifiers
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
+}
+ORDER BY ?personLabel
+'
+
+bn_women_rai_query <-
+  bn_std_query(bn_women_rai_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(rai, prop, s)) |>
+  mutate(across(c(qual_prop_label, pq_value, pq_valueLabel, qual_prop_type), ~na_if(., ""))) |>
+  mutate(across(c(prop_type, qual_prop_type), ~str_remove(., "http://wikiba.se/ontology#"))) |>
+  relocate(person, .after = last_col())
+```
+
+
+```{r deprecated-members-confusion}
+# handle member of separately... this is the same thing as elected lol.
+# bn_women_rai_member_wide <-
+# bn_women_rai_query |> 
+#   filter(prop %in% c("P67"))  |>  # 263  # rg q57
+#   filter(!qual_prop_label %in% c("specific reference information (free text)", "stated in")) |>
+#   # fix dup dates. this works... but it feels a bit brittle
+#   filter( (pq_value !="1916-01-01T00:00:00Z" | !bn_id =="Q225") | is.na(pq_value)) |>
+#   filter( (pq_value !="1927-01-01T00:00:00Z" | !bn_id=="Q57" ) |is.na(pq_value)) |>
+#   pivot_wider(id_cols = c(s, bn_id, personLabel, rai, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |>
+#   clean_names("snake") |>
+#   select(-na) |>
+#   mutate(start_time = if_else( str_detect(start_time, "_:t"), NA, start_time )) |>
+#   mutate(across(c("point_in_time", "start_time", "end_time", "latest_date"), ~parse_date_time(., "ymdHMS")))  |>
+#   mutate(start_year = year(start_time)) |>   
+#   # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+#   left_join(
+#     bn_women_rai_elected_query |>
+#       distinct(bn_id, year, date) |>
+#       filter(bn_id !="Q2365") |> # woman with two elections and membership dates
+#       rename(elected_year=year, elected_date=date) |>
+#       mutate(is_frai="y"), by="bn_id"
+#   )  |>
+#   mutate(is_frai = if_else(!is.na(is_frai), "FRAI", "not FRAI")) 
+
+# small numbers
+# applicant to 3
+# was fellow of 2 - this has qualifiers...
+# loaner to 3
+# 
+# was member of 263 - this has start and end dates... mostly. 37 don't. [but all NA pq_value are member of.] is it different from fellow of or what? there are 199 in elected query
+```
+
+```{r}
+bn_women_rai_members_elections <-
+bn_women_rai_query |> 
+  filter(prop %in% c("P67"))  |>  # 263  # rg q57
+  filter(!qual_prop_label %in% c("specific reference information (free text)", "stated in")) |>
+  # fix dup dates. this works... but it feels a bit brittle
+  filter( (pq_value !="1916-01-01T00:00:00Z" | !bn_id =="Q225") | is.na(pq_value)) |>
+  filter( (pq_value !="1927-01-01T00:00:00Z" | !bn_id=="Q57" ) |is.na(pq_value)) |>
+  pivot_wider(id_cols = c(s, bn_id, personLabel, rai, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |>
+  clean_names("snake") |>
+  select(-na) |>
+  mutate(start_time = if_else( str_detect(start_time, "_:t"), NA, start_time )) |>
+  mutate(across(c("point_in_time", "start_time", "end_time", "latest_date"), ~parse_date_time(., "ymdHMS")))  |>
+  mutate(start_year = year(start_time)) |>   
+  mutate(is_member="y") |>
+  # make this full join instead of left, to be the starting point for a complete list. adds 20 odd rows at least some of which=duplicates
+  # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+  full_join(
+    bn_women_rai_elected_query |>
+      distinct(bn_id, elected_name, year, date) |>
+      # top_n instead of filter to drop second election for  Q2365. doesn't seem to cause manytomany which is good.
+      group_by(bn_id) |>
+      top_n(-1, year) |>
+      ungroup() |>
+      rename(elected_year=year, elected_date=date) |>
+      mutate(is_elected="y")
+    , by="bn_id"
+  )  |>
+  relocate(elected_name, .after = person_label) |>
+  arrange(bn_id , person_label, elected_name) 
+
+# v2
+bn_women_rai_member_wide <-
+bn_women_rai_members_elections |>
+  select(bn_id, person_label, elected_name, start_year, elected_year, is_member, is_elected, end_time, start_time, point_in_time, latest_date, elected_date) |>
+  mutate(member = case_when(
+    is_elected=="y" ~ elected_name,
+    .default = person_label
+  )) |>
+  mutate(year = case_when(
+    is_elected=="y" ~ elected_year,
+    .default = start_year
+  )) |>
+  mutate(date = case_when(
+    is_elected=="y" & !is.na(elected_date) ~ elected_date,
+    is_member=="y" & !is.na(start_time) ~ start_time
+  )) |>
+  mutate(src = case_when(
+    is_elected=="y" ~ "election",
+    .default = "membership"
+  )) |>
+  add_count(bn_id) |>
+  group_by(bn_id) |>
+  arrange(elected_year, start_year) |>
+  mutate(rn = row_number()) |>
+  ungroup() |>
+  mutate(use = case_when(
+    #is_elected=="y" ~ "y",
+    n==1 ~ "y",
+    rn==1 ~ "y*"
+  )) |>
+  relocate( member, year, date, src, .after = bn_id) |>
+  filter(!is.na(use))  # 19 don't have start/elected year. one or two have no dates at all? |> filter(is.na(year))
+```
+
+```{r}
+# bn_women_rai_member_wide |>
+#   filter(is.na(year) | is.na(date))
+```
+
+
+```{r}
+bn_women_rai_wide <-
+bn_women_rai_query |> 
+  # drop member of and a couple with fellow of. 
+  #filter(!is.na(pq_value)) |> # makes no difference when P67 is dropped
+  filter(!prop %in% c("P67", "P75")) |> 
+  # drop 2 weird dates
+  filter(!str_detect(pq_value, "^2022-01")) |>
+  # drop insignificant/irrelevant stuff/dups .
+  # only two p.i.t. dups and those look like errors - dates 2022. or are they linked to the recorded by? i'm not sure. filtering out recorded by fixes the problem, no it doesn't idiot. reverted deletion and check them with AT?.
+  # so don't need to take dates out this time!
+  filter(!qual_prop_label %in% c("recorded by", "note", "part of", "is successful")) |>
+  pivot_wider(id_cols = c(s, bn_id, personLabel, rai, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |> 
+  clean_names("snake")  |>   
+  # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+  # use full list of membership/election
+  left_join(
+    bn_women_rai_member_wide |>
+      distinct(bn_id, year, date) |>
+      rename(frai_year=year, frai_date=date) |>
+      mutate(is_frai="y"), by="bn_id"
+  ) |>
+  #relocate(point_in_time, latest_date)  |>
+  mutate(date = case_when(
+    !is.na(point_in_time) ~ point_in_time,
+    !is.na(latest_date) ~ latest_date
+  )) |>
+  make_date_year() |>
+  mutate(is_frai = if_else(!is.na(is_frai), "member", "not member"))  |>
+  mutate(is_frai_at = case_when(  # 19 na
+    is_frai=="not member" ~ "not member",
+    frai_date < date ~ "member",
+    frai_date > date ~ "pre member",
+    frai_date==date ~ "member"
+  )) 
+  # is member? and member start year if available. oops.
+
+
+#bn_women_rai_wide |> add_count(s) |> filter(n>1) # shoudl be 0
+
+```
+
+
+
+```{r}
+## Margaret Dickens Whinney is shown on your table is Not RAI but she has both election and membership recorded
+## Q805. in was member of.  has start_time. so what's happened? missing successful statement.
+# bn_women_rai_query |> 
+#   filter(bn_id=="Q805")
+# #  filter(prop %in% c("P67")) 
+# 
+# bn_women_rai_member_wide |>
+#   filter(bn_id=="Q805")
+# 
+# bn_women_rai_elected_query
+#   filter(bn_id=="Q805")
+```
+
+
+```{r}
+## they're all elected...
+## how many member of are also elected? is there significant difference?
+# 165 of 220 join member to elected
+# bn_women_rai_member_wide |>
+#   semi_join(bn_women_rai_elected_query, by="bn_id")
+
+# 163 elected join member, so a slightly discrepancy
+# bn_women_rai_elected_query |>
+#   semi_join(bn_women_rai_member_wide, by="bn_id")
+```
+
+
+
+
+## Types of interaction
+
+The same categories that were analysed for SAL:
+
+- spoke at (P23) 
+- exhibited at (P13) 
+- corresponded with (P73) 
+- donor to (P111) 
+
+Again, ignoring a few others with only a handful instances (applicant to, loaner to).
+
+A count of one here represents one dated event in the wikibase, *completely* ignoring any differences in the nature/significance of the activity. (Or any links between activities.)
+
+Noted that corresponded with here is a much smaller proportion of activity than for SAL.
+
+```{r}
+bn_women_rai_wide |>
+  add_count(prop_label) |>
+  filter(n>3) |> select(-n) |>
+  count(prop_label) |>
+  mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(x=prop_label, y=n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL, y="count")
+
+```
+
+
+## Interactions over time
+
+
+```{r}
+bn_women_rai_wide |>
+  add_count(prop_label) |>
+  filter(n>3) |> select(-n) |>
+  count(year, prop_label) |>
+  ggplot(aes(year, n, fill=prop_label)) +
+  geom_col() +
+  scale_fill_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y="count", fill=NULL, title = "Women's interactions with the Institute, 1858-1945")
+```
+
+
+
+
+
+## Activity by Members and non-Members
+
+I have now amalgamated the two sources of information about membership - election and was member of statements - giving priority to the election date over membership start date if there's a difference. 
+
+In this chart "member" *includes* any interactions before a woman was elected.
+
+```{r}
+bn_women_rai_wide |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  count(prop_label, is_frai, sort = T) |>
+  #mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(fill=prop_label, y=n, x=is_frai)) +
+  geom_col(position = "fill") +
+  scale_fill_tableau() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL, fill=NULL, title="Women's interactions with the Institute: Members and non-Members")
+
+```
+
+This time women are only counted as Members for interactions *after* election. (This has changed slightly in the corrected update.)
+
+```{r}
+bn_women_rai_wide |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |> #count(is_frai_at)
+  filter(!is.na(is_frai_at)) |>
+  mutate(is_fsa_at2 = if_else(is_frai_at=="member", "member at time", "not member at time")) |>
+  count(prop_label, is_fsa_at2, sort = T) |>
+  #mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(fill=prop_label, y=n, x=is_fsa_at2)) +
+  geom_col(position = "fill") +
+  scale_fill_tableau() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL, fill=NULL, title="Women interacting with the Institute: Fellows and non-Fellows")
+
+```
+
+
+
+
+- Ordered by date of earliest interaction with the Society.
+
+```{r}
+# possible to order by date of earliest interaction?
+bn_women_rai_wide |>
+  group_by(bn_id) |>
+  mutate(e = min(year)) |>
+  ungroup() |>
+  add_count(prop_label) |>
+  filter(n>3) |> select(-n) |>
+  add_count(bn_id, name="n_bn") |>
+  #filter(n_bn>1) |>
+  count(bn_id, prop_label, n_bn, e, is_frai, sort = T) |>
+  mutate(bn_id = fct_reorder(bn_id, e)) |>
+  ggplot(aes(x=bn_id, y=n, fill=prop_label)) +
+  geom_col() +
+  #coord_flip() +
+  scale_fill_tableau() +
+  facet_wrap(~is_frai, scales="free", ncol = 1) +
+  theme(#axis.text.x = element_blank() , 
+        axis.text.x = element_text(angle = 90),
+        legend.position = "bottom") +
+  labs(x="person", fill=NULL, y="count")
+```
+
+## Timelines
+
+Note that this only includes women who had at least one interaction in addition to member of/election data. A number of members don't have a start year; I'm thinking about how best to indicate that or otherwise distinguish members from non-members in this chart.
+
+
+```{r}
+# original 8 who didn't have start year, but i think there are more now.
+# - Q2103	Hannah Jackson Gwilt
+# - Q21	Louisa Hay Kerr	
+# - Q1599	Lucy Nichols	
+# - Q461	Maria Emma Elizabeth Conway Griffith Reade (end year 1878)	
+# -	Q2143	Martha Jervis	
+# -	Q2109	Miss Stokes
+# -	Q2104	Sarah A. Cowell	
+# -	Q2360	Susan Maria Ffarington
+
+# afaics the 8 members who have no start date have no other dates either, except Q461 has an end date
+# not sure if that's still true... i think it might have been
+bn_women_rai_wide_summary_dates <-
+bn_women_rai_wide |> 
+  group_by(bn_id) |>
+  mutate(earliest = min(year), latest = max(year)) |>
+  ungroup() |>
+  count(bn_id, person_label, earliest, latest, frai_year,  is_frai, sort = T) |>
+  # mutate(size = case_when(
+  #   n==1 ~ 0.1,
+  #   n<5 ~ 0.2,
+  #   .default = 0.3
+  # )) |>
+  mutate(range = latest-earliest)
+#  arrange(earliest, latest)
+
+
+# bn_women_rai_member_wide |>
+#   semi_join(bn_women_rai_wide, by="bn_id") |>
+#   filter(is.na(start_time))
+
+# try to colour axis labels by member/not ?
+# but need to make sure they're in the right order... maybe come back to this.
+bn_women_member_status <-
+bn_women_rai_wide_summary_dates |>
+  arrange(earliest) |>
+  select(bn_id, is_frai)
+  #mutate(name = fct_reorder(person_label, -earliest))
+```
+
+(As with other tall charts, may be easier to read if you right-click on the image and open in a new tab.)
+
+```{r fig.height=7.5}
+bn_women_rai_wide_summary_dates |>
+  mutate(name = fct_reorder(person_label, -earliest)) |>
+  ggplot(aes(x=earliest, xend=latest, y=name)) + # changed size to linewidth. arrghh , linewidth=size. see next one on scale_size()
+  geom_dumbbell(dot_guide = TRUE, colour="darkgrey") +
+  geom_point(aes(x=frai_year), alpha=0.7, colour="purple", size=2.3, shape="diamond open", na.rm = TRUE) +
+  #geom_point(aes(x=member_year),  colour="orange",  size=1.5, shape="square", na.rm=TRUE) +
+  theme(aspect.ratio = 1, axis.text.y = element_text(size = 7)) +
+  labs(x="year", y=NULL, title = "RAI: summary timelines of individuals' interactions", caption = "mauve diamond=election year; dark grey line covers earliest and latest other interactions")
+```
+
+```{r fig.height=7.5}
+bn_women_rai_wide |>   #count(year) begins 1858
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  count(bn_id, person_label, prop_label, year, frai_year) |> 
+  group_by(bn_id) |>
+  mutate(earliest = min(year), latest = max(year)) |>
+  ungroup() |>
+  mutate(wt = if_else(n==1, 1, 2)) |>
+  mutate(name = fct_reorder(person_label, -earliest)) |>
+  #mutate(ye = seq_along(name)) |>
+  mutate(xs = -Inf) |>
+  ggplot(aes(x=year, y=name, colour=prop_label)) +  #, size=wt
+  geom_segment(aes(x=xs, xend=earliest, yend=name), linewidth=0.3, linetype="dotted", colour="grey") +
+  geom_point(size=0.9) +
+  geom_point(aes(x=frai_year),  colour="purple",  size=1.8, shape="diamond open", na.rm=TRUE) +
+  scale_size(range = c(1,2)) +
+  scale_colour_tableau() +
+  guides(size="none", colour="none") +
+  theme(aspect.ratio = 1, axis.text.y = element_text(size = 7)) +
+  labs(y=NULL, colour=NULL, title="RAI: timelines of individual interactions", caption = "mauve diamond=year of election")
+```
+
+
+
+## Table
+
+```{r}
+# make text a single column? or just drop? don't have in all cases. some v long. some multiple. easier to drop. it's in wb query.
+bn_women_rai_reactable <-
+bn_women_rai_wide |>
+  select(bn_id, person_label, prop_label, date, is_frai, frai_date,  rai, prop) |>
+  arrange(person_label, date)
+```
+
+
+
+```{r}
+
+reactable(
+  bn_women_rai_reactable  |>  select(-prop)  
+  ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    person_label =colDef(maxWidth = 250, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_rai_reactable$bn_id[index], value)
+      })   ,
+    date = colDef(maxWidth = 125, name="date", format = colFormat(date = TRUE)),
+    frai_date = colDef(maxWidth = 130, name="elected date", format = colFormat(date=TRUE)),
+    prop_label = colDef(maxWidth = 150, name = "activity"),
+    is_frai = colDef(maxWidth = 100, name = "Member"),
+    # proposedLabel = colDef(maxWidth = 200, name="proposer",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     if (!is.na(bn_women_election_rai_reactable$proposed[index]) ) {
+    #     sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_election_rai_reactable$proposed[index], value) } else {""}
+    #   }),
+    # secondedLabel = colDef(maxWidth = 200, name="seconder",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     if (!is.na(bn_women_election_rai_reactable$seconded[index]) ) {
+    #     sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_election_rai_reactable$seconded[index], value) } else {""}
+    #   }),
+    rai = colDef(maxWidth = 70, name="RAI")
+  )
+)
+
+```
+
+```{r}
+# ## Members
+# 
+# Of 220 women with a member of statement, 138 have start dates for membership. Some don't have a record of election as a Fellow (though this might be data/sources gaps). All but three have the same membership start year and election year, but those three have a membership date that is a year *later* than their election year, which seems slightly problematic? (Q2294, Q467, Q2565) 
+
+# bn_women_rai_member_wide |>
+#   filter(!is.na(start_time)) |>
+#   count(start_year, is_frai) |>
+#   ggplot(aes(start_year, n, fill=is_frai)) +
+#   geom_col() +
+#   scale_fill_ptol()
+```
+
+```{r}
+# oh bum, a woman joined *and* elected twice drop her from one side for the moment
+# don't forget two women in elected query don't seem to have member of??? but leave that for now
+# bn_women_rai_member_wide |>
+#   distinct(bn_id, person_label, prop_label, start_year, elected_year) |>
+# 
+#   filter(start_year != elected_year)
+```
+
+
+
+```{r}
+##any non-member/fellow engagement?
+# bn_women_rai_wide |>
+#   left_join(bn_women_rai_member_wide |> distinct(bn_id, member_start_time= start_time, member_start_year= start_year) |> mutate(is_member="y"), by="bn_id") |>
+#   mutate(is_member_at = case_when(
+#     is.na(is_member) ~ "not member",
+#     member_start_time < point_in_time ~ "member",
+#     member_start_time > point_in_time ~ "pre member",
+#     is_member=="y" & is.na(member_start_year) ~ "na"
+#   )) |> 
+#   relocate(is_frai_at, is_member, is_member_at, point_in_time, member_start_time, member_start_year, is_frai)
+```
+
+
+```{r}
+# hmmmm....
+# bn_women_rai_wide |>
+#   left_join(bn_women_rai_member_wide |> distinct(bn_id, member_start_time= start_time, member_start_year= start_year) |> mutate(is_member="y"), by="bn_id") |>
+#   mutate(is_member_at = case_when(
+#     is.na(is_member) ~ "not member",
+#     member_start_time < point_in_time ~ "member",
+#     member_start_time > point_in_time ~ "pre member",
+#     is_member=="y" & is.na(member_start_year) ~ "na"
+#   )) |>
+#   add_count(prop_label) |>
+#   filter(n>3) |> select(-n) |>
+#   #mutate(is_fsa_at2 = if_else(is_frai_at=="frai", "FRAI", "not FRAI")) |>
+#   count(prop_label, is_member_at, sort = T) |>
+#   #mutate(prop_label = fct_reorder(prop_label, n)) |>
+#   ggplot(aes(fill=prop_label, y=n, x=is_member_at)) +
+#   geom_col(position = "fill") +
+#   scale_fill_tableau() +
+#   scale_y_continuous(labels = percent_format()) +
+#   labs(y=NULL, x=NULL, fill=NULL, title="Women interacting with the Institute: Members and non-Members")
+
+```
+
+
+
+
+

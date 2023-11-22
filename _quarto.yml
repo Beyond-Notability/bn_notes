@@ -1,0 +1,37 @@
+project:
+  type: website
+  output-dir: docs
+
+
+website:
+  title: BN Notes
+  site-url: http://sharonhoward.org/bn/bn_notes/
+  navbar:
+    left:
+      - text: Posts
+        href: blog.qmd
+      - text: Notes
+        href: notes/index.qmd        
+    right:
+      - icon: github
+        href: https://github.com
+        aria-label: Github
+
+format:
+  html:
+    theme: simplex
+    css: styles.css
+    toc: true
+    code-fold: true
+
+
+date-format: "D MMMM YYYY"
+
+
+# freeze computational output
+# (see https://quarto.org/docs/projects/code-execution.html#freeze)
+
+# change this back to auto when you're in less of a hurry...?
+# if i set this to false, will it try to update everything every time i render a single post? is false even an option?
+freeze: auto
+

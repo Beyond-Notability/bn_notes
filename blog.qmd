@@ -1,0 +1,17 @@
+---
+title: "Posts"
+author: "Sharon Howard"
+listing:
+  contents: posts
+  sort: "date desc"
+  type: default
+  fields: [date, title, description, categories]
+  categories: true
+  sort-ui: false
+  filter-ui: false
+  date-format: "D MMM YYYY"
+
+page-layout: full
+title-block-banner: false
+---
+&nbsp;

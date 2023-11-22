@@ -1,0 +1,213 @@
+---
+title: "Wikidata links for BN Women"
+description: "Linked data sources (via Wikidata) for women"
+author: "Sharon Howard"
+date: "2023-10-13"
+date-modified: today
+categories: 
+  - wikidata
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+## Wikibase queries
+
+The query fetches all external IDs in BN women's Wikidata pages, for those who have them. Many of the sources are probably not at all interesting! (I suspect quite a lot simply harvest the same basic data from the same sources.)
+
+[IDs](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#IDs) 
+
+- [External IDs in Wikidata for BN Women](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#What_external_IDs_are_available_in_Wikidata_for_women_in_the_BN_database?)
+- slightly adapted version of [query for BN and Wikidata IDs](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_in_the_wiki_(excluding_the_project_team)_and_their_corresponding_IDs_-_where_they_exist_-_on_wikidata,_viaf,_WorldCat_Identities,_and_the_Archaeology_Data_Service)
+
+See also: [women and their IDs on Wikidata](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#All_external_IDs_on_Wikidata_for_Women) for a complete list of the links summarised here, and [Women with ODNBs](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_with_ODNB_IDs_in_Wikidata)
+
+
+```{r}
+# could use the wikibase-then-wikidata version but tbh i don't think that's much quicker and it needs two separate queries
+
+bn_wikidata_ids_sparql <-
+  'SELECT ?p ?id_label ?id_description  (count(?p) as ?count)
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+
+  ?person bnp:P117 ?wikidata_ID . # wikidata ID
+     ?wikidata_ID bnpq:P14 ?wikidata_url .
+     BIND(IRI(REPLACE(?wikidata_url, "https://www.wikidata.org/wiki/", "http://www.wikidata.org/entity/")) as ?wikidata ) 
+  
+     SERVICE <https://query.wikidata.org/sparql> {
+     ?wikidata ?p ?s .
+          ?prop wikibase:claim ?p;    	 
+               wikibase:propertyType wikibase:ExternalId;  
+               rdfs:label ?id_label. filter(lang(?id_label)="en") . 
+       ?prop schema:description ?id_description . 
+       filter(lang(?id_description) = "en") .    
+       }  
+       
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en, en-gb". } 
+}
+group by ?p ?id_label ?id_description 
+ORDER BY desc(?count)'
+
+bn_wikidata_ids_query <-
+  bn_std_query(bn_wikidata_ids_sparql) |>
+  make_bn_item_id(p)
+```
+
+
+## Top thirty IDs
+
+(See the table below for full Wikidata descriptions, which are at least sometimes more informative than the abbreviations.)
+
+```{r}
+# bn_id is actually wikidata id...
+bn_wikidata_ids_query |>
+  filter(count >= 45) |>
+  mutate(id_label = fct_reorder(id_label, count)) |>
+  ggplot(aes(id_label, count)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL, title = "Top thirty external IDs")
+```
+
+## Comparison of stats for key IDs with BN equivalents
+
+- VIAF 
+- ISNI 
+- ADS 
+
+```{r}
+bn_women_key_ids_sparql <-
+  'SELECT ?person ?personLabel ?isni_ID ?viaf_ID ?ads_ID  
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .                                 #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}            #filter out project team
+    OPTIONAL {?person bnwdt:P125 ?isni_ID .}             #return wikidata ID
+    OPTIONAL {?person bnwdt:P119 ?viaf_ID .}                 #return VIAF ID
+    OPTIONAL {?person bnwdt:P34 ?ads_ID .}                   #return Archaeological Data Service ID
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
+}
+ORDER BY ?personLabel'
+
+# this will need pivot longer and then distinct, i suspect
+bn_women_key_ids_query <-
+  bn_std_query(bn_women_key_ids_sparql) |>
+  make_bn_item_id(person)
+
+bn_women_key_ids <-
+bn_women_key_ids_query |>
+  pivot_longer(isni_ID:ads_ID) |>
+  distinct(bn_id, name, value) |>
+  filter(value !="") |>
+  # add wikidata P IDs rather than bn?
+  mutate(p = case_match(
+    name,
+    "ads_ID" ~ "P34",
+    "viaf_ID" ~ "P119",
+    "isni_ID" ~ "P125"
+  )) |>
+  mutate(wd_p = case_match(
+    p,
+    "P119" ~ "P214", #VIAF
+    "P125" ~  "P213", #ISNI
+    "P34" ~ "P6734" #ADS
+  ))
+```
+
+
+```{r check-queries}
+#bn_women_key_ids_uh_oh <-
+# uh-oh this very clever construction is doing something bad
+# bn_properties |>
+#   filter(bn_id %in% c("P34", "P119", "P125")) |>
+#   mutate(ID = glue("bnwdt:{bn_id}")) |>
+#   summarise(bn_union = paste(ID, collapse = " | ")) |>
+#   # construct WHERE triples
+#   mutate(bn_triple_union = glue("?person ( {bn_union} ) ?id . ")) |>
+#   # construct the query string
+#   mutate(bn_query = glue(
+#     "{bn_prefixes} ",
+#     "select distinct ?person ?id ?id_type  where {{ ",
+#     "{bn_triple_woman} {bn_filter_project} ",
+#     "{bn_triple_union} ",
+#     "?person ?id_type ?id . }}"
+#   )) |>
+#   # make it a string
+#   pull(bn_query) |>
+#    sparql2df(endpoint=bn_endpoint) |>
+#    make_bn_item_id(person) |>
+#    mutate(id_type =  str_extract(id_type, "\\bP\\d+$")) |>
+#    relocate(bn_id, id_type) |>
+#    arrange( parse_number(str_remove(bn_id, "Q")) ) 
+
+
+# errrrm what
+# bn_women_key_ids_uh_oh |>
+#   count(id_type)
+```
+
+
+```{r}
+bn_women_key_ids |>
+  count(p, wd_p, name="BN") |>
+  inner_join(
+    bn_wikidata_ids_query |>
+      select(wd_p= bn_id, id_label, WD= count), by="wd_p"
+  ) |>
+  mutate(ID = paste0(id_label, " (bn: ", p, " | wikidata: ", wd_p, ")")) |>
+  select(ID, BN, WD) |>
+  kable() |>
+  kable_styling()
+```
+
+
+## Table
+
+Wikidata descriptions added 
+
+
+```{r}
+reactable(
+  bn_wikidata_ids_query  |> select(-p) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  columns = list(
+    bn_id = colDef(name="wikidata id", maxWidth = 100),
+    id_label =colDef(maxWidth = 250, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="https://www.wikidata.org/wiki/Property:%s" target="_blank">%s</a>', bn_wikidata_ids_query$bn_id[index], value)
+      })   ,
+    #id_label = colDef(maxWidth = 120, name="wikidata name"),
+    id_description = colDef(maxWidth = 450, name="description"),
+    count = colDef(maxWidth = 70)
+    #employerLabel = colDef(maxWidth = 130, name="employer"),
+  )
+)
+
+```
+

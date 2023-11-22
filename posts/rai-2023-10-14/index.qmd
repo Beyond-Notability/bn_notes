@@ -1,0 +1,361 @@
+---
+title: "RAI elections"
+description: "Women fellows elected to the Royal Archaeological Institute and their supporters"
+author: "Sharon Howard"
+date: "2023-10-14"
+date-modified: today
+categories: 
+  - RAI
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+I did some analysis of SAL elections for my interview talk, but I never got round to doing anything similar for RAI. But the data seems to be much more patchy so I won't repeat all of the same analysis.
+
+Note: not sure if I've recorded this one already, but there are both &lt;unknown value&gt; and "Proposer not recorded" (item Q17) in the proposer names column. Unknown value might mean that there is a proposer name but the signature is illegible.?
+
+Update: added seconders
+
+## Wikibase query
+
+[SAL and RAI](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#SAL_and_RAI) - slightly amended version of [query about SAL/RAI elections](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#People_whose_elections_were_proposed_to_SAL_or_RAI,_including_who_proposed,_seconded,_or_signed_(excluding_'general_knowledge'_signatures)_their_proposal_for_election,_seperated_by_type,_and_including_the_date_the_proposals_were_made)
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+
+
+## People whose elections were proposed to SAL or RAI, including who proposed, seconded, or signed (excluding 'general knowledge' signatures) their proposal for election, seperated by type, and including the date the proposals were made
+
+## added gender for proposer/seconder, and statement
+# and let's drop the RAI  
+bn_women_election_rai_sparql <-
+'SELECT ?person ?personLabel ?proposed ?proposedLabel ?seconded ?secondedLabel ?proposed_genderLabel ?seconded_genderLabel ?date ?electedLabel ?s
+WHERE {
+
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P7 ?s .
+  ?s bnps:P7 ?proposed .
+  optional { ?proposed bnwdt:P3 ?proposed_gender . }
+  OPTIONAL {?s bnpq:P8 ?seconded . 
+           optional { ?seconded bnwdt:P3 ?seconded_gender . }
+           }
+  ?s bnpq:P1 ?date .
+  OPTIONAL {?s bnpq:P22 ?elected .}     
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb".
+    }
+}'
+
+bn_women_election_rai_query <-
+  bn_std_query(bn_women_election_rai_sparql) |>
+  make_bn_item_id(person) |>
+  make_date_year() |>
+  make_decade(year) |>
+  arrange(date) |>
+  relocate(date, year, decade, .before = proposed) |>
+  relocate(person, s, .after = last_col()) |>
+# tidy up
+  mutate(across(c(proposed, seconded, proposedLabel, secondedLabel, seconded_genderLabel, proposed_genderLabel, electedLabel), ~na_if(., "")))  |>
+  mutate(across(c(proposed, proposedLabel), ~case_when(
+    str_detect(., "^(_:)?t\\d+") ~ NA,
+    .default = .
+  ))) |>
+  # get the last bit of a /path/ as an id
+  mutate(across(c(proposed, seconded, s), ~str_extract(., "([^/]*$)") ))  |>
+  rename(second_gender=seconded_genderLabel, proposed_gender=proposed_genderLabel, elected=electedLabel)
+
+# need to tidy up missing/unknown names. no <uv> for seconders. keep not recorded?
+# and any uv for genders? can only see na, but idk if that might be to do with the nature of the optional query...
+
+
+
+# summary of the fellow, date, proposer, and outcome. [so nb there are 2 rows for the women who tried twice.]
+bn_proposed_summary <-
+  #bn_proposed_sal |>
+bn_women_election_rai_query |>
+  filter(!is.na(proposed) & !is.na(proposed_gender)) |>
+  select(bn_id, personLabel, date, year, proposed, proposedLabel, proposed_gender, elected) |>  #no dups apparently
+  # add count to check for women who tried twice. irrelevant if no dups
+  #add_count(bn_id, name="n_elections") |> 
+  # add proposer gender. already in.
+  # add outcome. arleady in. 5 missing. hmm.
+  # fix missing outcome: only 1 not successful, so assume success
+  mutate(elected = if_else(is.na(elected), "successful", elected))  |>
+  # add count of signers. not relevant.
+  # add count of signers by gender.
+  # add fellows yearly numbers from list with imputed missing values. not relevant
+  # add unique row id in case it's needed
+  rowid_to_column()
+
+# summary of proposers 
+bn_proposer_summary <-
+bn_proposed_summary |>
+  count(proposed, proposedLabel, proposed_gender, name="n_proposal") 
+
+# bn_signer_summary <-
+# bn_proposed_sal |>
+#   count(signatorypersonal, signatorypersonalLabel, signgender, name="n_sign") 
+
+bn_second_summary <-
+bn_women_election_rai_query |>
+  filter(!is.na(seconded) & !is.na(second_gender)) |>
+  count(seconded, secondedLabel, second_gender, name="n_second")
+
+
+## proposers
+bn_proposers_dates_summary <-
+bn_proposer_summary |>
+  # filter female proposers
+  filter(proposed_gender=="woman") |>
+  select(bn_id=proposed, name=proposedLabel, n_proposal) |>
+  # get proposer's own election data - make sure it's when they were elected
+  inner_join(bn_proposed_summary |> filter(elected=="successful") |>
+               select(bn_id, election_date=date, election_year=year, proposer=proposed, proposed_gender), by=c("bn_id")) |>
+  arrange(election_date) |>
+  inner_join(
+    bn_proposed_summary |>
+      group_by(proposed) |>
+      summarise( earliest_proposal = min(date), earliest_year = min(year), latest_proposal=max(date)) |>
+      ungroup(), by=c("bn_id"="proposed")
+  )
+
+```
+
+
+
+## Elections of women 
+
+(I haven't checked record dates yet: should this big gap be here?)
+
+```{r}
+bn_women_election_rai_query |> 
+  filter(!is.na(proposed_gender)) |>
+# drop unknown proposers. then see if there are still any na gender. just one. drop it then.
+#  filter(!str_detect(proposedLabel, "not recorded")) |>
+  count(year, proposed_gender) |>
+  ggplot(aes(year, n, fill=proposed_gender)) +
+  geom_col() +
+  #scale_x_discrete(guide = guide_axis(n.dodge = 2) ) +
+  scale_x_continuous(breaks = seq(1870, 1940, 5)) +
+  scale_y_continuous(labels = label_number(accuracy = 1)) +
+  scale_fill_manual(values = c("#33bbee", "#ee7733")) +
+  theme(legend.position = "bottom") +
+  labs(x="year", y="number", title = "Women standing for RAI election and their proposers, 1874-1936", fill="proposer gender")  
+```
+
+
+```{r}
+## actions per supporter, idk whether to do this
+# faceted chart at last lol
+# bn_proposed_summary |>
+#   #mutate(proposerGender = na_if(proposerGender, "")) |>
+#   filter(!is.na(proposed_gender)) |>
+#   count(proposed, proposed_gender) |>
+#   group_by(proposed_gender) |>
+#   summarise(mn = mean(n), md=median(n), max=max(n)) |>
+#   ungroup() |>
+#   rename(supporterGender=proposed_gender) |>
+#   mutate(supporterType="proposer") |>
+#   bind_rows(
+#     bn_women_election_rai_query |>
+#      filter(!is.na(seconded) & !is.na(second_gender)) |>
+#      count(seconded, second_gender) |>
+#       group_by(second_gender) |>
+#       summarise(mn = mean(n), md=median(n), max=max(n)) |>
+#       ungroup() |>
+#       rename(supporterGender=second_gender) |>
+#       mutate(supporterType="seconder")
+#   ) |>
+#   ggplot(aes(supporterGender, mn, fill=supporterGender)) +
+#   geom_col(show.legend = F) +
+#   facet_wrap(~supporterType, scales = "free_y") +
+#   scale_fill_manual(values = c("#33bbee", "#ee7733")) +
+#   labs(title="Actions per supporter", y="mean average", x=NULL)
+```
+
+
+
+## Who are the most active supporters?
+
+### Female proposers
+
+```{r}
+bn_women_election_rai_query |>
+  filter(proposed_gender=="woman") |>
+  count(proposed, proposedLabel) |>
+  mutate(proposedLabel = fct_reorder(proposedLabel, n)) |>
+  left_join(bn_second_summary, by=c("proposed"="seconded")) |>
+  #left_join(bn_signer_summary, by=c("proposed"= "signatorypersonal")) |>
+  mutate(also_signs = if_else(!is.na(secondedLabel), "yes", "no")) |>
+  ggplot(aes(proposedLabel, n, fill=also_signs)) +
+  #ggplot(aes(proposedLabel, n)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("#ddaa33", "#bb5566")) +
+  #theme(legend.position = "bottom") + 
+  labs(x=NULL, y="number of proposals", fill="also\nseconds", title="RAI elections: women who propose women")   #  fill="also \nsigns",
+```
+
+```{r}
+bn_rai_women_supporters <-
+bind_rows(
+bn_women_election_rai_query |>
+  select(bn_id, proposed, proposedLabel, proposed_gender) |>
+  filter(proposed_gender=="woman") |>
+  select(bn_id, supporter=proposed, supporter_label=proposedLabel) |>
+  mutate(supporter_type="proposer")
+  ,
+bn_women_election_rai_query |> 
+  select(bn_id, seconded, secondedLabel, second_gender) |>
+  filter(second_gender=="woman") |>
+  select(bn_id, supporter=seconded, supporter_label=secondedLabel) |>
+  mutate(supporter_type="seconder")
+)
+
+bn_rai_men_supporters <-
+bind_rows(
+bn_women_election_rai_query |>
+  select(bn_id, proposed, proposedLabel, proposed_gender) |>
+  filter(proposed_gender=="man") |>
+  select(bn_id, supporter=proposed, supporter_label=proposedLabel) |>
+  mutate(supporter_type="proposer")
+  ,
+bn_women_election_rai_query |> 
+  select(bn_id, seconded, secondedLabel, second_gender) |>
+  filter(second_gender=="man") |>
+  select(bn_id, supporter=seconded, supporter_label=secondedLabel) |>
+  mutate(supporter_type="seconder")
+)
+```
+
+### Combined female proposers and seconders
+
+```{r}
+bn_rai_women_supporters |>
+  add_count(supporter, name="n_acts") |>
+  count(supporter, supporter_label, supporter_type, n_acts) |>
+  # n actually seems to work here, but overall count is safer
+  mutate(supporter_label = fct_reorder(supporter_label, n_acts)) |>
+  ggplot(aes(supporter_label, n, fill=supporter_type)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("#bb5566", "#ddaa33")) +
+  #theme(legend.position = "bottom") + 
+  labs(x=NULL, y="number of elections", fill="support\ntype", title="RAI elections: women who support women")   #  fill="also \nsigns",
+```
+
+### Male proposers
+
+```{r}
+bn_women_election_rai_query |>
+  filter(proposed_gender=="man") |>
+  count(proposed, proposedLabel) |>
+  filter(n>1) |>
+  mutate(proposedLabel = fct_reorder(proposedLabel, n)) |>
+  left_join(bn_second_summary, by=c("proposed"="seconded")) |>
+  #left_join(bn_signer_summary, by=c("proposed"= "signatorypersonal")) |>
+  mutate(also_signs = if_else(!is.na(secondedLabel), "yes", "no")) |>
+  ggplot(aes(proposedLabel, n, fill=also_signs)) +
+  #ggplot(aes(proposedLabel, n)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("#ddaa33", "#bb5566")) +
+  #theme(legend.position = "bottom") + 
+  labs(x=NULL, y="number of proposals", fill="also\nseconds", title="RAI elections: men who propose women", caption = "n>1")   #  fill="also \nsigns",
+```
+
+
+### Combined male proposers and seconders
+
+```{r}
+bn_rai_men_supporters |>
+  add_count(supporter, name="n_acts") |>
+  filter(n_acts>1) |>
+  count(supporter, supporter_label, supporter_type, n_acts) |>
+  # n actually seems to work here, but overall count is safer
+  mutate(supporter_label = fct_reorder(supporter_label, n_acts)) |>
+  ggplot(aes(supporter_label, n, fill=supporter_type)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("#bb5566", "#ddaa33")) +
+  #theme(legend.position = "bottom") + 
+  labs(x=NULL, y="number of elections", fill="support\ntype", title="RAI elections: men who support women", caption = "n>1")   #  fill="also \nsigns",
+```
+
+```{r}
+# leave this one and the following network graphs, given the gap in the records
+# ## From election to proposing other women
+# (Cf. same for SAL; some charts work better than others...)
+# bn_proposers_dates_summary |>
+#   mutate(time_to_propose = earliest_year-election_year) |>
+#   mutate(name = fct_reorder(name, -election_year)) |>
+#   ggplot(aes(x=election_year, xend=earliest_year, y=name, linewidth=n_proposal)) + # changed size to linewidth
+#   geom_dumbbell() +
+#   labs(x="year", y=NULL, size="total\nproposals", title = "Interval from year of election to first proposal")
+```
+
+
+
+## Table
+
+```{r}
+bn_women_election_rai_reactable <-
+bn_women_election_rai_query |>
+  arrange(date) |>
+  select(bn_id, name=personLabel, date, proposedLabel, secondedLabel, elected, person, proposed, seconded)
+```
+
+
+```{r}
+
+reactable(
+  bn_women_election_rai_reactable |>
+  select(-person,  -proposed, -seconded)   ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    name =colDef(maxWidth = 200, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s#P7" target="_blank">%s</a>', bn_women_election_rai_reactable$person[index], value)
+      })   ,
+    date = colDef(maxWidth = 115, name="date", format = colFormat(date = TRUE)),
+    proposedLabel = colDef(maxWidth = 200, name="proposer",
+      html = TRUE,
+      cell = function(value, index) {
+        if (!is.na(bn_women_election_rai_reactable$proposed[index]) ) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_election_rai_reactable$proposed[index], value) } else {""}
+      }),
+    secondedLabel = colDef(maxWidth = 200, name="seconder",
+      html = TRUE,
+      cell = function(value, index) {
+        if (!is.na(bn_women_election_rai_reactable$seconded[index]) ) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_election_rai_reactable$seconded[index], value) } else {""}
+      }),
+    elected = colDef(maxWidth = 100)
+  )
+)
+
+```
+
+
+

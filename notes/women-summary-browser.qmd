@@ -1,0 +1,335 @@
+---
+title: "All the Women"
+description: A summary table of key information for every woman in the wikibase
+author: "Sharon Howard"
+execute: 
+  warning: false
+  message: false
+  echo: false 
+date-modified: today
+categories: 
+  - summaries
+  - musthave
+page-layout: full
+---
+
+```{r}
+# if you need even more width change page-layout to custom then you'll have to work out how to add margins... text looks a bit bad as it is.
+```
+
+Focus is mainly on "must have biographical properties" (Q2947); at present includes:
+
+- count of statements
+
+**key dates**
+
+- year of birth (date of birth P26) 
+- year of death (date of death P15) 
+  - a few women have more than one date recorded (separated with | to aid filtering)
+  - if both are the same year it probably indicates different levels of precision
+
+**SAL/RAI/CAS**
+
+- SAL - year of proposal (using P16)
+  - again a few women have more than one but should simply mean the first proposal was unsuccessful
+- RAI - year of proposal (using P7)
+- CAS - recorded in Index of Archaeological Papers (Q419)
+
+**IDs** - external ID types that are included in must have properties. 
+If a woman has more than one of the same type recorded it's marked with * .
+
+- ADS = Archaeology Data Service person ID (P34)
+- ISNI - ISNI ID (P125) 
+- WD = Wikidata ID (P117)
+- VIAF - VIAF ID (P119)
+
+Absence is indicated with - or 0 (depending on type of info) to enable filtering
+
+Columns are sortable
+
+**birth/married names**
+
+- count of recorded names for each name type (P140 and P141)
+
+If something here doesn't seem to match the wikibase, I may have messed up or the table simply needs to be updated (check the **modified date** at top of the page); let me know. 
+
+## Wikibase queries
+
+This combines several different queries, none of which appear in exactly the same form in the wikibase queries. However, relevant queries include:
+
+- [Women with no dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_with_no_dates)
+- [Women with more than X statements but no date of birth/death](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_with_more_than_X_statements_but_no_date_of_birth/death)
+- [Uses of &lt;unknown value&gt;](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#All_uses_of_%3Cunknown_value%3E)
+
+```{r libraries-etc}
+
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+```
+
+
+```{r get-queries}
+## count of pieces of info, based on example query
+## (though doesn't count qualifiers as separate pieces)
+bn_women_n_statements <-
+  c(
+    glue(bn_prefixes,
+        "select distinct ?person ?statements
+        where {{
+         ?person bnwdt:P3 bnwd:Q3 ;
+         wikibase:statements ?statements .
+        {bn_filter_project}
+        }}") 
+  ) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(person)
+
+
+## dates of birth and death
+## atm simple date queries
+
+bn_women_dobs <-
+  c(
+    glue(bn_prefixes,
+        "select distinct ?person ?dateOfBirth
+        where {{
+         {bn_triple_woman}
+        {bn_filter_project}
+         ?person bnwdt:P26  ?dateOfBirth.
+         {wb_service_label}
+        }}") 
+  ) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(person) |>
+  mutate(date_of_birth = parse_date_time(dateOfBirth, "ymdHMS")) |>
+  mutate(year_of_birth = year(date_of_birth)) |>
+  relocate(bn_id, date_of_birth, year_of_birth) |>
+  arrange( parse_number(str_remove(bn_id, "Q")), date_of_birth)
+
+
+bn_women_dods <-
+  c(
+    glue(bn_prefixes,
+        "select distinct ?person ?dateOfDeath
+        where {{
+         {bn_triple_woman}
+        {bn_filter_project}
+         ?person bnwdt:P15  ?dateOfDeath .
+         {wb_service_label}
+        }}") 
+  ) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(person) |>
+  mutate(date_of_death = parse_date_time(dateOfDeath, "ymdHMS")) |>
+  mutate(year_of_death = year(date_of_death)) |>
+  relocate(bn_id, date_of_death, year_of_death) |>
+  arrange( parse_number(str_remove(bn_id, "Q")), date_of_death)
+
+
+## SAL/RAI dates
+## may need to separate these out
+
+bn_sal_rai <-
+c(paste(
+  bn_prefixes,
+  "SELECT ?person ?personLabel ?SALproposedLabel ?RAIproposedLabel  ?date 
+WHERE
+{
+  {
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P16 ?SALstatement .
+  optional { ?SALstatement bnps:P16 ?SALproposed . }
+  ?SALstatement bnpq:P1 ?date .
+  }
+  UNION
+  {
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P7 ?RAIstatement .
+  ?RAIstatement bnps:P7 ?RAIproposed .
+  ?RAIstatement bnpq:P1 ?date .
+  }
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language '[AUTO_LANGUAGE],en,en-gb'.
+    }
+}")) |>
+  sparql2df(endpoint=bn_endpoint) |>
+   make_bn_item_id(person) |>
+  mutate(sal_rai = case_when(
+    SALproposedLabel=="" & RAIproposedLabel=="" ~ "SAL",
+    SALproposedLabel !="" ~ "SAL",
+    RAIproposedLabel !="" ~ "RAI"
+  ))  |>
+  mutate(date_of_proposal = parse_date_time(date, "ymdHMS")) |>
+  mutate(year_of_proposal = year(date_of_proposal)) |>
+  relocate(bn_id, date_of_proposal, sal_rai) |>
+  arrange( parse_number(str_remove(bn_id, "Q")), date_of_proposal)
+
+## must-have IDs
+
+bn_ids_musthave <-
+  tribble(~id_type, ~id_abbr,
+    "P34", "ADS",
+    "P117", "WD",
+    "P119", "VIAF",
+    "P125", "ISNI"
+   # "P134", "ALBS"
+    )
+
+bn_women_musthave_ids <-
+bn_properties_musthave |>
+  filter(property_type=="ExternalId") |>
+  mutate(ID = glue("bnwdt:{bn_id}")) |>
+  summarise(bn_union = paste(ID, collapse = " | ")) |>
+  # construct WHERE triples
+  mutate(bn_triple_union = glue("?person ( {bn_union} ) ?id . ")) |>
+  # construct the query string
+  mutate(bn_query = glue(
+    "{bn_prefixes} ",
+    "select distinct ?person ?id ?id_type  where {{ ",
+    "{bn_triple_woman} {bn_filter_project} ",
+    "{bn_triple_union} ",
+    "?person ?id_type ?id . }}"
+  )) |>
+  # make it a string
+  pull(bn_query) |>
+   sparql2df(endpoint=bn_endpoint) |>
+   make_bn_item_id(person) |>
+   mutate(id_type =  str_extract(id_type, "\\bP\\d+$")) |>
+   relocate(bn_id, id_type) |>
+   arrange( parse_number(str_remove(bn_id, "Q")) ) |>
+     left_join(bn_ids_musthave, by="id_type") 
+
+## women in cas indexes of archaeological papers
+bn_women_cas_indexes <-
+  c(
+    glue(bn_prefixes,
+        "select distinct ?person 
+        where {{
+         {bn_triple_woman}
+         {bn_filter_project}
+         ?person bnwdt:P76  bnwd:Q419 .
+        }}")
+  ) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(person) |>
+  relocate(bn_id) |>
+  arrange( parse_number(str_remove(bn_id, "Q")) )
+
+bn_women_married_names_counts <-
+c(paste(bn_prefixes,
+  "SELECT ?person (COUNT(?marriedname) AS ?marriedcount)
+WHERE {
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  OPTIONAL {?person bnwdt:P141 ?marriedname .} #look for married name
+}
+group by ?person")) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(person) |>
+  relocate(bn_id) |>
+  arrange( parse_number(str_remove(bn_id, "Q")) )
+
+bn_women_birth_names_counts <-
+c(paste(
+  bn_prefixes,
+  "SELECT ?person (COUNT(?birthname) AS ?birthcount)
+WHERE {
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  OPTIONAL {?person bnwdt:P140 ?birthname .} #look for birth name
+  
+}
+group by ?person ")) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(person) |>
+  relocate(bn_id) |>
+  arrange( parse_number(str_remove(bn_id, "Q")) )
+```
+
+
+```{r put-them-together}
+## putting together the vitals:
+## count of statements
+## collapsed year of birth/death 
+## collapse SAL/RAI year 
+## musthave IDs - y=1 y*>1
+
+bn_women_vitals <-
+bn_women_list |>
+  left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
+  left_join(bn_women_dobs |> 
+              #add_count(bn_id, name="n_dob") |>
+              group_by(bn_id) |>
+              arrange(year_of_birth, .by_group = TRUE) |>
+              # nb summarise mucks up order again
+              summarise(birth = paste(year_of_birth, collapse = " | ") ) |>
+              #top_n(-1, date_of_birth) |>
+              ungroup()  , by="bn_id") |>
+  left_join(bn_women_dods |>
+              group_by(bn_id) |>
+              summarise(death = paste(year_of_death, collapse=" | ")) |>
+              ungroup()  , by="bn_id") |>
+  left_join(bn_sal_rai |>
+              select(bn_id, date_of_proposal, sal_rai) |>
+              mutate(year_of_proposal = year(date_of_proposal)) |>
+              group_by(bn_id, sal_rai) |>
+              arrange(year_of_proposal, .by_group = TRUE) |>
+              summarise(year = paste(year_of_proposal, collapse = " | "), .groups = "drop_last") |>
+              ungroup() |>
+              pivot_wider(names_from = sal_rai, values_from = year)  , by="bn_id") |>
+  left_join(bn_women_cas_indexes |> select(-person) |> mutate(CAS = "y"), by="bn_id") |>
+  left_join(bn_women_musthave_ids |>
+              count(bn_id, id_abbr) |>
+              mutate(has_id = case_when(
+                n==1 ~ "y",
+                n>1 ~ "y*"
+              )) |>
+              select(-n) |>
+              pivot_wider(names_from = id_abbr, values_from = has_id)  , by="bn_id" ) |>  
+  left_join(bn_women_birth_names_counts |> select(-person), by="bn_id") |>
+  left_join(bn_women_married_names_counts |> select(-person), by="bn_id") |>
+  relocate(person, .after = last_col())
+```
+
+
+
+
+```{r}
+
+reactable(
+  bn_women_vitals |>
+  select(-person) |> 
+  mutate(across(c(-bn_id, -statements, -personLabel), ~replace_na(.,"-"))) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    personLabel =colDef(maxWidth = 160, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s" target="_blank">%s</a>', bn_women_vitals$person[index], value)
+      })   ,
+    statements = colDef(maxWidth = 70, name="stmts"),
+    birth = colDef(maxWidth = 70),
+    death = colDef(maxWidth = 70),
+    birthcount = colDef(name="birth name", maxWidth = 70),
+    marriedcount = colDef(name="marr name", maxWidth = 70)
+    
+  )
+)
+```

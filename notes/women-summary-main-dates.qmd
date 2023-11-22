@@ -1,0 +1,227 @@
+---
+title: "Women main dates summary"
+description: A summary table of main level dates for every woman in the wikibase
+author: "Sharon Howard"
+execute: 
+  warning: false
+  message: false
+  echo: false 
+date-modified: today
+categories: 
+  - summaries
+  - musthave
+page-layout: full
+---
+
+```{r}
+# if you need even more width change page-layout to custom then you'll have to work out how to add margins... text looks a bit bad as it is.
+```
+
+## Wikibase query
+
+[Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) - [Any main level date for women](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Any_main_level_date_for_women)
+
+
+```{r libraries-etc}
+
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+```
+
+```{r}
+# just paste in the goddam query
+bn_main_dates_query <-
+c(
+  paste(
+    bn_prefixes,
+    'SELECT DISTINCT ?person ?date_label  ?date ?date_prop_type ?date_prop
+  WHERE {
+  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}      
+  
+   ?person ?p ?s .
+   
+      ?date_prop wikibase:claim ?p;    	
+         wikibase:statementValue ?psv ;  
+         wikibase:propertyType ?date_prop_type; # property type = wikibase:Time OR wikibase:Edtf
+         rdfs:label ?date_label. filter(lang(?date_label)="en-gb") . # what kind of date it is
+
+    # to include unknown value, make this optional and then use the filter . uv will be blank rows.
+      # must be a better way to do it though?
+     optional { 
+      ?s ?psv ?wdv . # for the date value
+        ?wdv wikibase:timeValue ?date .  #timeValue gets pit and edtf
+     #  ?wdv wikibase:timePrecision ?date_precision .  # optional
+    }
+  
+  # filter time/edtf property type
+   filter(?date_prop_type in (wikibase:Edtf, wikibase:Time ) ) .  
+  
+   SERVICE wikibase:label { bd:serviceParam wikibase:language "en, en-gb". }
+}
+ORDER BY ?person ?date
+'
+)) |>
+  sparql2df(endpoint=bn_endpoint) |>
+   make_bn_item_id(person)  |>
+  mutate(date_prop_id = str_extract(date_prop, "\\bP\\d+$"))
+```
+
+```{r}
+# do the blank dates have any effect on complete/wide
+# they have date_label so they should register as different from blanks
+# looks like they become "NA"  which should work ok?
+```
+
+
+```{r}
+## fill in the gaps so every woman has at least one row per date type, empty if they didn't have a date
+# TIL tidyr::complete() YOU CAN USE NESTING MORE THAN ONCE
+bn_women_main_dates_completed <-
+bn_women_list |>
+  select(bn_id, personLabel, person) |>
+  left_join(
+    bn_main_dates_query |>
+      distinct(bn_id, date_prop_id, date_label, date_prop), by="bn_id"
+  ) |>
+# o. m. g.
+  complete(nesting(bn_id, personLabel, person ), nesting(date_prop_id, date_label, date_prop)) |>
+  filter(!is.na(date_prop_id)) |>
+  #complete(date_prop_id, date_label) |>
+  arrange(bn_id, date_label)  
+
+## process and summarise dates
+bn_main_dates_summary <-
+bn_main_dates_query |>
+      distinct(bn_id, date, date_prop_id) |>
+      # make years. 
+      mutate(date=parse_date_time(date, "ymdHMS")) |>
+      mutate(year = year(date)) |>
+      # collapse multi years into 1 row (potentially could be a mix of repeat and unique)
+      # if n_distinct < n there is at least one repeated year
+      group_by(bn_id, date_prop_id) |>
+      arrange(year, .by_group = TRUE) |>
+      summarise(nd=n_distinct(year), 
+                n=n() ,
+                year = paste(year, collapse = " | ") , .groups = "drop_last") |>
+      ungroup() |>
+      # mark repeated ONLY
+      mutate(multi_year = case_when(
+        n==1 & nd==1 ~ NA,
+        n>nd ~ "repeated",
+        #n==nd ~ "no repeat"
+      ))
+
+
+# where multi years are repeated, collapse into a single column
+# you know, there will probably never be any actual need for this... but just in case
+bn_dates_repeated_years_collapsed <-
+bn_main_dates_summary |>
+  filter(!is.na(multi_year)) |>
+  inner_join(bn_main_dates_query |>
+               distinct(date_prop_id, date_label), by="date_prop_id") |>
+  # shorter labels for a column
+  mutate(date_type_short = str_remove(date_label, "^(was|date of) *"),
+         date_type_short = str_replace(date_type_short, " *in \\((PIT|EDTF).*$", " \\1")) |>
+  # make married in label match what will be in the pivoted table.? actually i don't think you'll need it
+  #mutate(date_label = str_remove(date_label, " *\\((PIT|EDTF) value.*$")) |>
+  distinct(bn_id, multi_year, date_type_short) |>
+  group_by(bn_id) |>
+  arrange(date_type_short, .by_group = T) |>
+  summarise(repeated_year = paste(date_type_short, collapse = " | ")) |>
+  ungroup()
+
+# keep this for now in case it's useful for the TODO
+# women with married PIT and EDTF. "pit+edtf" = both
+# bn_married_pit_edtf <-
+# bn_main_dates_query |>
+#   filter(date_prop_id %in% c("P132", "P130")) |>
+#   mutate(married_pit_edtf = case_when(
+#     date_prop_id=="P130" ~ "pit",
+#     date_prop_id=="P132" ~ "edtf"
+#   )) |>
+#   distinct(bn_id, married_pit_edtf) |>
+#   group_by(bn_id) |>
+#   arrange(married_pit_edtf, .by_group = T) |>
+#   summarise(married_pit_edtf = paste(married_pit_edtf, collapse = "+")) |>
+#   ungroup()
+
+## add dates summary to women
+## you may want to be able to do something with the data in long format, so do wider in a separate step.
+bn_women_with_main_dates <-
+bn_women_main_dates_completed |>
+  left_join(bn_main_dates_summary , by=c("bn_id", "date_prop_id") ) 
+
+## turn it into a wide summary table, merge married into a single column
+## TODO merge married *before* working out repeated year.
+bn_women_with_main_dates_wide <-
+  bn_women_with_main_dates |>
+  select(bn_id, personLabel, person, date_label, year) |>
+  pivot_wider(names_from = date_label, values_from = year) |>
+  clean_names("snake") |>
+  mutate(married_format = case_when(
+    !is.na(was_married_in_edtf_value) & !is.na(was_married_in_pit_value) ~ "both",
+    !is.na(was_married_in_edtf_value) ~ "edtf",
+    !is.na(was_married_in_pit_value) ~ "pit"
+  )) |>
+  unite("was_married_in", was_married_in_edtf_value:was_married_in_pit_value, na.rm = T, sep=" || ") |>
+  mutate(was_married_in = na_if(was_married_in, "")) |>
+  relocate(married_format, had_child_in, .after = was_married_in) |>
+  left_join(bn_dates_repeated_years_collapsed, by="bn_id")  |>
+  arrange(parse_number(str_remove(bn_id, "^Q")))
+```
+
+## Notes
+
+
+Some of these dates (births, deaths) would be expected to have only one value, while others can have several (children, marriages), though the latter would usually be all different. It's easy to filter for multiple dates in each column with "|", but the `repeat year` column (filter with \*) has been added to highlight where the *same* year appears more than once for a date property.
+
+There are two `was married in` properties in the wikibase, one for PIT values and one for EDTF. These have been merged into a single column, with a separate column to record which were present.
+
+&lt;unknown value&gt; is now included and represented as "NA".
+
+
+
+```{r}
+
+reactable(
+  bn_women_with_main_dates_wide |>
+  select(-person) |> 
+  # repeated year needs something to make all filterable!
+  mutate(repeated_year = if_else(!is.na(repeated_year), paste("*", repeated_year), repeated_year ) ) |> 
+  mutate(across(c(-bn_id, -person_label, -married_format, -repeated_year), ~replace_na(.,"-"))) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 90),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 75),
+    person_label =colDef(maxWidth = 200, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s" target="_blank">%s</a>', bn_women_with_main_dates_wide$person[index], value)
+      })   ,
+    date_of_birth = colDef(maxWidth = 80, name="birth"),
+    date_of_death = colDef(maxWidth = 80, name="death"),
+    was_married_in = colDef(name="married"),
+   married_format = colDef(name="married format"),
+   had_child_in = colDef(name="children"),
+   was_widowed_in = colDef(name="widowed", maxWidth = 95),
+   repeated_year = colDef(name="repeat year", maxWidth = 100)
+  )
+)
+```

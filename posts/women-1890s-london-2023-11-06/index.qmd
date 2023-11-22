@@ -1,0 +1,283 @@
+---
+title: "BN Women in 1890s London"
+author: "Sharon Howard"
+description: "Locating BN women on the Booth maps"
+date: "2023-11-06"
+date-modified: today
+categories: 
+  - place
+  - proxies
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+TODO:
+
+- add Booth colour coding!
+
+## Wikibase query 
+
+[Women living in London during the 1890s](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_living_in_London_during_the_1890s)
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(leaflet)
+
+
+#library(DT)
+# https://rstudio.github.io/DT/
+ # datatable(data, options = list(), class = "display",
+ #    callback = JS("return table;"), rownames, colnames, container,
+ #    caption = NULL, filter = c("none", "bottom", "top"), escape = TRUE,
+ #    style = "auto", width = NULL, height = NULL, elementId = NULL,
+ #    fillContainer = getOption("DT.fillContainer", NULL),
+ #    autoHideNavigation = getOption("DT.autoHideNavigation", NULL),
+ #    selection = c("multiple", "single", "none"), extensions = list(),
+ #    plugins = NULL, editable = FALSE)
+
+#styling options https://datatables.net/manual/styling/classes
+
+#library(crosstalk)
+
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+```
+
+
+```{r}
+bn_booth_sparql <-
+  'SELECT distinct ?personLabel ?date_label ?date ?person ?address ?address_item ?londonLabel ?geo ?long ?lat
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person bnp:P29 ?s .   # resided at
+    ?s bnps:P29 ?london . 
+      ?london bnwdt:P33+ bnwd:Q322 .  # in Q322 greater london. 
+
+    # optional street address (text)
+  optional {
+    ?s bnpq:P31 ?address .
+    }
+  # optional street address (item)
+  optional {
+    ?s bnpq:P100 ?address_item .
+    }    
+
+  # dates. About 30? not dated.
+    #optional {
+    ?s ?pq ?date . 
+     # ?date wikibase:timeValue ?date_value. # if you dont want date label this should work instead of the following stuff
+      
+      ?qual_prop wikibase:qualifier ?pq;
+              wikibase:propertyType wikibase:Time ; # nb excludes edtf dates
+              rdfs:label ?date_label . filter(lang(?date_label)="en-gb") . # what kind of date is it.
+    #  } # /dates
+   
+    # filter 1890-1899   
+  FILTER("1890-01-01"^^xsd:dateTime <= ?date && ?date < "1899-12-31"^^xsd:dateTime).
+
+  
+  # address geocoordinates 
+   optional { 
+     ?s ?pqq ?geo .
+        ?qual_geo wikibase:qualifier ?pqq;
+                  wikibase:propertyType wikibase:GlobeCoordinate.
+         BIND(geof:longitude(?geo) AS ?long) 
+         BIND(geof:latitude(?geo)  AS ?lat)
+             }
+
+  # todo booth codes
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+ORDER BY ?person ?date
+  '
+# the only thing here is that you don't have address string for some things with address_item ?
+# it's only College Hall atm so don't faff about with the query
+bn_booth_query <-
+  bn_std_query(bn_booth_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(address_item)) |>
+  mutate(across(c(address_item, address, geo), ~na_if(., ""))) |>
+  mutate(address = case_when(
+    is.na(address) & address_item=="Q1205" ~ "College Hall, Byng Place",
+    .default = address
+  )) |>
+  mutate(date = parse_date_time(date, "ymdHMS")) |>
+  relocate(person, .after = last_col()) 
+
+
+bn_booth_map <-
+bn_booth_query |>
+  filter(!is.na(geo)) |>
+  mutate(year=year(date)) |>
+  mutate(label = paste(personLabel, address, londonLabel, year, sep="<br>")) |>
+  # drop extra rows at the same address (long lat)
+  # specific issue two people at Chenie Chambers, but should work mroe generally. 
+  # one has number and one doesn't, so arrange by address to keep the numbered one.
+  group_by(bn_id, year, long, lat) |>
+  arrange(address, .by_group = TRUE) |>
+  #mutate(rn=row_number()) |> # don't need to make a rn, just use row_number in top_n.
+  top_n(-1, row_number()) |>
+  ungroup() |>
+  rowid_to_column()
+# also have someone at college hall twice, different dates. i think keep for now.
+
+
+# allegedly reactable *is* usable with crosstalk...
+bn_booth_reactable <-
+bn_booth_map |>
+  select(rowid, bn_id, personLabel, year, address, londonLabel, person, long, lat, label) |>
+  arrange(personLabel, year, londonLabel)
+
+## for crosstalk
+#shared_booth <- SharedData$new(bn_booth_reactable, ~rowid)
+```
+
+```{r}
+# hmmm odn't think this worked as intended really. but seems to be fixed now.
+# (!str_detect(geo, "0.03285872") & !str_detect(address, "Cadogan Gardens") )
+#bn_booth_map |> count(londonLabel)
+
+# bn_booth_map |>
+#   select(bn_id, personLabel, year, address, londonLabel, long, lat, person, label) 
+```
+
+
+
+
+
+```{r}
+#filter_select is working but selection in map isn't.
+
+# bscols(widths = c(12,12,12),
+#        
+#   list(
+#     # filter_checkbox("cyl", "Cylinders", shared_mtcars, ~cyl, inline = TRUE),
+#     # filter_slider("hp", "Horsepower", shared_mtcars, ~hp, width = "100%"),
+#     filter_select("address", "Find places", shared_booth, ~address)
+#   ),
+#   #device = "lg", # forces single column except on bigger screens... but really want always single column?
+#   
+#     leaflet(shared_booth, width = "100%") |> 
+#     addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+#   # finally! how to use addTiles urlTemplate with an api key.
+#   # https://github.com/rstudio/leaflet/issues/410#issuecomment-290471333
+#   addTiles(
+#     urlTemplate = "https://api.maptiler.com/tiles/uk-oslondon1k1893/{z}/{x}/{y}.jpg?key={key}", # slighlty different url from uk os
+#     #urlTemplate = "https://api.maptiler.com/tiles/uk-osgb1888/{z}/{x}/{y}?key={key}",  #uk
+#     attribution = "&copy; <a href='http://maps.nls.uk/projects/subscription-api/'>National Library of Scotland</a>,  &copy;",
+#     # opacity affects the whole map. minZoom changes point at which it switches to the default as you zoom out.  
+#     options = tileOptions(key="Qm3IHfglBpG81gp4ZK4G", opacity = 5)
+#   ) |>
+#     #addPopups(lat=~lat, lng=~long, popup = ~label) # very nope!
+#   # problem of multi people at same address... 
+#   # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
+#      addCircleMarkers(lat = ~lat, lng=~long, popup = ~label, 
+#                 stroke = FALSE, fillOpacity = 0.5,
+#                 labelOptions = labelOptions(noHide = F, direction = 'auto'), 
+#                 options = markerOptions(riseOnHover = TRUE) , clusterOptions = markerClusterOptions(freezeAtZoom = 18)
+#              )
+#   ,
+#   
+#   reactable(
+#   shared_booth ## |> select(-person, -long, -lat, -label, -rowid) # can't use this here!
+#   ,
+#   filterable = TRUE,
+#   searchable = TRUE,
+#   bordered = TRUE,
+#   highlight = TRUE,
+#   defaultPageSize = 100,
+#   #groupBy =  "college_label",
+#   defaultExpanded = TRUE,
+#   defaultColDef = colDef(maxWidth = 150),  
+#   # , headerClass = "sticky" but i think it has to be fixed height to use this
+#   columns = list(
+#     bn_id = colDef(name="id", maxWidth = 75),
+#     personLabel =colDef(maxWidth = 220, name="name",
+#       html = TRUE,
+#       cell = function(value, index) { # add ? for link to resided at. but don't copy straight into other tables!
+#         sprintf('<a href="%s#P29" target="_blank">%s</a>', bn_booth_reactable$person[index], value)
+#       })   ,
+#     address = colDef(maxWidth = 300, name="address"),
+#     londonLabel = colDef(maxWidth = 120, name = "area"),
+#     year = colDef(maxWidth = 100),
+#     person=colDef(show = F),
+#     long=colDef(show = F),
+#     lat=colDef(show = F),
+#     label=colDef(show = F),
+#     rowid=colDef(show = F)
+#   )
+# )
+# )
+```
+
+
+
+
+## Map
+        
+```{r}
+  leaflet(bn_booth_reactable, width = "100%") |>
+    addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+  # finally! how to use addTiles urlTemplate with an api key.
+  # https://github.com/rstudio/leaflet/issues/410#issuecomment-290471333
+  addTiles(
+    urlTemplate = "https://api.maptiler.com/tiles/uk-oslondon1k1893/{z}/{x}/{y}.jpg?key={key}", # slighlty different url from uk os
+    #urlTemplate = "https://api.maptiler.com/tiles/uk-osgb1888/{z}/{x}/{y}?key={key}",  #uk
+    attribution = "&copy; <a href='http://maps.nls.uk/projects/subscription-api/'>National Library of Scotland</a>,  &copy;",
+    # opacity affects the whole map. minZoom changes point at which it switches to the default as you zoom out.
+    options = tileOptions(key="Qm3IHfglBpG81gp4ZK4G", opacity = 5)
+  ) |>
+    #addPopups(lat=~lat, lng=~long, popup = ~label) # very nope!
+  # problem of multi people at same address...
+  # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
+     addCircleMarkers(lat = ~lat, lng=~long, popup = ~label,
+                stroke = FALSE, fillOpacity = 0.5,
+                labelOptions = labelOptions(noHide = F, direction = 'auto'),
+                options = markerOptions(riseOnHover = TRUE) , clusterOptions = markerClusterOptions(freezeAtZoom = 18)
+             )
+```
+
+
+## Table
+
+```{r}
+
+reactable(
+  bn_booth_reactable |>
+  select(-person, -long, -lat, -label, -rowid) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy =  "college_label",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 150),
+  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 75),
+    personLabel =colDef(maxWidth = 220, name="name",
+      html = TRUE,
+      cell = function(value, index) { # add ? for link to resided at. but don't copy straight into other tables!
+        sprintf('<a href="%s#P29" target="_blank">%s</a>', bn_booth_reactable$person[index], value)
+      })   ,
+    address = colDef(maxWidth = 300, name="address"),
+    londonLabel = colDef(maxWidth = 120, name = "area"),
+    year = colDef(maxWidth = 100)
+  )
+)
+```
+

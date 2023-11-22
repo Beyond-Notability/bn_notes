@@ -1,0 +1,439 @@
+---
+title: "College cohorts"
+description: "Women who went to college together"
+author: "Sharon Howard"
+date: "2023-09-22"
+date-modified: today
+categories: 
+  - education
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+Experimental dumbbell plots, restricted to women for whom we have at least one date, and for colleges with at least six students. If one of start/end is missing I've inferred it using a likely maximum attendance of 4 years (the majority of known durations are 1-4 years): these are highlighted in orange.
+
+A few women attended the same college on more than one separate occasion and in these cases each attendance is shown on a separate bar.
+
+Updates
+
+- added point in time/latest date dates
+- added colleges which (following the addition of new data) have now reached the six student threshold
+- improved display
+
+
+## Wikibase query 
+
+[Education](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Education) - [all women who went to tertiary education institutions](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#All_women_who_went_to_tertiary_education_institutions_and_dates_where_available)
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+
+bn_educated_query <-
+c(paste(
+  bn_prefixes,
+  'SELECT DISTINCT ?person ?personLabel ?college ?collegeLabel ?university ?universityLabel ?date ?date_label ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  # note: academic degree is P59. possible extra info?
+  ?person bnp:P94 ?s .  # educated at
+    ?s bnps:P94 ?college .
+    optional {?college bnwdt:P4 ?university . } # a few ?college arent part of (P4) a ?university
+   ?college bnwdt:P12 bnwd:Q2914 .   # tertiary ed inst
+   
+  # dates. 
+    optional {
+    ?s ?pq ?date .       
+      ?qual_prop wikibase:qualifier ?pq;
+              wikibase:propertyType wikibase:Time ; # nb excludes edtf dates
+              rdfs:label ?date_label . filter(lang(?date_label)="en-gb") . # what kind of date is it.
+      } # /dates
+     
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}
+order by ?personLabel ?collegeLabel ?date
+')) |>
+   sparql2df(endpoint=bn_endpoint) |>
+   make_bn_item_id(person)  |>
+  # tidy up
+  mutate(across(c(college, collegeLabel, university, universityLabel, date, date_label), ~na_if(., ""))) |>
+  # get the last bit of a /path/?
+  mutate(across(c(college, university, s), ~str_extract(., "([^/]*$)") ))  |>
+  mutate(date = if_else(str_detect(date, "^_:t"), NA, date))  |>
+  mutate(date = parse_date_time(date, "ymdHMS")) |>
+  mutate(year = year(date)) |>
+  relocate(person, .after = last_col())
+  # mutate(across(c(college, university, instance), ~str_remove(., "https://beyond-notability.wikibase.cloud/entity/"), .names = "{.col}_id"))
+
+
+
+# 38 no date/uv
+# initially let's just go with people who have at least a start date... 178
+# quite a lot don't have an end date :-/ 51
+# what is the usual sort of duration from the start date where both exist?
+
+##will the statement id help avoid dup problems with pivot wider? yes, doh.
+## a few people had more than 1 point in time date for the same statement, which i think was the source of problem with pivot wider
+## this should be getting fixed... one has been changed to start/end dates and hopefully the others will be turned into separate stmts.
+
+bn_educated_start_end <-
+bn_educated_query |>
+  filter(!is.na(date)) |>
+  distinct(bn_id, personLabel, college, collegeLabel, year, date_label, s) |>
+  filter(!date_label %in% c("latest date", "point in time")) |>
+  pivot_wider(names_from = date_label, values_from = year) |>
+  clean_names("snake") |>
+  filter(!is.na(start_time) | !is.na(end_time) )  |>
+  mutate(date_type = if_else( is.na(end_time) | is.na(start_time) , "inferred", "actual")) |>
+## Q825 23 years... "The LSE Register notes that Chapman was full time at LSE 1903-14, and thereafter an occasional student." 
+## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
+  mutate(end_time_n = case_when(
+    bn_id=="Q825" & college=="Q1162" & end_time==1923 ~ 1914,
+    is.na(end_time) & !is.na(start_time) ~ start_time+4,
+    .default = end_time
+  )) |>
+  mutate(start_time_n = case_when(
+    bn_id=="Q825" & college=="Q1162" & start_time==1900 ~ 1903,
+    is.na(start_time) & !is.na(end_time) ~ end_time-4,
+    .default = start_time
+  )) |>
+  #mutate(dur = end_time_n - start_time_n) |>
+  bind_rows(
+    # you need two columns to match start_time_n and end_time_n, just that they're both the same. i think. don't want pivot at all
+    bn_educated_query |>
+      distinct(bn_id, personLabel, college, collegeLabel, year, date_label, s) |>
+      filter(date_label %in% c("latest date", "point in time")) |>
+      mutate(end_time_n=year) |>
+      mutate(date_type="single") |>
+      rename(start_time_n=year, college_label=collegeLabel, person_label=personLabel)
+  ) |>
+  add_count(college_label, name="college_n") |>
+  rename(name=person_label) |>
+  relocate(s, .after = last_col())  |>
+# make a unique row id for the y axis as some women might appear more than once. might as well order by time
+  arrange(start_time_n, end_time_n) |>
+  mutate(name_y = paste(row_number(),name))
+
+
+
+
+# for when you need the two colours, force text to be black or dark grey and add the scale to the bits you do separately
+# bn_college_dumbbell <- function(data){
+#   data |>
+#   mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) |>
+#   ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
+#   geom_dumbbell(show.legend = F) +
+#   geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+#   theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) 
+# }
+
+bn_college_dumbbell <- function(f){
+  
+  # filter by college= f
+  filtered_data <-
+  bn_educated_start_end |>
+  filter(college==f) |> 
+  mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) 
+  
+  # use college_label to make a title
+  title <-
+    filtered_data |>
+    distinct(college_label) |>
+    pull(college_label)
+    
+  # NOT including scale_x adjustments
+  # put legend in top right corner of plot where there's lots of space and make points a bit bigger
+  filtered_data |>
+  ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
+  geom_dumbbell() +
+  geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+  theme(axis.text.y = element_blank(), axis.ticks.y=element_blank(), legend.position=c(.9,.85)) + # incl move legend inside plot
+  guides(colour = guide_legend(override.aes = list(size=2))) + # size of points
+  scale_colour_tableau() +
+  labs(x=NULL, y=NULL, title=title, colour="date")
+}
+```
+
+
+
+
+
+```{r}
+# oh ffs there are 0 yr durs... does it matter?
+
+# latest numbers
+# University College London	70			
+# London School of Economics	32			
+# Newnham College	27			
+# Girton College	19			
+# British School at Athens	15			
+# Lady Margaret Hall	15			
+# Somerville College	13	
+# Q1483	University of Manchester	6		
+# Q2027	Bedford College	6		
+# Q2278	St Hilda's College	6	
+
+# Q542	University College London	49		
+# Q1162	London School of Economics	30		
+# Q601	Newnham College	26		
+# Q917	British School at Athens	15		
+# Q585	Lady Margaret Hall	14		
+# Q382	Somerville College	12		
+# Q600	Girton College	9		
+# Q2278	St Hilda's College	6
+
+## how to fix the size of UCL??? getting nowehre with this stuff #| out-height: 150% or chunk opts , out.height="150%", fig.asp='2'
+# fig.height changes size on page. but there's a limit on width, so you can only go so far.
+```
+
+```{r}
+# so pit and latest seem distinct from start/end times - not an issue of duplication afaics.
+# do bind rows?
+# bn_educated_query |>
+#   relocate(date, date_label) |>
+#   filter(!is.na(date)) |> ## & !date_label %in% c("end time", "start time")) |>
+#   add_count(bn_id, college) |>
+#   arrange(bn_id) 
+#  filter(n>1)
+
+# # you need two columns to match start_time_n and end_time_n, just that they're both the same. i think. don't want pivot at all
+# bn_educated_query |>
+#   distinct(bn_id, personLabel, college, collegeLabel, year, date_label, s) |>
+#   filter(date_label %in% c("latest date", "point in time")) |>
+#   mutate(end_time_n=year) |>
+#   rename(date_type=date_label, start_time_n=year)
+
+```
+
+
+
+## University College London
+
+To view this at full size (so it's easier to read the names!), right-click [or tap with two fingers] on the image and select "open image in new tab" (or something similar) in the menu.
+
+```{r warning=FALSE}
+# , fig.height=7.5
+# bn_educated_start_end |>
+#   filter(college=="Q542") |>
+#   mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) |>
+#   ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
+#   geom_dumbbell() +
+#   geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+#   scale_colour_tableau() +
+#   scale_x_continuous(limits = c(1875,1948), breaks = seq(1865, 1935, 10)) +
+#   theme(axis.text.y = element_blank(), axis.ticks.y=element_blank(), legend.position=c(.9,.85), aspect.ratio = 1) + # incl move legend inside plot
+#   guides(colour = guide_legend(override.aes = list(size=2))) + # size of points
+# 
+#   labs(y=NULL, x=NULL, title="University College London")
+```
+
+> we haven't put end dates on UCL students who weren't getting degrees (as far as I know) - this is because there are quite a few women who attended over a period of 5-10 years maybe with breaks in between [AT]
+
+```{r fig.height=7.5}
+##can you use theme twice? yes! so you can add the aspect.ratio adjustment after the function
+bn_college_dumbbell("Q542") +
+    scale_x_continuous(limits = c(1875,1948), breaks = seq(1865, 1935, 10)) +
+  theme(aspect.ratio = 1) 
+```
+
+
+## London School of Economics
+
+
+```{r warning=FALSE}
+#ugh, idk which are estim and actual...
+# what the bollox is happening to women with more than 1 row and why is it ignoring the fct_reorder?
+# bn_educated_start_end |>
+#   filter(college=="Q1162") |>
+#   bn_college_dumbbell() +  # original version
+#   scale_x_continuous(limits = c(1895,1940), breaks = seq(1865, 1945, 10)) +
+#   scale_color_tableau() +
+#   labs(y=NULL, x=NULL, title="London School of Economics")
+```
+
+
+```{r}
+bn_college_dumbbell("Q1162") +
+    scale_x_continuous(limits = c(1895,1940), breaks = seq(1865, 1945, 10))
+```
+
+
+```{r revising-dumbbell}
+# bn_educated_start_end |>
+#   filter(college=="Q1162") |> # college becomes f in function.  college_label for title
+#   mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) |>
+#   ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
+#   geom_dumbbell() +
+#   geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+#   theme(axis.text.y = element_blank(), axis.ticks.y=element_blank(), legend.position=c(.9,.85)) + # incl move legend inside plot
+#   guides(colour = guide_legend(override.aes = list(size=2))) # size of points
+```
+
+
+
+
+## Newnham College (Q601)
+
+```{r warning=FALSE}
+bn_college_dumbbell("Q601") +
+# bn_educated_start_end |>
+#   filter(college=="Q601") |>
+#   bn_college_dumbbell()  +
+  scale_x_continuous(limits = c(1873,1955), breaks = seq(1875, 1945, 10)) 
+  # scale_color_tableau() +
+  # labs(y=NULL, x=NULL, title="Newnham College")
+```
+
+
+
+
+## British School at Athens (Q917)
+
+```{r warning=FALSE}
+
+# Q917	British School at Athens	
+bn_college_dumbbell("Q917") +
+  scale_x_continuous(limits = c(1890, 1940), breaks = seq(1865, 1945, 10)) 
+```
+
+
+## Lady Margaret Hall (Q585)
+
+```{r warning=FALSE}
+# Q585	Lady Margaret Hall	14		
+bn_college_dumbbell("Q585") +
+  scale_x_continuous(limits = c(1880,1940), breaks = seq(1865, 1945, 10)) 
+```
+
+## Somerville College (Q382)
+
+```{r warning=FALSE}
+		
+# Q382	Somerville College	12
+
+  bn_college_dumbbell("Q382")  +
+  scale_x_continuous(limits = c(1888,1945), breaks = seq(1865, 1945, 10)) 
+```
+
+
+## Girton College (Q600)
+
+```{r warning=FALSE}
+		
+bn_college_dumbbell("Q600")  +
+  scale_x_continuous(breaks = seq(1875, 1935, 10), limits = c(1880, 1935)) 
+```
+
+## St Hilda's College (Q2278)
+
+```{r warning=FALSE}
+
+bn_college_dumbbell("Q2278") +
+  scale_x_continuous(breaks = c(1895, 1905, 1915, 1925, 1935), limits = c(1900, 1942)) 
+```
+
+
+
+```{r warning=FALSE}
+# errmmm this is not right. don't show this
+# bn_educated_start_end |>
+#   filter(college=="Q1483") |>
+#   bn_college_dumbbell() +
+#   scale_x_continuous(breaks = seq(1880, 1940, 10), limits = c(1890, 1947)) +
+#   scale_color_tableau() +
+#   labs(y=NULL, x=NULL, title="University of Manchester")
+```
+
+
+
+```{r warning=FALSE}
+
+bn_college_dumbbell("Q2027") +
+  scale_x_continuous(breaks = seq(1875, 1935, 10), limits = c(1874, 1944)) 
+```
+
+
+```{r warning=FALSE}
+bn_college_dumbbell("Q2278")  +
+  scale_x_continuous(breaks = seq(1905, 1935, 10), limits = c(1900, 1942))
+```
+
+
+
+## Table
+
+
+```{r}
+bn_educated_start_end_reactable <-
+bn_educated_query |>
+  filter(!is.na(date)) |>
+  distinct(college, collegeLabel, bn_id, personLabel, person, year, date_label, s) |>
+  filter(!date_label %in% c("latest date", "point in time")) |>
+  pivot_wider(names_from = date_label, values_from = year) |>
+  clean_names("snake") |>
+  ## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
+  mutate(end_time_n = case_when(
+    bn_id=="Q825" & college=="Q1162" & end_time==1923 ~ 1914,
+    is.na(end_time) & !is.na(start_time) ~ start_time+4,
+    .default = end_time
+  )) |>
+  mutate(start_time_n = case_when(
+    bn_id=="Q825" & college=="Q1162" & start_time==1900 ~ 1903,
+    is.na(start_time) & !is.na(end_time) ~ end_time-4,
+    .default = start_time
+  )) |>
+  arrange(college_label, start_time_n, end_time_n, person_label) |>
+  relocate(person, s, .after = last_col())
+## Q825 23 years... "The LSE Register notes that Chapman was full time at LSE 1903-14, and thereafter an occasional student." 
+## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
+```
+
+
+
+```{r}
+
+reactable(
+  bn_educated_start_end_reactable |>
+  select(-person, -end_time_n, -start_time_n, -s, -bn_id, -college) 
+  #mutate(across(c(-bn_id, -person_label, -married_format, -repeated_year), ~replace_na(.,"-")))
+  ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  groupBy =  "college_label",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 150),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 75),
+    college_label = colDef(maxWidth = 250, name="college"),
+    person_label =colDef(maxWidth = 200, name="name",
+      html = TRUE,
+      cell = function(value, index) { # add P94 for link to educated at. but don't copy straight into other tables!
+        sprintf('<a href="%s#P94" target="_blank">%s</a>', bn_educated_start_end_reactable$person[index], value)
+      })   ,
+    start_time = colDef(maxWidth = 100, name="start year"),
+    end_time = colDef(maxWidth = 100, name="end year")
+  )
+)
+```
+
+

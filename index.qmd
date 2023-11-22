@@ -1,0 +1,74 @@
+---
+title: "BN Notes"
+subtitle: Exploratory notes and analysis for Beyond Notability
+listing:
+  - id: posts-table
+    contents: posts
+    sort: "date desc"
+    max-items: 12
+    type: table
+    fields: [date, title, file-modified, categories]
+    field-display-names:
+      file-modified: "Updated"
+    categories: true
+    sort-ui: false
+    filter-ui: false
+    date-format: "D MMM YYYY"
+  - id: other-notes
+    contents: "notes/*.qmd"
+    sort: "title"
+    exclude: 
+      title: "Other Notes"
+    type: table
+    fields: [title, file-modified, categories]
+    field-display-names:
+      file-modified: "Updated"
+    categories: false
+    sort-ui: false
+    filter-ui: false
+    date-format: "D MMM YYYY"
+toc: false
+page-layout: full
+title-block-banner: false
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+The site does not contain live wikibase data but will be quite frequently updated. (Doing the updates is straightforward so let me know if you want to see an updated version of a page at any time.) 
+
+```{r}
+# will need to check this actually works...
+#latest_knit <- Sys.Date()
+#Latest data update: ``r latest_knit``
+```
+
+
+Caveats: 
+
+This is all work in progress, provisional, generally handle with caution, etc. But, because the wikibase itself is continually evolving, updates may sometimes break things without me noticing, so if you see anything that really looks *strange*, let me know.
+
+"The Bug" (September 2023): this can affect recent batch edits (not manual edits, AFAIK). They *are* in the wikibase but for some reason the query service fails to update with them, so they don't show up in query results until there is another page edit. The bug is known about and will hopefully be resolved before long. 
+
+
+
+## Recent Posts
+
+Short posts on specific questions or topics
+
+::: {#posts-table}
+:::
+
+[All posts](blog.qmd)
+
+
+## Other Notes
+
+Overviews, summary tables and other documents 
+
+:::{#other-notes}
+:::
+
+[All notes](notes/)
+

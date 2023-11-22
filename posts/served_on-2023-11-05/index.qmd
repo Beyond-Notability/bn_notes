@@ -1,0 +1,697 @@
+---
+title: "Women serving on committees"
+description: "Thinking about the `served on` property"
+author: "Sharon Howard"
+date: "2023-11-05"
+date-modified: today
+categories: 
+  - ppa
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+This has taken a while to come together and is still WIP. 
+
+- `served on` isn't a must-have property and isn't necessarily recorded comprehensively (except for some specific SAL/RAI sources(?)), which may limit what can usefully or meaningfully be done with it
+- there are a lot of organisations, many with a very small number of service events (and some with very long names which are not ideal for labels in visualisations)
+- the structure of the data can have slight variations; eg, most statements have an `of` property with a named organisation, but for a few that info needs to be got from `part of` instead
+
+I'm still thinking about the best ways to handle these issues, as they'll recur with other PPAs when I go beyond SAL/RAI.
+
+A "service event" = a discrete statement in the served on property for each woman, which usually has at least a type of service (generic committee, Council, specific sub-committee, etc), organisation name and date.
+
+Todo
+
+- I have more work to do generally on locations; what's here is just a starting point. 
+
+
+## Wikibase query
+
+[Women's service on committees (etc)](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women's_service_on_committees_etc_(P102))
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+
+
+bn_women_served_sparql <-
+'SELECT distinct ?personLabel ?serviceLabel  ?qualLabel  ?qual_propLabel ?qual ?qual_prop_type ?partofLabel ?instanceLabel ?person ?service ?partof ?instance ?s
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} 
+  
+  #?person  bnwdt:P102 ?service .   # cant have this AND the bnp: line.  have to get service via claim.
+  
+  ?person bnp:P102 ?s . # need this to get quals... i think  
+  ?person ?p ?s . # for claim    
+  
+  ?served wikibase:claim ?p;      
+         wikibase:statementProperty ?ps;
+         wikibase:propertyType ?prop_type.    
+    
+    ?s ?ps ?service .
+      # get part of statements for orgs in service?
+      optional { ?service bnwdt:P4 ?partof . }  
+      optional { ?service bnwdt:P12 ?instance . }
+   
+    optional {
+     ?s ?pq ?qual .      
+        ?qual_prop wikibase:qualifier ?pq;    
+              wikibase:propertyType ?qual_prop_type. # this drops dates ???? only if you fuck up the naming
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en". 
+                            ?qual_prop rdfs:label ?qual_propLabel .  # what kind of thing
+                } # /label service
+      } # /quals
+
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb, en". } 
+}
+
+ORDER BY ?personLabel ?s'
+
+bn_women_served_query <-
+  bn_std_query(bn_women_served_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(qual, s, service, instance, partof)) |>
+  mutate(across(c(qual, qualLabel, qual_propLabel, partofLabel, instanceLabel, partof, instance), ~na_if(., ""))) |>
+  relocate(s, person, .after = last_col())
+
+
+# need to get stuff about of incl instance; easier to just run a separate query than work out how to fit it into the first one!
+# make sure you have statement id for join
+
+bn_women_served_of_sparql <-
+  'SELECT distinct ?serviceLabel ?of ?ofLabel  ?of_instance ?of_instanceLabel ?of_location ?of_locationLabel ?of_geo ?of_long ?of_lat ?of_wikidata ?person ?s 
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} 
+  
+  ?person  bnp:P102 ?s .   
+    ?s bnps:P102 ?service .
+    ?s bnpq:P78 ?of .
+  
+      optional { ?of bnwdt:P117 ?of_wikidata.  }   
+      optional { ?of bnwdt:P12 ?of_instance. } # some multis and some missing
+      optional { ?of bnwdt:P2 ?of_location. 
+                  optional { ?of_location bnwdt:P153 ?bn_of_geo . }
+                  optional { ?of_location bnwdt:P117 ?wd_of_loc .
+                             bind(iri(concat("http://www.wikidata.org/entity/", str(?wd_of_loc))) as ?wd_of_loc_url) . 
+                            
+                            SERVICE <https://query.wikidata.org/sparql> {
+                               optional {?wd_of_loc_url wdt:P625 ?wd_of_geo .}   # does the wikidata page have geocoords?
+                             } # /wikidata service   
+                           }
+               } 
+
+      BIND(COALESCE(?bn_of_geo, ?wd_of_geo) AS ?of_geo).  # if geo1 available use that, then try geo2
+      BIND(geof:longitude(?of_geo) AS ?of_long)
+      BIND(geof:latitude(?of_geo)  AS ?of_lat)
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb, en". } 
+}
+ORDER BY ?personLabel ?s'
+
+bn_women_served_of_query <-
+  bn_std_query(bn_women_served_of_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(of, of_instance, of_location, s)) |>
+  mutate(across(c(of_instance, of_instanceLabel, of_location, of_locationLabel, of_geo, of_wikidata), ~na_if(., "")))
+
+
+bn_women_served_dates <-
+bn_women_served_query  |>
+  # don't need qualLabel for this one, it's basically the same as qual
+  select(bn_id, s, qual_propLabel, qual) |> 
+  filter(qual_propLabel %in% c("end time", "latest date", "point in time", "start time")) |>   #229
+  # drop unknown value (2) 
+  filter(!str_detect(qual, "^_:t")) |>
+  # don't think i can do date parsing bfore pivot? why did i think that????
+  mutate(date = parse_date_time(qual, "ymdHMS"), year=year(date)) |>
+  # top_n gets rid of dup(s). only one person, start time
+  group_by(s, bn_id, qual_propLabel) |>
+  top_n(-1, date) |>
+  ungroup() |> # was 226 now 234 ?
+  pivot_wider(id_cols = c(s, bn_id), names_from = qual_propLabel, values_from = date) |>
+  clean_names("snake") 
+  # mutate(across(c(end_time, point_in_time, start_time, latest_date), ~parse_date_time(., "ymdHMS")))
+
+# this is only useful for overall range, not for breakdown by orgs
+bn_women_served_dates_range <-
+  bn_women_served_dates |>
+  select(-s) |>
+  pivot_longer(end_time:latest_date, names_to = "date_type", values_to = "date") |>
+  filter(!is.na(date)) |>
+  mutate(year = year(date)) |>
+  group_by(bn_id) |>
+  summarise(earliest=min(year), latest=max(year)) |>
+  ungroup() |>
+  mutate(range = latest-earliest)
+
+bn_women_served_service <-
+bn_women_served_query |>
+  distinct(bn_id, personLabel, serviceLabel, partofLabel, s, service, partof) |>
+  left_join(bn_women_served_query |>
+              filter(qual_propLabel=="of") |> 
+              select(bn_id, of_qualLabel= qualLabel, of_qual=qual, s) , by=c("bn_id", "s")) |>
+  arrange(bn_id, s) |>
+  add_count(bn_id, s) |>
+  # consolidate of organisations
+  mutate(of_label = case_when(
+    !is.na(of_qualLabel) ~ of_qualLabel,
+    !is.na(partofLabel) ~ partofLabel,
+    .default = serviceLabel
+  )) |>
+  arrange(of_label) |>
+  # drop dups
+  filter(!of_qual %in% c("Q31", "Q682")) |>
+  mutate(of_std = case_when(
+    !is.na(of_qual) ~ of_qual,
+    !is.na(partof) ~ partof,
+    .default = service
+  )) |>
+  select(bn_id, personLabel, serviceLabel, of_label, of_std, service,  s) |>
+  left_join(bn_women_served_dates, by=c("s", "bn_id"))  |> 
+  # make a convenience date of point in time then start time. but don't uwe for range, need ot do that properly
+  mutate(date = case_when(
+    !is.na(point_in_time) ~ point_in_time,
+    !is.na(start_time) ~ start_time
+  )) |>
+  mutate(year = year(date)) |>
+# i *think* what i'll want to do is pivot longer again then i can use all dates for range.
+  # top_n gets rid of dup(s). but not sure i want to do it that way for end/latest? ok. the dup problem seems to be only start time so shouldn't be a problem.
+  # this is no good per org.
+  # left_join(
+  #   bn_women_served_dates_range, by="bn_id"
+  # ) |>
+  mutate(served_type = case_when(
+    #serviceLabel %in% c("Croft Lyons Committee", "Morris Fund Committee", "Board of Studies") ~ NA,  
+    serviceLabel %in% c("Joint Committee for Anthropological Training and Research") ~ "Joint Committee",
+    serviceLabel=="Council for British Archaeology" ~ "committee",
+    serviceLabel %in% c("Council") ~ serviceLabel,
+    str_detect(serviceLabel, "Committee$") ~ str_extract(serviceLabel, "\\w+(?= Committee)"),
+    .default = serviceLabel
+  ))  |>
+  relocate(s, .after = last_col())
+
+
+bn_women_served_of_instance <-
+bn_women_served_of_query |>
+  distinct(bn_id, of, of_instance, of_instanceLabel, s) |>
+  filter(!is.na(of_instance))
+
+
+```
+
+
+
+```{r this-is-terrible}
+# make the list of IDs prefixed with  bnwd: to go in values
+bn_served_of_ids <-
+bn_women_served_service |>
+  distinct(of_label, of_std) |> 
+  
+  mutate(bnwd = paste0("bnwd:", of_std)) |>
+  summarise(bnwds = paste(bnwd, collapse = " ")) |>
+  pull(bnwds)
+
+
+# then glue the query together
+
+bn_service_locations <-
+glue(
+"{bn_prefixes}
+SELECT distinct ?itemLabel ?item ?location ?locationLabel  ?bn_geo ?loc_wd_geo ?loc_wikidata 
+
+WHERE {{
+  values ?item  {{  {bn_served_of_ids} }}
+  
+  # 1. look for any available BN info about the org location and then look up geo for the location on wikidata
+      optional {{ ?item bnwdt:P2 ?location.    # but this can be multi... 
+          optional {{ ?location bnwdt:P153 ?bn_geo . }} # bn geo coords
+                # or wikidata geo for the location - locations should usually have this. is it worth looking further eg admin territory? but that can be multi?
+          optional {{ ?location bnwdt:P117 ?loc_wd . 
+                     BIND(IRI(CONCAT(str(wd:), ?loc_wd)) as ?loc_wikidata). 
+                     SERVICE <https://query.wikidata.org/sparql> {{
+                        optional {{?loc_wikidata wdt:P625 ?loc_wd_geo .}}   # wikidata geocoords
+                        optional {{?loc_wikidata wdt:P131 ?loc_wd_ad .}}  # admin territory ?
+                      }} # /wikidata service 
+                  }} #/wikidata loc
+           }} #/location
+  
+  
+    { wb_service_label } 
+}}"
+) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(item)  |>
+  make_bn_ids(c(location, loc_wikidata)) |> 
+  mutate(across(c(location, locationLabel, bn_geo, loc_wd_geo, loc_wikidata), ~na_if(., ""))) |>
+  relocate(item, .after = last_col())
+
+
+bn_service_orgs_locations <-
+c(glue(
+  bn_prefixes,
+  "SELECT distinct ?itemLabel ?item ?org_wd_ad_label ?org_wd_hq_label ?org_wd_geo ?org_wd_ad_geo  ?org_wd_hq_geo ?org_wikidata ?org_wd_ad ?org_wd_hq
+
+WHERE {{  
+  values ?item {{  {bn_served_of_ids} }}
+  
+  # 2. get wikidata ID for the org and then look up any available geo on wikidata
+      optional {{ ?item bnwdt:P117 ?org_wd. 
+                 BIND(IRI(CONCAT(str(wd:), ?org_wd)) as ?org_wikidata). 
+                 SERVICE <https://query.wikidata.org/sparql> {{
+                        optional {{?org_wikidata wdt:P625 ?org_wd_geo .}}
+                        optional {{?org_wikidata wdt:P131 ?org_wd_ad . ?org_wd_ad wdt:P625 ?org_wd_ad_geo. 
+                                  ?org_wd_ad rdfs:label ?org_wd_ad_label . filter(lang(?org_wd_ad_label)='en').
+                                 }}
+                        optional {{?org_wikidata wdt:P159 ?org_wd_hq . ?org_wd_hq wdt:P625 ?org_wd_hq_geo. 
+                                  ?org_wd_hq rdfs:label ?org_wd_hq_label . filter(lang(?org_wd_hq_label)='en').
+                                 }}
+                        
+                      }} # /wikidata service 
+                 }}   # wikidata org
+                 
+    { wb_service_label } 
+}}
+"
+))|>
+  sparql2df(endpoint=bn_endpoint) |>
+  make_bn_item_id(item)  |>
+  make_bn_ids(c(org_wikidata, org_wd_ad, org_wd_hq)) |> 
+  mutate(across(c(ends_with("_geo") , org_wikidata, ends_with("_label"), org_wd_hq, org_wd_ad), ~na_if(., ""))) |>
+  relocate(item, .after = last_col()) 
+
+
+bn_service_london_temp <-
+bn_service_locations |> 
+  mutate(std_location = case_when(
+    str_detect(locationLabel, "^London|Victoria and Albert") ~ "London",
+    .default = locationLabel
+  )) |>
+  distinct(bn_id, itemLabel, item, std_location) |>
+  left_join(
+    bn_service_orgs_locations |>
+      pivot_longer(c(org_wd_ad_label, org_wd_hq_label), names_to = "type", values_to = "label") |>
+      filter(!is.na(label)) |>
+      mutate(org_location = case_when(
+        str_detect(label, "London|Senate House|Burlington House|Carlton House Terrace") ~ "London",
+        label=="Wiltshire Museum" ~ "Devizes",
+        .default = label
+      )) |>
+      distinct(bn_id, org_location) , by="bn_id"
+  ) |>
+  add_count(bn_id) |> # check they're 1
+  arrange(bn_id) |>
+  mutate(london_location = case_when(
+    str_detect(std_location, "London") ~ "London",
+    str_detect(org_location, "London") ~ "London",
+    is.na(std_location) & is.na(org_location) & str_detect(itemLabel, "Bristol|Worcester|Surrey|Yorkshire") ~ "Other",
+    is.na(std_location) & is.na(org_location) & str_detect(itemLabel, "London") ~ "London",
+    is.na(std_location) & is.na(org_location) ~ NA,
+    .default = "Other"
+  )) 
+```
+
+
+## Organisations
+
+There are about 70 different organisations, more than half of which are represented by a single service event.
+
+```{r}
+bn_women_served_service |>
+  count(of_label) |>
+  filter(n>1 & of_label !="exhibition") |>
+  mutate(of_label = fct_reorder(of_label, n)) |>
+  ggplot(aes(of_label, n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL, title="Organisations served on", y="number of service events", caption = "n>1")
+```
+
+
+```{r}
+## Counting by women rather than individual service events. (I've been trying and failing to come up with a way to combine/compare these two charts, to see if anything interesting appears, but I think there's very little difference in ordering which suggests it won't.)
+# bn_women_served_service |>
+#   distinct(bn_id, of_label) |>
+#   count(of_label) |>
+#   filter(n>1 & of_label !="exhibition") |>
+#   mutate(of_label = fct_reorder(of_label, n)) |>
+#   ggplot(aes(of_label, n)) +
+#   geom_col() +
+#   coord_flip() +
+#   labs(x=NULL, title="Organisations served on", y="number of women", caption = "n>1")
+```
+
+### Type of service
+
+```{r}
+bn_women_served_service |>
+#  count(serviceLabel) |>
+  mutate(type = case_when(
+    serviceLabel %in% c("Croft Lyons Committee", "Morris Fund Committee") ~ word(serviceLabel, end=2),  
+    serviceLabel %in% c("Joint Committee for Anthropological Training and Research") ~ "Joint",
+    serviceLabel=="Council for British Archaeology" ~ "committee",
+    serviceLabel %in% c("Council") ~ serviceLabel,
+    str_detect(serviceLabel, "Committee$") ~ str_extract(serviceLabel, "\\w+(?= Committee)"),
+    .default = serviceLabel
+  )) |>
+  count(type) |>
+  mutate(type = fct_reorder(type, n)) |>
+  ggplot(aes(type, n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL, y="number of service events", title="Service by name/type of committee")
+```
+
+
+### Location
+
+(Work on locations is very WIP)
+
+```{r}
+bn_women_served_service |>
+  add_count(bn_id, name="n_bn") |>
+  add_count(of_std, name="n_of") |>
+  filter(n_bn>1) |> #count(of_std) still 47
+  inner_join(
+    bn_service_london_temp |>
+      select(of_std=bn_id, london_location), by="of_std"
+  ) |>
+  count(bn_id, personLabel, of_label, of_std, london_location, n_bn, n_of) |>
+  mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
+  # mutate(of_label = case_when(
+  #   n_of >5 ~ of_label
+  # )) |>
+  ggplot(aes(y=personLabel, x=n, fill=london_location)) +
+  geom_col() +
+  scale_fill_ptol(na.value = "lightgrey",) +
+  #theme(legend.position = "bottom") +
+  labs(x="number of service events", y=NULL, fill="location", caption="NA=not located at present", title="Location of service")
+```
+
+This time SAL/RAI are highlighted separately from other London organisations.
+
+```{r}
+bn_women_served_service |>
+  add_count(bn_id, name="n_bn") |>
+  add_count(of_std, name="n_of") |>
+  filter(n_bn>1) |> #count(of_std) still 47
+  inner_join(
+    bn_service_london_temp |>
+      select(of_std=bn_id, london_location), by="of_std"
+  ) |>
+  mutate(london_location = case_when(
+    of_std=="Q8" ~ "SAL",
+    of_std=="Q35" ~ "RAI",
+    .default = london_location
+  )) |>
+  count(bn_id, personLabel, of_label, of_std, london_location, n_bn, n_of) |>
+  mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
+  # mutate(of_label = case_when(
+  #   n_of >5 ~ of_label
+  # )) |>
+  ggplot(aes(y=personLabel, x=n, fill=london_location)) +
+  geom_col() +
+  scale_fill_ptol(na.value = "lightgrey",) +
+  #theme(legend.position = "bottom") +
+  labs(x="number of service events", y=NULL, fill="location", caption="NA=not located at present", title="Location of service")
+```
+
+## Dates
+
+This is a) not very interesting and b) probably misleading, but I'm leaving it in for info. It combines two different types of date, point in time and start time. The majority of dates are point in time, and it's unclear to me in this case to what extent that represents actual short term service or just an artefact of the sources (would much committee service be more long term activity).
+
+```{r}
+bn_women_served_service |>
+  count(year) |>
+  filter(!is.na(year) ) |>
+  ggplot(aes(year, n)) +
+  geom_col() +
+  labs(y="number of service events", title="Service events per year")
+```
+
+
+## Duration of service
+
+Although likely still problematic, this seems a more interesting use of the dates data. (Only includes women whose dates span more than 1 year.) 
+
+
+```{r}
+# but why are there 106 when the next has 109? otoh you get 38 instead of 28 after filtering range... oh well just go with it
+# bn_women_served_dates |>
+#   select(-s) |>
+#   pivot_longer(end_time:latest_date, names_to = "date_type", values_to = "date") |>
+#   filter(!is.na(date)) |>
+#   mutate(year = year(date)) |>
+#   group_by(bn_id) |>
+#   summarise(earliest=min(year), latest=max(year)) |>
+#   ungroup() |>
+#   mutate(range = latest-earliest) |>
+#   filter(range>1) |>
+#   inner_join(bn_women_list, by="bn_id")
+```
+
+
+```{r}
+# revise to include end time /latest - maybe should drop if *only* a latest?
+# bn_women_served_service |>
+#   group_by(bn_id, personLabel) |>
+#   summarise(earliest = year(min(date)), latest=year(max(date)), .groups = "drop_last") |>
+#   ungroup() |>
+#   mutate(range = latest-earliest) |>
+#   filter(!is.na(range) &range>1) |>
+bn_women_served_dates_range |>
+  filter(range>1) |>
+  inner_join(bn_women_list, by="bn_id") |>
+  mutate(personLabel = fct_reorder(personLabel, range)) |>
+  mutate(label = paste(earliest, latest, sep="-")) |>
+  ggplot(aes(x=personLabel,  y=range)) +
+  geom_lollipop() +
+  geom_text(aes(label=label), size=3, nudge_y=3) +
+  coord_flip() +
+  labs(x=NULL, y="years from earliest to latest service", title="Duration of service")
+```
+
+Sorting by longest service will tend to privilege the earliest starters, so this is the same thing ordered by earliest date.
+
+```{r}
+bn_women_served_dates_range |>
+  filter(range>1) |>
+  inner_join(bn_women_list, by="bn_id") |>
+  mutate(personLabel = fct_rev(fct_reorder(personLabel, earliest))) |>
+  mutate(label = paste(earliest, latest, sep="-")) |>
+  ggplot(aes(x=personLabel,  y=range)) +
+  geom_lollipop() +
+  geom_text(aes(label=label), size=3, nudge_y=3) +
+  coord_flip() +
+  labs(x=NULL, y="years from earliest to latest service", title="Duration of service")
+```
+
+## Breadth of service
+
+Women with five or more service events all served on multiple organisations; but there's no obvious pattern for those with fewer than five. 
+
+```{r}
+bn_women_served_service |>
+  select(bn_id, personLabel, served_type, of_label, of_std) |>
+  arrange(bn_id) |>
+  group_by(bn_id, personLabel) |>
+  summarise(
+    nd_of = n_distinct(of_label), 
+    n_total = n(), .groups = "drop_last"
+  ) |>
+  ungroup() |>
+  mutate(type = case_when(
+    n_total==1 ~ "one service",
+    nd_of==1 ~ "one org",
+    nd_of>1 ~ "multi orgs"
+  )) |> 
+  filter(n_total>1) |>
+  mutate(personLabel = fct_reorder(personLabel, n_total)) |>
+  ggplot(aes(personLabel, n_total, fill=type)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_tableau() +
+  labs(x=NULL, y="number of service events", title="Women's service for single or multiple organisations")
+```
+
+[Not sure this quite works.]
+
+```{r}
+bn_women_served_service |>
+  #filter(n()>1, .by = "bn_id") |>
+  add_count(bn_id, name="n_bn") |>
+  add_count(of_std, name="n_of") |>
+  filter(n_bn>1) |> #count(of_std) still 47
+  count(bn_id, personLabel, of_label, of_std, n_bn, n_of) |>
+  mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
+  mutate(of_label = case_when(
+    n_of >5 ~ of_label
+  )) |>
+  ggplot(aes(y=personLabel, x=n, fill=of_label)) +
+  geom_col() +
+  scale_fill_ptol(na.value = "lightgrey",) +
+  #theme(legend.position = "bottom") +
+  labs(y=NULL, x=NULL, fill="organisation", caption = "'NA' - orgs with 5 or fewer service events")
+```
+
+
+
+## Cohorts?
+
+As with college attendance, it might be interesting to see where women might have been working together (bearing in mind the caveats about dates and that the date ranges take no account of gaps in service).
+
+```{r}
+# so the new range with latest time etc definitely an improvement. still don't know why there's a difference in numbers but never mind.
+
+# you have to work out earliest/latest per of_std, not overall.
+# need to get the four date types, pivot longer again then group by person and org.
+# bn_women_served_service |>
+#   select(bn_id, personLabel, of_label, of_std, end_time, point_in_time, start_time, latest_date, s) |>
+#   pivot_longer(end_time:latest_date, names_to = "date_type", values_to = "date") |>
+#   filter(!is.na(date)) |>
+#   mutate(year = year(date)) |>
+#   group_by(bn_id, personLabel, of_label) |>
+#   summarise(earliest = min(year), latest=max(year), .groups = "drop_last") |>
+#   ungroup() |>
+#   mutate(range = latest-earliest)
+```
+
+
+
+```{r}
+# for when you need the two colours, force text to be black or dark grey and add the scale to the bits you do separately
+bn_served_dumbbell <- function(f){
+  # filter by f
+  filtered_data <-
+  bn_women_served_service |>
+    filter(of_std==f) |>
+  select(bn_id, personLabel, of_label, of_std, end_time, point_in_time, start_time, latest_date, s) |>
+  pivot_longer(end_time:latest_date, names_to = "date_type", values_to = "date") |>
+  filter(!is.na(date)) |>
+  mutate(year = year(date)) |>
+  group_by(bn_id, personLabel, of_label, of_std) |>
+  summarise(earliest = min(year), latest=max(year), .groups = "drop_last") |>
+  ungroup() |>
+  mutate(range = latest-earliest) |>
+  #distinct(bn_id, personLabel, earliest, latest, range, of_std, of_label) |>
+  # group_by(bn_id, personLabel, of_std, of_label) |>
+  # summarise(earliest = year(min(date)), latest=year(max(date)), .groups = "drop_last") |>
+  # ungroup() |>
+  # mutate(range = latest-earliest) |>
+  #filter(!is.na(range)) |>
+  mutate(name_y = fct_rev(fct_reorder(personLabel, earliest)))
+  
+  # use of_label to make a title
+  title <-
+    filtered_data |>
+    distinct(of_label) |>
+    pull(of_label)
+    
+  filtered_data |>
+  ggplot(aes(x=earliest, xend=latest, y=name_y)) +
+  geom_dumbbell(show.legend = F) +
+    # use last date for x and they'll line up in the right place, doh.
+  geom_text(aes(label=name_y, x=latest), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+  theme(axis.text.y = element_blank(), axis.ticks.y=element_blank())  +
+    labs(x=NULL, y=NULL, title=title)
+}
+```
+
+
+```{r}
+bn_served_dumbbell("Q8") +
+  # this needs to be forced outwards so the last woman's name isn't truncated
+  scale_x_continuous(limits = c(1925, 1965), breaks = seq(1925,1965,10)) 
+```
+
+
+```{r}
+bn_served_dumbbell("Q35") +
+  # make sure the last woman's name isn't truncated
+  # this bit not really practical to put in the function as it can vary a lot.
+  scale_x_continuous(limits = c(1928, 1956), breaks = seq(1930,1955,10)) 
+
+```
+
+
+```{r}
+bn_served_dumbbell("Q292") +
+  scale_x_continuous(limits = c(1888, 1942), breaks = seq(1890,1940,10)) 
+```
+
+
+
+```{r}
+bn_served_dumbbell("Q832") +
+  # this needs to be forced outwards so the last woman's name isn't truncated
+  scale_x_continuous(limits = c(1880, 1965), breaks = seq(1880,1950,10)) 
+```
+
+
+```{r}
+bn_served_dumbbell("Q186") +
+  # this needs to be forced outwards so the last woman's name isn't truncated
+  scale_x_continuous(limits = c(1920, 1945), breaks = seq(1920,1945, 10)) 
+```
+
+
+## Table
+
+
+
+```{r}
+bn_women_served_reactable <-
+bn_women_served_service |>
+  select(bn_id, personLabel, serviceLabel, of_label, start_time, end_time, point_in_time, latest_date) |>
+  mutate(person = paste0("https://beyond-notability.wikibase.cloud/wiki/Item:", bn_id, "#P102")) |>
+  mutate(across(c(start_time, end_time, point_in_time, latest_date), ~year(.))) |>
+  arrange(personLabel, of_label)
+```
+
+
+
+```{r}
+
+reactable(
+  bn_women_served_reactable |>
+  select(-person) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy =  "college_label",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 150),  
+  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 75),
+    serviceLabel = colDef(maxWidth = 200, name="on"),
+    personLabel =colDef(maxWidth = 200, name="name",
+      html = TRUE,
+      cell = function(value, index) { # add P94 for link to educated at. but don't copy straight into other tables!
+        sprintf('<a href="%s" target="_blank">%s</a>', bn_women_served_reactable$person[index], value)
+      })   ,
+    of_label = colDef(maxWidth = 250, name = "of"),
+    start_time = colDef(maxWidth = 100, name="start"),
+    end_time = colDef(maxWidth = 100, name="end"),
+    point_in_time = colDef(maxWidth = 100, name="point"),
+    latest_date = colDef(maxWidth = 100, name = "latest")
+  )
+)
+```

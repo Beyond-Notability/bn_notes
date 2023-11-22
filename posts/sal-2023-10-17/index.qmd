@@ -1,0 +1,420 @@
+---
+title: "Women at the Society of Antiquaries of London"
+description: "Initial exploration of the main forms of women's engagement with SAL"
+author: "Sharon Howard"
+date: "2023-10-17"
+date-modified: today
+categories: 
+  - SAL
+  - ppa
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+## Wikibase queries
+
+- [Women's interactions with SAL](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women's_interactions_with_SAL_(Q1_and_Q8))
+- [slightly amended version of query for elections to SAL](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#People_whose_election_to_SAL_was_proposed_and_the_person_who_proposed_them,_with_-_where_known_-_date_of_proposal,_gender_of_proposed_FSA_and_proposer,_and_if_elected)
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+
+```
+
+```{r}
+
+# elected with dates
+
+bn_women_fsa_elected_dates_sparql <-
+  'SELECT distinct ?FSA ?date 
+WHERE {  
+  ?FSA bnwdt:P16 ?proposer .               #proposed FSA 
+  ?FSA bnwdt:P3 bnwd:Q3 .                  #women only
+  ?FSA bnp:P16 ?SALstatement .
+  ?SALstatement bnps:P16 ?SALproposed .
+    ?SALstatement bnpq:P1 ?date .               # date of proposal
+    ?SALstatement bnpq:P22 bnwd:Q36 .           # successful=q36
+}'
+
+bn_women_fsa_elected_dates_query <-
+  bn_std_query(bn_women_fsa_elected_dates_sparql) |>
+  make_bn_item_id(FSA)
+
+
+bn_women_sal_sparql <-
+'SELECT distinct ?person ?personLabel  ?prop ?propLabel ?prop_type  ?pq_value ?pq_valueLabel ?qual_prop_label ?qual_prop_type ?sal ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person ?p ?s .
+  #?person ?p bnwd:Q8 .   #  doesnt work here
+
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps;   
+         wikibase:statementValue ?psv;
+         wikibase:propertyType ?prop_type.    
+    
+      # to get both q8 and q1 union query [cant use shorthand | but this seems to work]
+      { ?s ?ps bnwd:Q8 . }  union { ?s ?ps bnwd:Q1 . }
+       ?s ?ps ?sal.
+  
+       #  ?sal ?ppp ?sss . #this gets stuff about q8
+  
+       # qualifiers. 
+   
+       optional { 
+         ?s ?pq ?pq_value .   
+         
+         ?qual_prop wikibase:qualifier ?pq .   
+         ?qual_prop rdfs:label ?qual_prop_label. filter(lang(?qual_prop_label)="en-gb") . 
+         ?qual_prop wikibase:propertyType ?qual_prop_type
+         
+       } # /qualifiers
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
+}
+ORDER BY ?personLabel
+'
+
+bn_women_sal_query <-
+  bn_std_query(bn_women_sal_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(sal, prop, s)) |>
+  mutate(across(c(qual_prop_label, pq_value, pq_valueLabel, qual_prop_type), ~na_if(., ""))) |>
+  mutate(across(c(prop_type, qual_prop_type), ~str_remove(., "http://wikiba.se/ontology#"))) |>
+  relocate(person, .after = last_col())
+
+bn_women_sal_wide <-
+bn_women_sal_query |>
+  filter(!is.na(pq_value)) |>
+  # drop a couple with fellow of. not sure this should be used for SAL at all?
+  filter(prop !="P75") |>
+  # drop insignificant stuff . causes some dups as well?, though not probs for pivot.
+  filter(!qual_prop_label %in% c("recorded by", "described at URL", "base salary (free text)", "specific role", "instance of")) |>
+  # drop dups
+  filter(!qual_prop_label %in% c("note", "topic", "point in time", "collaborated with")) |>
+  # dedup point in time and put back in; make sure you drop P75!. is there an easier way? unless you can combine a casewhen with topn somehow... 
+  bind_rows(
+    bn_women_sal_query |>
+      filter(prop !="P75") |>
+      filter(qual_prop_label=="point in time") |> 
+      group_by(s) |>
+      top_n(-1, pq_valueLabel) |>
+      ungroup() 
+  ) |>
+  # can't keep prop types in id cols.
+  pivot_wider(id_cols = c(s, bn_id, personLabel, sal, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |> 
+  clean_names("snake")  |>
+  # which have fellow of statement P75
+  # this loses 2 people so i think better to use the elected dates data 
+  # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+  left_join(
+    bn_women_fsa_elected_dates_query |>
+      make_date_year() |>
+      distinct(bn_id, year, date) |>
+      rename(elected_year=year, elected_date=date) |>
+      mutate(is_fsa="y"), by="bn_id"
+  ) |>
+  mutate(date = case_when(
+    !is.na(point_in_time) ~ point_in_time,
+    !is.na(latest_date) ~ latest_date
+  )) |>
+  make_date_year()|>
+  mutate(is_fsa = if_else(!is.na(is_fsa), "FSA", "not FSA"))  |>
+  mutate(is_fsa_at = case_when(
+    is_fsa=="not FSA" ~ "not fsa",
+    elected_date < date ~ "fsa",
+    elected_date > date ~ "pre fsa",
+    elected_date==date ~ "pre fsa"
+  )) 
+
+#bn_women_sal_wide |> add_count(s) |> filter(n>1) # shoudl be 0
+```
+
+## Types of interaction
+
+- corresponded with (P73) (all but one in Q8)
+- spoke at (P23) (Q1)
+- exhibited at (P13) (Q1)
+- donor to (P111) (Q8)
+
+Dropping a few others with only one or two instances (applicant to, employer, has works in the collection, loaner to).
+
+A count of one here represents one dated event in the wikibase, *completely* ignoring any differences in the nature/significance of the activity. (Or any links between activities: eg, in a few cases an FSA spoke at and exhibited at the same meeting on what looks like the same topic; this probably accounts for most or all of FSAs' post-1920 exhibited at instances. But they are all counted separately here.)
+
+
+
+```{r}
+bn_women_sal_wide |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  count(prop_label) |>
+  mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(x=prop_label, y=n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x=NULL, y="count")
+
+```
+
+## Interactions over time
+
+Do the changes here reflect shifts specifically in women's engagement with the Society, broader changes in the activities of the Society itself... or gaps in sources/data entry?
+
+
+```{r}
+bn_women_sal_wide |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  count(year, prop_label) |>
+  ggplot(aes(year, n, fill=prop_label)) +
+  geom_col() +
+  scale_fill_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y="count", fill=NULL, title = "Women's interactions with the Society, 1870-1949")
+```
+
+Split into two periods, before and after admission of women as FSAs.
+
+```{r}
+bn_women_sal_wide  |>
+  mutate(period = case_when(
+    year<1921 ~ "1870-1920",
+    .default = "1921-1952"
+  ))|>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  #add_count(bn_id, name="n_bn") |>
+  #filter(n_bn>1) |>
+  count(prop_label, period, sort = T) |>
+  mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(x=prop_label, y=n, fill=period)) +
+  geom_col(position = "fill") +
+  scale_fill_colorblind() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x=NULL, y=NULL, title = "Comparison of activities before and after admission of women FSAs")
+
+```
+
+## Activity by FSAs and non-FSAs
+
+In this chart "FSA" *includes* any interactions before a woman was elected.
+
+```{r}
+bn_women_sal_wide |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  count(prop_label, is_fsa, sort = T) |>
+  #mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(fill=prop_label, y=n, x=is_fsa)) +
+  geom_col(position = "fill") +
+  scale_fill_tableau() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL, fill=NULL, title="Women's interactions with the Society: FSAs and non-FSAs")
+
+```
+
+This time women are only counted as FSA for interactions *after* election. (I wanted to see how much different it would make.)
+
+```{r}
+bn_women_sal_wide |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  mutate(is_fsa_at2 = if_else(is_fsa_at=="fsa", "FSA", "not FSA")) |>
+  count(prop_label, is_fsa_at2, sort = T) |>
+  #mutate(prop_label = fct_reorder(prop_label, n)) |>
+  ggplot(aes(fill=prop_label, y=n, x=is_fsa_at2)) +
+  geom_col(position = "fill") +
+  scale_fill_tableau() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL, fill=NULL, title="Women interacting with the Society:FSAs and non-FSAs")
+
+```
+
+
+```{r}
+# I wondered how much of the difference between "FSA" and "not FSA" above reflected changing interactions *after* a woman was elected and how much was that women who became FSAs always interacted a bit differently with the Society. 
+# 
+# - "fsa" = women who were FSAs at the time of the interaction (54 interactions)
+# - "pre fsa" = women who were not FSAs at the time of the interaction but became FSAs at a later date (31)
+# - "not fsa" = women who never become FSAs (149)
+
+# bn_women_sal_wide |>
+#   add_count(prop_label) |>
+#   filter(n>2) |> select(-n) |> #count(is_fsa_at)
+#   #add_count(bn_id, name="n_bn") |>
+#   #filter(n_bn>1) |>
+#   count(prop_label, is_fsa_at, sort = T) |>
+#   mutate(is_fsa_at = fct_relevel(is_fsa_at, "pre fsa")) |>
+#   #mutate(prop_label = fct_reorder(prop_label, n)) |>
+#   ggplot(aes(fill=prop_label, y=n, x=is_fsa_at)) +
+#   geom_col(position = "fill") +
+#   scale_fill_tableau() +
+#   scale_y_continuous(labels = percent_format()) +
+#   labs(x=NULL, y=NULL, fill=NULL)
+
+```
+
+
+(I don't think this one quite works.)
+
+- Ordered by date of earliest interaction with the Society.
+- I've removed names because for non-FSAs there were too many to be readable.
+
+```{r}
+# possible to order by date of earliest interaction?
+bn_women_sal_wide |>
+  group_by(bn_id) |>
+  mutate(e = min(year)) |>
+  ungroup() |>
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |>
+  add_count(bn_id, name="n_bn") |>
+  #filter(n_bn>1) |>
+  count(bn_id, prop_label, n_bn, e, is_fsa, sort = T) |>
+  mutate(bn_id = fct_reorder(bn_id, e)) |>
+  ggplot(aes(x=bn_id, y=n, fill=prop_label)) +
+  geom_col() +
+  #coord_flip() +
+  scale_fill_tableau() +
+  facet_wrap(~is_fsa, scales="free", ncol = 1) +
+  theme(axis.text.x = element_blank() , 
+        #axis.text.x = element_text(angle = 90),
+        legend.position = "bottom") +
+  labs(x="person", fill=NULL, y="count")
+```
+
+## Timelines
+
+To keep numbers manageable, this is limited to women who were FSAs (and had at least one other interaction) and non-FSAs who had at least two interactions with the Society. (As with other tall charts, may be easier to see if you right-click on the image and open in a new tab.)
+
+
+```{r}
+bn_women_sal_wide_summary_dates <-
+bn_women_sal_wide |> 
+  group_by(bn_id) |>
+  mutate(earliest = min(year), latest = max(year)) |>
+  ungroup() |>
+  count(bn_id, person_label, earliest, latest, elected_year, is_fsa, sort = T) |>
+  mutate(range = latest-earliest) |>
+  filter(n>1 | is_fsa=="FSA")
+#  arrange(earliest, latest)
+
+
+# bn_women_rai_member_wide |>
+#   semi_join(bn_women_rai_wide, by="bn_id") |>
+#   filter(is.na(start_time))
+
+```
+
+
+
+```{r fig.height=7.5}
+bn_women_sal_wide_summary_dates |>
+  mutate(name = fct_reorder(person_label, -earliest)) |>
+  ggplot(aes(x=earliest, xend=latest, y=name)) + # changed size to linewidth. arrghh , linewidth=size
+  geom_dumbbell(dot_guide = TRUE, colour="darkgrey") +
+  geom_point(aes(x=elected_year), alpha=0.9,  colour="purple",  size=1.8, shape="diamond open", na.rm=TRUE) +
+  theme(aspect.ratio = 1) +
+  labs(x="year", y=NULL, title = "SAL: summary timelines of individuals' interactions", caption = "mauve diamond=election year; dark grey line covers earliest and latest other interactions")
+```
+
+
+```{r fig.height=7.5}
+bn_women_sal_wide |>    #count(year) begins 1858
+  add_count(prop_label) |>
+  filter(n>2) |> select(-n) |> 
+  add_count(bn_id, name="n_bn") |>
+  count(bn_id, person_label, prop_label, year, elected_year, is_fsa, n_bn) |> 
+  group_by(bn_id) |>
+  mutate(earliest = min(year), latest = max(year)) |>
+  ungroup() |>
+  mutate(wt = if_else(n==1, 1, 2)) |>
+  mutate(name = fct_reorder(person_label, -earliest)) |> 
+  #mutate(ye = seq_along(name)) |>
+  mutate(xs = -Inf)|>
+  filter(n_bn>1 | is_fsa=="FSA") |> 
+  ggplot(aes(x=year, y=name, colour=prop_label)) +  #, size=wt
+  geom_segment(aes(x=xs, xend=earliest, yend=name), linewidth=0.3, linetype="dotted", colour="grey") +
+  geom_point(size=0.9) +
+  geom_point(aes(x=elected_year),  colour="purple",  size=1.8, shape="diamond open", na.rm=TRUE) +
+  scale_size(range = c(1,2)) +
+  scale_colour_tableau() +
+  guides(size="none", colour="none") +
+  theme(aspect.ratio = 1) +
+  labs(y=NULL, colour=NULL, title="SAL: timelines of individual interactions", caption = "mauve diamond=year of election")
+```
+
+
+## Table
+
+```{r}
+# make text a single column? or just drop? don't have in all cases. some v long. some multiple. easier to drop. it's in wb query.
+bn_women_sal_reactable <-
+bn_women_sal_wide |>
+  select(bn_id, person_label, prop_label, date, is_fsa, elected_date,  sal, prop) |>
+  arrange(person_label, date)
+```
+
+```{r}
+# ah problem with corresponded with having multiple text... and some v long.
+# bn_women_sal_query |>
+#   filter(propLabel=="corresponded with")
+```
+
+
+```{r}
+
+reactable(
+  bn_women_sal_reactable  |>  select(-prop)  
+  ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    person_label =colDef(maxWidth = 250, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_sal_reactable$bn_id[index], value)
+      })   ,
+    date = colDef(maxWidth = 125, name="date", format = colFormat(date = TRUE)),
+    elected_date = colDef(maxWidth = 125, name="elected date", format = colFormat(date=TRUE)),
+    prop_label = colDef(maxWidth = 150, name = "activity"),
+    is_fsa = colDef(maxWidth = 80, name = "FSA"),
+    # proposedLabel = colDef(maxWidth = 200, name="proposer",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     if (!is.na(bn_women_election_rai_reactable$proposed[index]) ) {
+    #     sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_election_rai_reactable$proposed[index], value) } else {""}
+    #   }),
+    # secondedLabel = colDef(maxWidth = 200, name="seconder",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     if (!is.na(bn_women_election_rai_reactable$seconded[index]) ) {
+    #     sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_women_election_rai_reactable$seconded[index], value) } else {""}
+    #   }),
+    sal = colDef(maxWidth = 70, name="SAL")
+  )
+)
+
+```
+

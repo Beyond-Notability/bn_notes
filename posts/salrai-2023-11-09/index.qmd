@@ -1,0 +1,1099 @@
+---
+title: "Connecting SAL and RAI"
+description: "Election supporters and women's engagement with both SAL and RAI"
+author: "Sharon Howard"
+date: "2023-11-09"
+date-modified: today
+categories: 
+  - RAI
+  - SAL
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+
+## Wikibase queries
+
+- [People whose elections were proposed to SAL or RAI](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#People_whose_elections_were_proposed_to_SAL_or_RAI,_including_who_proposed,_seconded,_or_signed_(excluding_'general_knowledge'_signatures)_their_proposal_for_election,_seperated_by_type,_and_including_the_date_the_proposals_were_made)
+- [Women's interactions with SAL](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women's_interactions_with_SAL_(Q1_and_Q8))
+- [Women's interactions with RAI](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women's_interactions_with_RAI_(Q35_and_Q29))
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(waffle)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+
+## data on yearly numbers of FSAs from blog post 
+## https://beyondnotability.org/scoping/election-of-women-fellows-to-the-society-of-antiquaries/
+
+bn_fellows_lists <-
+tribble(~year, ~men, ~women,
+        1921, 658, 4,
+        1925, 688, 5,
+        1930, 785, 9,
+        1935, 765, 17,
+        1941, 709, 22,
+        1945, 733, 38,
+        1950, 810, 72
+) 
+
+
+```
+
+
+```{r elections}
+
+
+## SAL elections ####
+
+# elected with dates
+
+bn_women_fsa_elected_dates_sparql <-
+  'SELECT distinct ?FSA ?date
+WHERE {
+  ?FSA bnwdt:P16 ?proposer .               #proposed FSA
+  ?FSA bnwdt:P3 bnwd:Q3 .                  #women only
+  ?FSA bnp:P16 ?SALstatement .
+  ?SALstatement bnps:P16 ?SALproposed .
+    ?SALstatement bnpq:P1 ?date .               # date of proposal
+    ?SALstatement bnpq:P22 bnwd:Q36 .           # successful=q36
+}'
+
+bn_women_fsa_elected_dates_query <-
+  bn_std_query(bn_women_fsa_elected_dates_sparql) |>
+  make_bn_item_id(FSA)
+
+
+
+## People whose elections were proposed to SAL or RAI, including who proposed, seconded, or signed (excluding 'general knowledge' signatures) their proposal for election, seperated by type, and including the date the proposals were made
+
+## added gender for proposer/seconder, and statement
+ 
+bn_women_election_sal_sparql <-
+'SELECT ?person ?personLabel ?SALproposedLabel ?SALsignedLabel ?SALproposed ?SALsigned  ?date ?SALelectedLabel ?SALproposed_genderLabel  ?SALsigned_genderLabel ?SALstatement
+WHERE
+  {
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P16 ?SALstatement .
+    ?SALstatement bnps:P16 ?SALproposed .
+    
+    ?SALstatement bnpq:P1 ?date .
+  
+    optional {?SALproposed bnwdt:P3 ?SALproposed_gender . }
+    OPTIONAL {?SALstatement bnpq:P32 ?SALsigned .
+                optional{?SALsigned bnwdt:P3 ?SALsigned_gender .} }
+
+    OPTIONAL {?SALstatement bnpq:P22 ?SALelected .}     
+
+  
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb".
+    }
+}'
+
+bn_women_election_sal_query <-
+  bn_std_query(bn_women_election_sal_sparql) |>
+  make_bn_item_id(person) |>
+  make_date_year() |>
+  make_decade(year) |>
+  arrange(date) |>
+  relocate(date, year, decade, .before = SALproposed) |>
+  relocate(person, SALstatement, .after = last_col()) |>
+# tidy up
+  mutate(across(c(SALproposed, SALsigned, SALproposedLabel, SALsignedLabel, SALsigned_genderLabel, SALproposed_genderLabel, SALelectedLabel), ~na_if(., "")))  |>
+  mutate(across(c(SALproposed, SALproposedLabel, SALsigned_genderLabel, SALproposed_genderLabel), ~case_when(
+    str_detect(., "^(_:)?t\\d+") ~ NA,
+    .default = .
+  ))) |>
+  # get the last bit of a /path/ as an id
+  make_bn_ids(c(SALproposed, SALsigned, SALstatement) )  |>
+  rename(SALsigned_gender=SALsigned_genderLabel, SALproposed_gender=SALproposed_genderLabel, SALelected=SALelectedLabel)
+
+# need to tidy up missing/unknown names. no <uv> for seconders. keep not recorded?
+# and any uv for genders? can only see na, but idk if that might be to do with the nature of the optional query...
+
+
+# summary of the fellow, date, proposer, and outcome. [so nb there are 2 rows for the women who tried twice.]
+# unlike RAI, this needs to be distinct rather than select because of all the signers
+bn_proposed_sal <-
+  #bn_proposed_sal |>
+bn_women_election_sal_query |>
+  filter(!is.na(SALproposed) & !is.na(SALproposed_gender)) |>
+  distinct(bn_id, personLabel, date, year, SALproposed, SALproposedLabel, SALproposed_gender, SALelected, SALstatement) |>  #no dups apparently
+  # add count to check for women who tried twice. irrelevant if no dups
+  add_count(bn_id, name="n_elections") |> 
+  # add outcome. arleady in. 5 missing. hmm.
+  # fix missing outcome: only 1 not successful, so assume success
+  #mutate(elected = if_else(is.na(elected), "successful", elected))  |>
+  # add count of signers. ?
+  # add count of signers by gender.?
+  # add unique row id in case it's needed
+  rowid_to_column()
+
+# summary of proposers 
+bn_proposer_sal_summary <-
+bn_proposed_sal |>
+  count(SALproposed, SALproposedLabel, SALproposed_gender, name="n_proposal") 
+
+# bn_signer_summary <-
+# bn_proposed_sal |>
+#   count(signatorypersonal, signatorypersonalLabel, signgender, name="n_sign") 
+
+bn_signer_sal_summary <-
+bn_women_election_sal_query |>
+  # mutate(SALsigned_gender = case_when(
+  #   str_detect(SALsigned_gender, "^(_:)?t\\d+") ~ NA,
+  #   .default = SALsigned_gender
+  # )) |>
+  filter(!is.na(SALsigned) & !is.na(SALsigned_gender)) |>
+  count(SALsigned, SALsignedLabel, SALsigned_gender, name="n_signed")
+
+# you could just use SALstatement for joins you know...
+## proposers
+bn_proposers_dates_sal_summary <-
+bn_proposer_sal_summary |>
+  # filter female proposers
+  filter(SALproposed_gender=="woman") |>
+  select(bn_id=SALproposed, name=SALproposedLabel, n_proposal) |>
+  # get proposer's own election data - make sure it's when they were elected
+  inner_join(bn_proposed_sal |> filter(SALelected=="successful") |>
+               select(bn_id, SALelection_date=date, SALelection_year=year, SALproposer=SALproposed, SALproposed_gender), by=c("bn_id")) |>
+  arrange(SALelection_date) |>
+  inner_join(
+    bn_proposed_sal |>
+      group_by(SALproposed) |>
+      summarise( earliest_proposal = min(date), earliest_year = min(year), latest_proposal=max(date)) |>
+      ungroup(), by=c("bn_id"="SALproposed")
+  )
+
+
+# add general signatures to see if they're at all intersting
+
+bn_signer_general_sparql <-
+  'SELECT ?person ?personLabel ?signedGeneralLabel ?signedGeneral ?signed_genderLabel  ?date ?SALstatement
+WHERE
+{
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P16 ?SALstatement .
+  ?SALstatement bnpq:P82 ?signedGeneral .
+  ?SALstatement bnpq:P1 ?date .
+    optional {?signedGeneral bnwdt:P3 ?signed_gender . }
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb".
+    }
+}
+ORDER BY ?date'
+
+bn_signer_general_query <-
+  bn_std_query(bn_signer_general_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(signedGeneral, SALstatement)) |>
+  make_date_year() |>
+  # tidy up
+  mutate(across(c(signed_genderLabel), ~na_if(., "")))  |>
+  mutate(across(c(signed_genderLabel), ~case_when(
+    str_detect(., "^(_:)?t\\d+") ~ NA,
+    .default = .
+  ))) |>
+  relocate(SALstatement, person, .after = last_col()) |>
+  filter(!is.na(signed_genderLabel))
+
+bn_signer_general_summary <-
+bn_signer_general_query |>
+  count(signedGeneral, signedGeneralLabel, signed_genderLabel, name="n_act")
+
+
+
+## RAI elections ####
+
+## People whose elections were proposed to SAL or RAI, including who proposed, seconded, or signed (excluding 'general knowledge' signatures) their proposal for election, seperated by type, and including the date the proposals were made
+
+## added gender for proposer/seconder, and statement
+
+bn_women_election_rai_sparql <-
+'SELECT ?person ?personLabel ?RAIproposed ?RAIproposedLabel ?RAIseconded ?RAIsecondedLabel ?RAIproposed_genderLabel ?RAIseconded_genderLabel ?date ?RAIelectedLabel ?s
+WHERE {
+
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P7 ?s .
+  ?s bnps:P7 ?RAIproposed .
+  optional { ?RAIproposed bnwdt:P3 ?RAIproposed_gender . }
+  OPTIONAL {?s bnpq:P8 ?RAIseconded . 
+           optional { ?RAIseconded bnwdt:P3 ?RAIseconded_gender . }
+           }
+  ?s bnpq:P1 ?date .
+  OPTIONAL {?s bnpq:P22 ?RAIelected .}     
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb".
+    }
+}'
+
+bn_women_election_rai_query <-
+  bn_std_query(bn_women_election_rai_sparql) |>
+  make_bn_item_id(person) |>
+  make_date_year() |>
+  make_decade(year) |>
+  arrange(date) |>
+  relocate(date, year, decade, .before = RAIproposed) |>
+  relocate(person, s, .after = last_col()) |>
+# tidy up
+  mutate(across(c(RAIproposed, RAIseconded, RAIproposedLabel, RAIsecondedLabel, RAIseconded_genderLabel, RAIproposed_genderLabel, RAIelectedLabel), ~na_if(., "")))  |>
+  mutate(across(c(RAIproposed, RAIproposedLabel), ~case_when(
+    str_detect(., "^(_:)?t\\d+") ~ NA,
+    .default = .
+  ))) |>
+  # get the last bit of a /path/ as an id
+  mutate(across(c(RAIproposed, RAIseconded, s), ~str_extract(., "([^/]*$)") ))  |>
+  rename(RAIsecond_gender=RAIseconded_genderLabel, RAIproposed_gender=RAIproposed_genderLabel, RAIelected=RAIelectedLabel)
+
+# need to tidy up missing/unknown names. no <uv> for seconders. keep not recorded?
+# and any uv for genders? can only see na, but idk if that might be to do with the nature of the optional query...
+
+
+
+# summary of the fellow, date, proposer, and outcome. [so nb there are 2 rows for the women who tried twice.]
+bn_proposed_rai <-
+  #bn_proposed_sal |>
+bn_women_election_rai_query |>
+  filter(!is.na(RAIproposed) & !is.na(RAIproposed_gender)) |>
+  select(bn_id, personLabel, date, year, RAIproposed, RAIproposedLabel, RAIproposed_gender, RAIelected, s) |>  #no dups apparently
+  # add count to check for women who tried twice. irrelevant if no dups
+  #add_count(bn_id, name="n_elections") |> 
+  # add proposer gender. already in.
+  # add outcome. arleady in. 5 missing. hmm.
+  # fix missing outcome: only 1 not successful, so assume success
+  mutate(RAIelected = if_else(is.na(RAIelected), "successful", RAIelected))  |>
+  # add count of signers. not relevant.
+  # add count of signers by gender.
+  # add fellows yearly numbers from list with imputed missing values. not relevant
+  # add unique row id in case it's needed
+  rowid_to_column()
+
+# summary of proposers 
+bn_proposer_rai_summary <-
+bn_proposed_rai |>
+  count(RAIproposed, RAIproposedLabel, RAIproposed_gender, name="n_proposal") 
+
+
+bn_second_rai_summary <-
+bn_women_election_rai_query |>
+  filter(!is.na(RAIseconded) & !is.na(RAIsecond_gender)) |>
+  count(RAIseconded, RAIsecondedLabel, RAIsecond_gender, name="n_second")
+
+
+## proposers
+bn_proposers_dates_rai_summary <-
+bn_proposer_rai_summary |>
+  # filter female proposers
+  filter(RAIproposed_gender=="woman") |>
+  select(bn_id=RAIproposed, name=RAIproposedLabel, n_proposal) |>
+  # get proposer's own election data - make sure it's when they were elected
+  inner_join(bn_proposed_rai |> filter(RAIelected=="successful") |>
+               select(bn_id, RAIelection_date=date, RAIelection_year=year, RAIproposer=RAIproposed, RAIproposed_gender), by=c("bn_id")) |>
+  arrange(RAIelection_date) |>
+  inner_join(
+    bn_proposed_rai |>
+      group_by(RAIproposed) |>
+      summarise( earliest_proposal = min(date), earliest_year = min(year), latest_proposal=max(date)) |>
+      ungroup(), by=c("bn_id"="RAIproposed")
+  )
+
+
+
+
+## SAL+RAI summary ####
+
+
+bn_supporter_salrai_summary <-
+bn_proposer_sal_summary |>
+  rename(bn_id=SALproposed, name=SALproposedLabel, gender=SALproposed_gender, n_act=n_proposal) |>
+  mutate(act="proposed", org="SAL") |>
+  bind_rows(
+    bn_proposer_rai_summary |>
+      rename(bn_id=RAIproposed, name=RAIproposedLabel, gender=RAIproposed_gender, n_act=n_proposal) |>
+      mutate(act="proposed", org="RAI") 
+  ) |>
+  # need to get nd_org for proposed at this point, before adding the secondary people.
+  group_by(bn_id) |>
+  mutate(nd_org_prop = n_distinct(org), n_prop=n()) |>
+  ungroup() |>  
+# secondary bind_rows
+  bind_rows(bn_second_rai_summary |> 
+      rename(bn_id=RAIseconded, name=RAIsecondedLabel, gender=RAIsecond_gender, n_act=n_second) |>
+      mutate(act="seconded", org="RAI") ,
+    bn_signer_sal_summary |> 
+      rename(bn_id=SALsigned, name=SALsignedLabel, gender=SALsigned_gender, n_act=n_signed) |>
+      mutate(org="SAL", act="signed_p") ,
+    bn_signer_general_summary |>
+      rename(bn_id=signedGeneral, name=signedGeneralLabel, gender=signed_genderLabel) |>
+      mutate(org="SAL", act="signed_g")
+  ) |>
+  group_by(bn_id) |>
+  # how many orgs, how many different actions, how many rows . total count.
+  mutate(nd_org =n_distinct(org), nd_act=n_distinct(act), n_rows = n()) |>
+  mutate(total_act=sum(n_act)) |>
+  ungroup() |>
+  arrange(bn_id, org, act) 
+
+
+
+
+## SAL+RAI not summarised ####
+
+
+# is this right for personal signers? think so
+bn_signer_p_sal <-
+bn_women_election_sal_query |>
+  filter(!is.na(SALsigned) & !is.na(SALsigned_gender)) |>
+  select(-SALproposed_gender, -SALproposedLabel, -person, -decade)
+
+# this is missing bn_id name, not now it isn't
+bn_signer_g_sal <-
+bn_signer_general_query |>
+  select(-person)
+
+bn_second_rai <-
+bn_women_election_rai_query |>
+  filter(!is.na(RAIseconded) & !is.na(RAIsecond_gender)) |>
+  select(-decade, -RAIproposed_gender, -RAIproposedLabel, -person)
+
+# this is for supporters networks but might be usable elsewhere instead of uncount versions
+# need: bn_id, name, supporter id, supporter name, supporter gender, date of election, org
+# probably don't need success
+
+all_supporters <-
+bn_proposed_sal |>
+  select(bn_id, name=personLabel, date, supporter_id=SALproposed, supporter_name=SALproposedLabel, gender=SALproposed_gender) |>
+  mutate(org="SAL", support="proposed")  |>
+  mutate(election_id = paste(bn_id, org, date, sep="_")) |>
+  bind_rows(
+    bn_proposed_rai |>
+      select(bn_id, name=personLabel, date, supporter_id=RAIproposed, supporter_name=RAIproposedLabel, gender=RAIproposed_gender) |>
+      mutate(org="RAI", support="proposed")  |>
+      mutate(election_id = paste(bn_id, org, date, sep="_")) ,
+    
+    bn_second_rai |>
+      select(bn_id, name=personLabel, date, supporter_id=RAIseconded, supporter_name=RAIsecondedLabel, gender=RAIsecond_gender) |>
+      mutate(org="RAI", support="seconded")  |>
+      mutate(election_id = paste(bn_id, org, date, sep="_")) ,
+    
+    bn_signer_p_sal |>
+      select(bn_id, name=personLabel, date, supporter_id=SALsigned, supporter_name=SALsignedLabel, gender=SALsigned_gender) |>
+      mutate(org="SAL", support="signed_p") |>
+      mutate(election_id = paste(bn_id, org, date, sep="_")) ,
+    
+    bn_signer_g_sal |>
+      select(bn_id, name=personLabel, date, supporter_id=signedGeneral, supporter_name=signedGeneralLabel, gender=signed_genderLabel) |>
+      mutate(org="SAL", support="signed_g")  |>
+    mutate(election_id = paste(bn_id, org, date, sep="_"))
+  ) |>
+  group_by(supporter_id) |>
+  mutate(nd_org = n_distinct(org), n_supports=n()) |>
+  ungroup() 
+
+
+```
+
+
+```{r other}
+
+## SAL ####
+
+bn_women_sal_sparql <-
+'SELECT distinct ?person ?personLabel  ?prop ?propLabel ?prop_type  ?pq_value ?pq_valueLabel ?qual_prop_label ?qual_prop_type ?sal ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person ?p ?s .
+  #?person ?p bnwd:Q8 .   #  doesnt work here
+
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps;   
+         wikibase:statementValue ?psv;
+         wikibase:propertyType ?prop_type.    
+    
+      # to get both q8 and q1 union query [cant use shorthand | but this seems to work]
+      { ?s ?ps bnwd:Q8 . }  union { ?s ?ps bnwd:Q1 . }
+       ?s ?ps ?sal.
+  
+       #  ?sal ?ppp ?sss . #this gets stuff about q8
+  
+       # qualifiers. 
+   
+       optional { 
+         ?s ?pq ?pq_value .   
+         
+         ?qual_prop wikibase:qualifier ?pq .   
+         ?qual_prop rdfs:label ?qual_prop_label. filter(lang(?qual_prop_label)="en-gb") . 
+         ?qual_prop wikibase:propertyType ?qual_prop_type
+         
+       } # /qualifiers
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
+}
+ORDER BY ?personLabel
+'
+
+bn_women_sal_query <-
+  bn_std_query(bn_women_sal_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(sal, prop, s)) |>
+  mutate(across(c(qual_prop_label, pq_value, pq_valueLabel, qual_prop_type), ~na_if(., ""))) |>
+  mutate(across(c(prop_type, qual_prop_type), ~str_remove(., "http://wikiba.se/ontology#"))) |>
+  relocate(person, .after = last_col())
+
+bn_women_sal_wide <-
+bn_women_sal_query |>
+  filter(!is.na(pq_value)) |>
+  # drop a couple with fellow of. not sure this should be used for SAL at all?
+  filter(prop !="P75") |>
+  # drop insignificant stuff . causes some dups as well?, though not probs for pivot.
+  filter(!qual_prop_label %in% c("recorded by", "described at URL", "base salary (free text)", "specific role", "instance of")) |>
+  # drop dups
+  filter(!qual_prop_label %in% c("note", "topic", "point in time", "collaborated with")) |>
+  # dedup point in time and put back in; make sure you drop P75!. is there an easier way? unless you can combine a casewhen with topn somehow... 
+  bind_rows(
+    bn_women_sal_query |>
+      filter(prop !="P75") |>
+      filter(qual_prop_label=="point in time") |> 
+      group_by(s) |>
+      top_n(-1, pq_valueLabel) |>
+      ungroup() 
+  ) |>
+  # can't keep prop types in id cols.
+  pivot_wider(id_cols = c(s, bn_id, personLabel, sal, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |> 
+  clean_names("snake")  |>
+  # which have fellow of statement P75
+  # this loses 2 people so i think better to use the elected dates data 
+  # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+  left_join(
+    bn_women_fsa_elected_dates_query |>
+      make_date_year() |>
+      distinct(bn_id, year, date) |>
+      rename(elected_year=year, elected_date=date) |>
+      mutate(is_fsa="y"), by="bn_id"
+  ) |>
+  mutate(date = case_when(
+    !is.na(point_in_time) ~ point_in_time,
+    !is.na(latest_date) ~ latest_date
+  )) |>
+  make_date_year()|>
+  mutate(is_fsa = if_else(!is.na(is_fsa), "FSA", "not FSA"))  |>
+  mutate(is_fsa_at = case_when(
+    is_fsa=="not FSA" ~ "not fsa",
+    elected_date < date ~ "fsa",
+    elected_date > date ~ "pre fsa",
+    elected_date==date ~ "pre fsa"
+  )) 
+
+#bn_women_sal_wide |> add_count(s) |> filter(n>1) # shoudl be 0
+
+
+
+## RAI ####
+bn_women_rai_sparql <-
+'SELECT distinct ?person ?personLabel  ?prop ?propLabel ?prop_type  ?pq_value ?pq_valueLabel ?qual_prop_label ?qual_prop_type ?rai ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person ?p ?s .
+
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps;   
+         wikibase:statementValue ?psv;
+         wikibase:propertyType ?prop_type.    
+    
+      # to get both q35 and q29 union query 
+      { ?s ?ps bnwd:Q35 . }  union { ?s ?ps bnwd:Q29 . }
+       ?s ?ps ?rai.
+
+       # qualifiers. 
+       optional { 
+         ?s ?pq ?pq_value .   
+         
+         ?qual_prop wikibase:qualifier ?pq .   
+         ?qual_prop rdfs:label ?qual_prop_label. filter(lang(?qual_prop_label)="en-gb") . 
+         ?qual_prop wikibase:propertyType ?qual_prop_type .
+         
+       } # /qualifiers
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
+}
+ORDER BY ?personLabel
+'
+
+bn_women_rai_query <-
+  bn_std_query(bn_women_rai_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(rai, prop, s)) |>
+  mutate(across(c(qual_prop_label, pq_value, pq_valueLabel, qual_prop_type), ~na_if(., ""))) |>
+  mutate(across(c(prop_type, qual_prop_type), ~str_remove(., "http://wikiba.se/ontology#"))) |>
+  relocate(person, .after = last_col())
+
+
+# not sure how far this differs from election query above, so just use it
+
+bn_women_rai_elected_sparql <-
+  'SELECT distinct ?person ?personLabel  ?date ?RAIstatement ?successLabel
+WHERE {
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P7 ?RAIstatement .
+  ?RAIstatement bnpq:P1 ?date .
+  optional {?RAIstatement bnpq:P22 ?success . }  # successful=q36 unsuccessful=q37  # successful=q36 not successful q37 (only one) but quite a few blank. handle as successful?
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  }'
+
+bn_women_rai_elected_query <-
+  bn_std_query(bn_women_rai_elected_sparql) |>
+  make_bn_item_id(person) |>
+  make_date_year() |>
+  make_bn_ids(RAIstatement) |>
+  # blank is still "" but don't go making it NA without tweaking this!
+  filter(successLabel !="not successful") |>
+  rename(elected_name=personLabel)
+
+
+bn_women_rai_members_elections <-
+bn_women_rai_query |> 
+  filter(prop %in% c("P67"))  |>  # 263  # rg q57
+  filter(!qual_prop_label %in% c("specific reference information (free text)", "stated in")) |>
+  # fix dup dates. this works... but it feels a bit brittle
+  filter( (pq_value !="1916-01-01T00:00:00Z" | !bn_id =="Q225") | is.na(pq_value)) |>
+  filter( (pq_value !="1927-01-01T00:00:00Z" | !bn_id=="Q57" ) |is.na(pq_value)) |>
+  pivot_wider(id_cols = c(s, bn_id, personLabel, rai, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |>
+  clean_names("snake") |>
+  select(-na) |>
+  mutate(start_time = if_else( str_detect(start_time, "_:t"), NA, start_time )) |>
+  mutate(across(c("point_in_time", "start_time", "end_time", "latest_date"), ~parse_date_time(., "ymdHMS")))  |>
+  mutate(start_year = year(start_time)) |>   
+  mutate(is_member="y") |>
+  # make this full join instead of left, to be the starting point for a complete list. adds 20 odd rows at least some of which=duplicates
+  # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+  full_join(
+    bn_women_rai_elected_query |>
+      distinct(bn_id, elected_name, year, date) |>
+      # top_n instead of filter to drop second election for  Q2365. doesn't seem to cause manytomany which is good.
+      group_by(bn_id) |>
+      top_n(-1, year) |>
+      ungroup() |>
+      rename(elected_year=year, elected_date=date) |>
+      mutate(is_elected="y")
+    , by="bn_id"
+  )  |>
+  relocate(elected_name, .after = person_label) |>
+  arrange(bn_id , person_label, elected_name) 
+
+# v2
+bn_women_rai_member_wide <-
+bn_women_rai_members_elections |>
+  select(bn_id, person_label, elected_name, start_year, elected_year, is_member, is_elected, end_time, start_time, point_in_time, latest_date, elected_date) |>
+  mutate(member = case_when(
+    is_elected=="y" ~ elected_name,
+    .default = person_label
+  )) |>
+  mutate(year = case_when(
+    is_elected=="y" ~ elected_year,
+    .default = start_year
+  )) |>
+  mutate(date = case_when(
+    is_elected=="y" & !is.na(elected_date) ~ elected_date,
+    is_member=="y" & !is.na(start_time) ~ start_time
+  )) |>
+  mutate(src = case_when(
+    is_elected=="y" ~ "election",
+    .default = "membership"
+  )) |>
+  add_count(bn_id) |>
+  group_by(bn_id) |>
+  arrange(elected_year, start_year) |>
+  mutate(rn = row_number()) |>
+  ungroup() |>
+  mutate(use = case_when(
+    #is_elected=="y" ~ "y",
+    n==1 ~ "y",
+    rn==1 ~ "y*"
+  )) |>
+  relocate( member, year, date, src, .after = bn_id) |>
+  filter(!is.na(use))  # 19 don't have start/elected year. one or two have no dates at all? |> filter(is.na(year))
+
+
+bn_women_rai_wide <-
+bn_women_rai_query |> 
+  # drop member of and a couple with fellow of. 
+  #filter(!is.na(pq_value)) |> # makes no difference when P67 is dropped
+  filter(!prop %in% c("P67", "P75")) |> 
+  # drop 2 weird dates
+  filter(!str_detect(pq_value, "^2022-01")) |>
+  # drop insignificant/irrelevant stuff/dups .
+  # only two p.i.t. dups and those look like errors - dates 2022. or are they linked to the recorded by? i'm not sure. filtering out recorded by fixes the problem, no it doesn't idiot. reverted deletion and check them with AT?.
+  # so don't need to take dates out this time!
+  filter(!qual_prop_label %in% c("recorded by", "note", "part of", "is successful")) |>
+  pivot_wider(id_cols = c(s, bn_id, personLabel, rai, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |> 
+  clean_names("snake")  |>   
+  # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
+  # use full list of membership/election
+  left_join(
+    bn_women_rai_member_wide |>
+      distinct(bn_id, year, date) |>
+      rename(frai_year=year, frai_date=date) |>
+      mutate(is_frai="y"), by="bn_id"
+  ) |>
+  #relocate(point_in_time, latest_date)  |>
+  mutate(date = case_when(
+    !is.na(point_in_time) ~ point_in_time,
+    !is.na(latest_date) ~ latest_date
+  )) |>
+  make_date_year() |>
+  mutate(is_frai = if_else(!is.na(is_frai), "member", "not member"))  |>
+  mutate(is_frai_at = case_when(  # 19 na
+    is_frai=="not member" ~ "not member",
+    frai_date < date ~ "member",
+    frai_date > date ~ "pre member",
+    frai_date==date ~ "member"
+  )) 
+  # is member? and member start year if available. oops.
+
+
+#bn_women_rai_wide |> add_count(s) |> filter(n>1) # shoudl be 0
+
+## sal+rai ####
+
+bn_women_salrai <-
+bn_women_sal_wide |>
+  select(bn_id, person_label, act= prop_label, is_fsa, year, elected_year) |>
+  mutate(org="SAL") |>
+  bind_rows(
+    bn_women_rai_wide |>
+  select(bn_id, person_label, act=prop_label, is_frai,  year, elected_year=frai_year) |>
+  mutate(org="RAI")
+  )  |>
+  filter(act %in% c("corresponded with", "donor to", "exhibited at", "spoke at")) |>
+  #filter(act!="applicant to") |>
+  mutate(elected=case_when(
+    is_fsa=="FSA"|is_frai=="member" ~ "yes",
+    .default = "no"
+    )) |>
+  group_by(bn_id) |>
+  mutate(nd_org = n_distinct(org), nd_act=n_distinct(act), n_acts=n()) |>
+  ungroup() |>
+  relocate(is_fsa, is_frai, .after = last_col()) 
+##only 20 bn_id in both.
+```
+
+
+
+```{r networks}
+
+library(widyr)
+library(tidygraph) 
+library(ggraph)
+
+
+
+
+# will have to hope that names are unique i guess...
+all_supporters_widyr_cor <-
+  all_supporters |>
+  filter(n_supports>1) |>
+  pairwise_cor(supporter_name, election_id, upper=F, sort=T)
+
+all_supporters_pair_cor <-
+all_supporters_widyr_cor  |>
+  filter(correlation>0.35) |>
+  left_join(all_supporters |> count(supporter_name, gender, name="n1") |> rename(gender1=gender), by=c("item1"="supporter_name")) |>
+  left_join(all_supporters |> count(supporter_name, gender, name="n2") |> rename(gender2=gender), by=c("item2"="supporter_name")) |>
+  filter( gender1=="woman" | gender2=="woman") |>
+  rename(from=item1, to=item2)
+
+
+#i think i just want to add the gender here? try adding nd_org as well
+all_supporters_nodes_gender <-
+all_supporters_pair_cor |>
+  select(from, to) |>
+  pivot_longer(from:to, values_to = "name", names_to="a") |>
+  distinct(name) |>
+  left_join(all_supporters |> distinct(supporter_name, gender, nd_org), by=c("name"="supporter_name")) |>
+  mutate(shape=if_else(nd_org==1, "circle", "square"))
+
+
+
+all_supporters_pair_cor_graph <-
+  tbl_graph(edges=all_supporters_pair_cor, directed = FALSE, nodes = all_supporters_nodes_gender)
+
+
+```
+
+
+
+
+## Comparison of SAL and RAI election supporters
+
+Support actions
+
+- proposed (SAL and RAI)
+- seconded (RAI)
+- signed personal (SAL)
+- signed general (SAL)
+
+A few supporters whose gender can't be determined from their signatures have been excluded.
+
+For scale:
+
+```{r}
+all_supporters |>
+  count(org) |>
+  ggplot(aes(org, n, fill=org)) +
+  geom_col() +
+  labs(x=NULL, y="number of support actions", title = "All support actions at RAI and SAL elections")
+```
+
+
+However, most of the SAL activity is the large number of signers.
+
+```{r}
+all_supporters |>
+  filter(support=="proposed") |>
+  count(org) |>
+  ggplot(aes(org, n, fill=org)) +
+  geom_col(show.legend = F) +
+  scale_fill_ptol() +
+  labs(x=NULL, y="number of proposals", title = "Proposal actions at RAI and SAL elections")
+```
+
+
+
+With support types:
+
+```{r}
+# bn_supporter_salrai_summary |>
+#   uncount(n_act) |>
+#   count(act, org) |>
+all_supporters |>
+  rename(act=support) |>
+  count(act, org) |>
+  ggplot(aes(fill=act, values=n)) +
+  geom_waffle(colour="white", n_rows = 20, flip=T) +
+  coord_equal() +
+  facet_wrap(~org) +
+  scale_fill_manual(values = c("proposed"= '#6e016b', "seconded"= '#8c6bb1', "signed_g"= '#9ebcda', "signed_p"= '#8c96c6'), limits = c("proposed", "seconded", "signed_p", "signed_g")) +
+  theme_enhance_waffle() +
+  theme(axis.ticks = element_blank()) +
+  labs(caption = "1 square=1 support action")
+```
+
+Proportional version
+
+```{r}
+
+all_supporters |>
+  rename(act=support) |>
+  count(act, org) |>
+  ggplot(aes(fill=act, values=n)) +
+  geom_waffle(colour="white", n_rows = 10, make_proportional = TRUE) +
+  coord_equal() +
+  facet_wrap(~org) +
+  scale_fill_manual(values = c("proposed"= '#6e016b', "seconded"= '#8c6bb1', "signed_g"= '#9ebcda', "signed_p"= '#8c96c6'), limits = c("proposed", "seconded", "signed_p", "signed_g")) +
+  theme_enhance_waffle() +
+    theme(axis.ticks = element_blank()) +
+  labs(caption = "1 square=1% of actions", title="All supporters")
+```
+
+This doesn't look very different if restricted to people who support at *both* SAL and RAI, except the considerably lower % of SAL general signers (which may or may not be interesting).
+
+```{r}
+bn_supporter_salrai_summary |>
+  filter(nd_org>1) |>
+  uncount(n_act) |>
+  count(act, org) |>
+  ggplot(aes(fill=act, values=n)) +
+  geom_waffle(colour="white", n_rows = 10, make_proportional = TRUE) +
+  coord_equal() +
+  facet_wrap(~org) +
+  scale_fill_manual(values = c("proposed"= '#6e016b', "seconded"= '#8c6bb1', "signed_g"= '#9ebcda', "signed_p"= '#8c96c6'), limits = c("proposed", "seconded", "signed_p", "signed_g")) +
+  theme_enhance_waffle() +
+  theme(axis.ticks = element_blank()) +
+  labs(caption = "1 square=1%", title = "Supporters at both RAI and SAL")
+```
+
+
+Breakdown by gender of supporters
+
+```{r}
+
+all_supporters |>
+  filter(org=="SAL") |>
+  rename(act=support) |>
+  count(act, gender) |>
+  ggplot(aes(fill=act, values=n)) +
+  geom_waffle(colour="white", n_rows = 10, make_proportional = TRUE) +
+  coord_equal() +
+  facet_wrap(~gender) +
+  scale_fill_manual(values = c("proposed"= '#6e016b', "signed_g"= '#9ebcda', "signed_p"= '#8c96c6'), limits = c("proposed",  "signed_p", "signed_g")) +
+  theme_enhance_waffle() +
+  theme(axis.ticks = element_blank()) +
+  labs(title="SAL elections", caption="1 square=1% of actions")
+```
+
+
+```{r}
+
+all_supporters |>
+  filter(org=="RAI") |>
+  rename(act=support) |>
+  count(act, gender) |>
+  ggplot(aes(fill=act, values=n)) +
+  geom_waffle(colour="white", n_rows = 10, make_proportional = TRUE) +
+  coord_equal() +
+  facet_wrap(~gender) +
+  scale_fill_manual(values = c("proposed"= '#6e016b', "seconded"= '#8c6bb1'), limits = c("proposed", "seconded")) +
+  theme_enhance_waffle() +
+  theme(axis.ticks = element_blank()) +
+  labs(title="RAI elections", caption="1 square=1% of actions")
+```
+
+
+## Supporters at both societies
+
+People who *propose* at both societies form a very small group.
+
+(Ordered by overall number of proposals.)
+
+```{r}
+# it's not just successful proposals so unit of count needs to be actions not people.
+bn_supporter_salrai_summary |>
+  # not NA n_prop or nd_org_prop will get all the proposers. nd_org_prop > 1 will get proposers for both
+  filter(!is.na(nd_org_prop)) |>
+  filter(nd_org_prop>1 ) |>
+  #not quite the same as total_act
+  group_by(bn_id) |>
+  mutate(t = sum(n_act)) |>
+  ungroup() |>
+  mutate(n_act = if_else(org=="RAI", n_act*-1, n_act)) |>
+  mutate(name=fct_reorder(name, t)) |>
+  ggplot(aes(x=name, y=n_act, fill=org)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  #facet_wrap(~gender, scales = "free") +
+  scale_fill_ptol() +
+  scale_y_continuous(labels = c(20,15,10,5,0,5), breaks = c(-20,-15,-10,-5,0,5)) +
+  labs(fill="society", x=NULL, y="count of proposal actions", title = "Proposing women for election at both RAI and SAL")
+```
+
+Expanding to all support actions
+
+[RAI to the left, SAL to the right. this needs better labelling]
+
+```{r}
+# it's not just successful proposals so unit of count needs to be actions not people.
+# could differentiate types of action with *shades* of colour? would it be possible to do that auto or do you have to specify manually? and would there be any way to ensure props go in the centre? probably an arrange or reorder?
+bn_supporter_salrai_summary |>
+  filter(nd_org>1) |>
+  mutate(n_act = if_else(org=="RAI", n_act*-1, n_act)) |>
+  mutate(name=fct_reorder(name, total_act)) |>
+  mutate(act_level = case_when(
+    act=="proposed" ~ 2,
+    act=="seconded" ~ 1,
+    .default = 1
+  )) |>
+  mutate(act = fct_reorder(act, act_level)) |>
+  ggplot(aes(x=name, y=n_act, fill=act)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  #facet_wrap(~gender, scales = "free") +
+  #set colours and change order in legend without changing bars.
+  scale_fill_manual(values = c("proposed"= '#6e016b', "seconded"= '#8c6bb1', "signed_g"= '#9ebcda', "signed_p"= '#8c96c6'), limits = c("proposed", "seconded", "signed_p", "signed_g")) +
+  scale_y_continuous(labels = c(30,20,10,0,10,20), breaks = c(-30,-20,-10,0,10,20)) +
+  theme(plot.subtitle = element_text(hjust = 0.55)) +
+  labs(fill="action", x=NULL, y="count of actions", subtitle = "RAI | SAL", title="Supporting women's election at both RAI and SAL")
+  #labs(fill="action type", x=NULL, y="count of support actions", title="RAI | women's supporters | SAL")
+```
+
+
+## Supporter networks
+
+This includes all the supporters from both societies. (People who support for both are shown with a triangle rather than a circle; I'm thinking about a way to make this a bit less subtle...)
+
+NB that some men who are heavily represented above are omitted here; this is probably because they don't reach the statistical correlation threshold and/or because they only support with other men. (Unless I've screwed something up.)
+
+```{r}
+
+## is there a way to make text and points a different colour?
+## why am i getting triangles instead of squares?
+
+set.seed(12345)
+all_supporters_pair_cor_graph %>%
+   ggraph(layout = "nicely") +
+   geom_edge_diagonal(aes(edge_alpha = correlation), edge_colour = "black", 
+                  show.legend = FALSE) +
+   geom_node_point(aes(colour=gender, shape=shape), show.legend = FALSE) +
+   geom_node_text(aes(label = name, colour=gender), repel = TRUE, 
+                  point.padding = unit(0.2, "lines"), size=3, show.legend = FALSE) +
+   theme_void() +
+   scale_colour_manual(values = c("#33bbee", "#ee7733"))  +
+  
+  labs(caption = "At least two support actions; correlation coefficient > 0.35; excludes men who don't co-occur with female supporters")
+```
+
+
+
+## Women engaging with both societies
+
+Same types of engagement (and sources) as previous posts
+
+- corresponded with
+- donor to
+- exhibited at
+- spoke at
+
+20 women engaged with both societies. 
+
+This is not symmetrical: about 30% of women who engaged with RAI *also* engaged with SAL; but only 13% of women who engaged with SAL also engaged with RAI. Probably reflects the narrower subject area of RAI compared to SAL (I assume we'd see something similar for (eg) RHS if we had that data).
+
+```{r}
+ bn_women_salrai |>
+#   count(org)  RAI 158 / SAL 239
+#  filter(nd_org>1) |> count(org) # RAI 66 / SAL 68
+  #filter(nd_org>1) |>
+  distinct(bn_id, org, nd_org) |>
+  count(org, nd_org) |>
+  ggplot(aes(org, n, fill=factor(nd_org))) +
+  geom_col(position = "fill") +
+  #facet_wrap(~nd_org) +
+  scale_fill_ptol() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(fill="societies", y="% of women", x=NULL, title="Women engaging with SAL and RAI")
+```
+
+```{r}
+# it's not just successful proposals so unit of count needs to be actions not people.
+bn_women_salrai |>
+  filter(nd_org>1 ) |>
+  count(bn_id, person_label, org, n_acts, name="n_act") |>
+  mutate(n_act = if_else(org=="RAI", n_act*-1, n_act)) |>
+  mutate(name=fct_reorder(person_label, n_acts)) |>
+  ggplot(aes(x=name, y=n_act, fill=org)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  scale_fill_tableau() +
+  scale_y_continuous(labels = c(20,15,10,5,0,5,10,15), breaks = c(-20,-15,-10,-5,0,5,10,15)) +
+  #theme(plot.subtitle = element_text(hjust = 0.61)) +
+  labs(fill="society", x=NULL, y="count of actions", title="Women engaging with both RAI and SAL")
+```
+
+With breakdown by engagement types.
+
+```{r}
+# not sure whether i can make the thing work as well with these categories, but let's see...
+bn_women_salrai |>
+  filter(nd_org>1) |>
+  # mutate(act_level = case_when(
+  #   act=="proposed" ~ 2,
+  #   act=="seconded" ~ 1,
+  #   .default = 1
+  # )) |>
+  # mutate(act = fct_reorder(act, act_level)) |>
+  count(bn_id, person_label, org, act, n_acts, name="n_act") |>
+  mutate(n_act = if_else(org=="RAI", n_act*-1, n_act)) |>
+  mutate(name=fct_reorder(person_label, n_acts)) |>
+  ggplot(aes(x=name, y=n_act, fill=act)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  scale_fill_tableau() +
+  #set colours and change order in legend without changing bars.
+  #scale_fill_manual(values = c("proposed"= '#6e016b', "seconded"= '#8c6bb1', "signed_g"= '#9ebcda', "signed_p"= '#8c96c6'), limits = c("proposed", "seconded", "signed_p", "signed_g")) +
+  scale_y_continuous(labels = c(20,15,10,5,0,5,10,15), breaks = c(-20,-15,-10,-5,0,5,10,15)) +
+  #theme(plot.title = element_text(hjust = 0.55)) +
+    theme(plot.subtitle = element_text(hjust = 0.61)) +
+  labs(fill="action", x=NULL, y="count of actions", subtitle = "RAI | SAL", title="Women engaging with both RAI and SAL")
+```
+
+Comparison of engagement with one or other of the societies versus both. 
+
+```{r}
+# bn_women_salrai |>
+#   count(act, nd_org) |>
+#   ggplot(aes(factor(nd_org), n, fill=act)) +
+#   geom_col(position = "fill") +
+#   scale_fill_tableau() +
+#   scale_y_continuous(labels = percent_format()) +
+#   labs(y=NULL, x="1 or 2 societies")
+```
+
+
+
+
+
+```{r}
+bn_women_salrai |>
+  mutate(which = case_when(
+    nd_org==2 ~ "both",
+    org=="SAL" ~ "SAL only",
+    org=="RAI" ~ "RAI only"
+  )) |>
+  count(act, which) |>
+  ggplot(aes(which, n, fill=act)) +
+  geom_col(position = "fill") +
+  scale_fill_tableau() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y="% of interactions", x=NULL, fill="action")
+```
+
+
+
+```{r}
+# how much effect is RG having?
+# bn_women_salrai |>
+#   filter(bn_id!="Q57") |>
+#   mutate(which = case_when(
+#     nd_org==2 ~ "both",
+#     org=="SAL" ~ "SAL only",
+#     org=="RAI" ~ "RAI only"
+#   )) |>
+#   count(act, which) |>
+#   ggplot(aes(which, n, fill=act)) +
+#   geom_col(position = "fill") +
+#   scale_fill_tableau() +
+#   scale_y_continuous(labels = percent_format()) +
+#   labs(y=NULL, x=NULL)
+```
+
+
+
+```{r}
+#  bn_women_salrai |>
+# #   count(org)  RAI 158 / SAL 239
+# #  filter(nd_org>1) |> count(org) # RAI 66 / SAL 68
+#   #filter(nd_org>1) |>
+#   count(org, nd_org) |>
+#   ggplot(aes(org, n, fill=factor(nd_org))) +
+#   geom_col(position = "fill") +
+#   #facet_wrap(~nd_org) +
+#   scale_fill_ptol()
+```
+
+
+
+
+
+
+
+
+

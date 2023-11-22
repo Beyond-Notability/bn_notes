@@ -1,0 +1,271 @@
+---
+title: "The higher education of FSAs (P94)"
+description: "Colleges attended by BN Fellows of the Society of Antiquaries"
+author: "Sharon Howard"
+date: "2023-09-09"
+date-modified: today
+categories: 
+  - education
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+## Wikibase query
+
+[Education](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Education) - [which women FSAs went to Oxford or Cambridge colleges](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_who_were_FSAs_who_went_to_Oxford_or_Cambridge_colleges)
+
+Using the [educated at](https://beyond-notability.wikibase.cloud/wiki/Property:P94) property.
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(treemapify)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+
+bn_fsa_educated_query <-
+c(paste(
+  bn_prefixes,
+  '
+#how many women who were FSAs went to Oxford or Cambridge colleges?
+#and how many went elsewhere?
+
+SELECT ?person ?personLabel ?college ?collegeLabel ?university ?universityLabel ?instanceLabel ?instance
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  ?person bnwdt:P75 bnwd:Q8. # only BN subjects having a FSA 
+  
+  # educated at (P94) part of (P4) cambridge (Q1181) oxford (Q364) . academic degree is P59.
+  #  tertiary education institution (Q2914)
+  optional {
+  ?person bnwdt:P94 ?college .  
+   optional {?college bnwdt:P4 ?university . } # there are a few not part of something
+   ?college bnwdt:P12 ?instance .   # 343 here with * 
+ # ?college bnwdt:P12* bnwd:Q2914 .   # 112 without *, 114 with.
+
+ # filter ( ?instance = bnwd:Q2194  ) . #nope but why?
+ # FILTER ( ?university in ( bnwd:Q1181 , bnwd:Q364 ) ) # this works
+  }
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}
+order by ?personLabel ?collegeLabel
+')) |>
+   sparql2df(endpoint=bn_endpoint) |>
+   make_bn_item_id(person)  |>
+  # tidy up
+   mutate(across(c(college, collegeLabel, university, universityLabel, instance, instanceLabel), ~na_if(., ""))) |>
+   mutate(across(c(college, university, instance), ~str_remove(., "https://beyond-notability.wikibase.cloud/entity/"), .names = "{.col}_id")) 
+
+
+
+
+bn_fsa_education_summary <-
+bn_fsa_educated_query |>
+  count(bn_id, personLabel, name="n_ed") |>
+  arrange(personLabel) |>
+  # oxford-cambridge
+  left_join(
+    bn_fsa_educated_query |>
+      filter(instance_id=="Q2914") |>
+      filter(university_id %in% c("Q1181", "Q364"))|>
+      select(bn_id, ox_cam= university_id) , by="bn_id"
+  ) |>
+  # london
+  left_join(
+    bn_fsa_educated_query |>
+      filter(instance_id =="Q2914") |>
+      filter(university_id == "Q154") |>
+      distinct(bn_id, university_id) |>
+      rename(lon=university_id), by="bn_id"
+  ) |>
+  left_join(
+    bn_fsa_educated_query |>
+      filter(instance_id =="Q2914") |>
+      filter(!university_id %in% c("Q1181", "Q364", "Q154")) |>
+      distinct(bn_id) |>
+      mutate(other = "other"), by="bn_id"
+  ) |>
+  left_join(
+    bn_fsa_educated_query |>
+      distinct(bn_id) |>
+      # drop any with a tei
+      anti_join(
+        bn_fsa_educated_query |>
+          filter(instance_id =="Q2914"), by="bn_id"
+      ) |>
+      mutate(none="y"), by="bn_id"
+  )
+
+bn_fsa_education <-
+bn_fsa_educated_query |>
+  # dedup colleges
+  filter(instance_id=="Q2914" | is.na(instance_id)) |>
+  select(-instance, -instance_id, -instanceLabel) |> 
+  add_count(bn_id, name="n_educated_at")
+
+bn_fsa_higher_education <-
+bn_fsa_educated_query |>
+  filter(instance_id=="Q2914") |>
+  mutate(university_id= if_else(is.na(university_id), college_id, university_id),
+         universityLabel=if_else(is.na(universityLabel), collegeLabel, universityLabel)) |>
+  mutate(group = case_when(
+    university_id %in% c("Q154", "Q1181", "Q364") ~ str_remove(universityLabel, "University of *" ),
+    .default = "Other"
+  )) 
+
+
+
+
+
+
+## how many of the women ahve a birth date?
+## could just incorporate this into the sparql query... though you need to handle multis
+
+# bn_women_dobs <-
+#   c(
+#     glue(bn_prefixes,
+#         "select distinct ?person ?dateOfBirth
+#         where {{
+#          {bn_triple_woman}
+#         {bn_filter_project}
+#          ?person bnwdt:P26  ?dateOfBirth.
+#          {wb_service_label}
+#         }}") 
+#   ) |>
+#   sparql2df(endpoint=bn_endpoint) |>
+#   make_bn_item_id(person) |>
+#   mutate(date_of_birth = parse_date_time(dateOfBirth, "ymdHMS")) |>
+#   mutate(year_of_birth = year(date_of_birth)) |>
+#   relocate(bn_id, date_of_birth, year_of_birth)
+
+
+# a few women with >1 dob, but they're just different precision levels, so distinct year will be fine
+#bn_women_dobs |>
+#  add_count(bn_id) |> filter(n>1)
+
+
+```
+
+## FSAs at Oxford/Cambridge and elsewhere
+
+Highlighting that a significant proportion of FSAs have no college/university level education recorded at all and a number went to Oxford/Cambridge *and* to at least one other institution.
+
+```{r}
+bn_fsa_education_summary |>
+  #filter(is.na(none)) |>
+  mutate(tei = case_when(
+    !is.na(none) ~ "None \nrecorded",
+    !is.na(ox_cam) & ( !is.na(lon) | !is.na(other) ) ~ "Ox/Cam +\nLondon/Other",
+    ox_cam=="Q364" ~ "Oxford/\nCambridge",
+    ox_cam=="Q1181" ~ "Oxford/\nCambridge",
+    !is.na(lon) ~ "London/\nOther",
+    !is.na(other) ~ "London/\nOther"
+  )) |>
+  #mutate(tei = fct_relevel(tei, "Cambridge", "Oxford", "London", "Other")) |>
+  count(tei) |>
+  ggplot(aes(area=n, fill=tei, label=tei)) +
+  geom_treemap(show.legend = F) +
+  geom_treemap_text(fontface = "italic", colour = "white", place = "centre", grow = TRUE) +
+  scale_fill_manual(values = c("orange", "lightgrey", "#41b6c4", "#1d91c0")) + # i think this ordering is alphabetical
+  labs(title="FSAs' Higher Education")
+```
+
+
+## Which colleges did FSAs attend?
+
+```{r}
+#library(plotly) # masks some things. can do without it as long as the plot doesn't get too complicated.
+```
+
+```{r}
+bn_fsa_group_college_summary <-
+bn_fsa_higher_education |>
+  count(group, college_id, collegeLabel, name="size")
+
+bn_fsa_group_college_summary_parents <-
+bn_fsa_higher_education |>
+  mutate(parents = group) |>
+  count(parents, name="size") |>
+  mutate(ids=parents, labels=parents, parents="") |>
+  bind_rows(
+    bn_fsa_group_college_summary |>
+      rename(parents=group, labels=collegeLabel) |>
+      mutate(ids=paste(parents, labels, sep="-"))
+  ) |>
+  select(ids, labels, parents, size)
+
+
+```
+
+
+```{r}
+#ptol_qual_light_8 <- c(  '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#BBCC33', '#AAAA00', '#DDDDDD' )
+plotly_treemap <-
+   plotly::plot_ly(
+    type="treemap",
+    ids=bn_fsa_group_college_summary_parents$ids,
+    labels=bn_fsa_group_college_summary_parents$labels,
+    parents=bn_fsa_group_college_summary_parents$parents,
+    values=bn_fsa_group_college_summary_parents$size,
+    branchvalues="total",
+    domain=list(column=0),
+    marker=list(colors=c( '#77AADD', '#EE8866', '#EEDD88', '#FFAABB'  ))
+#    marker=list(colorscale='Portland')
+  )
+plotly_treemap 
+#  plotly::layout(title="Colleges attended by FSAs")
+```
+
+
+
+## Table
+
+
+```{r}
+bn_fsa_education_reactable <-
+  bn_fsa_education |>
+  select(-college_id, -university_id, -college, -university, -n_educated_at) |> 
+  mutate(across(c(-bn_id, -personLabel), ~replace_na(.,"-"))) |>
+  mutate(universityLabel = if_else(universityLabel==collegeLabel, NA, universityLabel))
+
+reactable(
+  bn_fsa_education_reactable |> select(-person) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 130,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    personLabel =colDef(maxWidth = 300, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s#P94" target="_blank">%s</a>', bn_fsa_education_reactable$person[index], value)
+      })   ,
+   collegeLabel = colDef(maxWidth = 275, name="college"),
+    # collegeLabel = colDef(maxWidth = 250, name="college",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     sprintf('<a href="%s" target="_blank">%s</a>', bn_fsa_education$college[index], value)
+    #   })   ,  # TODO work out how to make this conditional
+    universityLabel = colDef(maxWidth = 275, name="university")
+    
+  )
+)
+```

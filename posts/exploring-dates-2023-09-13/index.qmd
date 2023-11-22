@@ -1,0 +1,255 @@
+---
+title: "Exploring dates and datable properties"
+description: "Focus on datable properties used in the wikibase (for women)."
+author: "Sharon Howard"
+execute: 
+  warning: false
+  message: false
+  echo: false 
+date: "2023-09-14"
+date-modified: today
+categories: 
+  - missing
+  - musthave
+  - wikibase
+---
+
+## Wikibase queries
+
+See the [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section of the example queries. (The query used here is similar to [All the Dates for Women FSAs](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#All_the_Dates_for_Women_FSAs) but for all women.)
+
+```{r}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+#library(treemapify)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+```
+
+
+```{r}
+bn_women_datable_query <-
+c(paste(
+  bn_prefixes, '
+SELECT distinct ?prop_label ?qdate_label ?mdate ?qdate ?prop ?prop_type  ?s ?person
+WHERE {
+  ?person bnwdt:P3 bnwd:Q3 . # women
+# (this is based on work activities query but take out the work activities constraints)  
+  ?person ?p ?s . # for property label
+  ?prop wikibase:claim ?p;       
+         wikibase:statementValue ?psv ;  
+        wikibase:propertyType ?prop_type ;  
+         rdfs:label ?prop_label. filter(lang(?prop_label)="en-gb") .  
+    
+  # main dates as well! :-)
+    optional {
+      ?s ?psv ?wdv . # for the date value
+        ?wdv wikibase:timeValue ?mdate .  #timeValue gets pit and edtf wait what why dont you use it for qualifiers
+ }
+  # qual dates. blank row if no date
+    optional {
+    ?s ?pq ?qdate . 
+      
+       #to compare results with Time below
+       #FILTER(DATATYPE(?qdate) = xsd:dateTime).  # 4619
+      
+     ?qual_prop wikibase:qualifier ?pq;      
+              #wikibase:propertyType ?date_prop_type; # 
+              wikibase:propertyType wikibase:Time ; # 4658  well pretty close! 
+              rdfs:label ?qdate_label . filter(lang(?qdate_label)="en-gb") . # what kind of date is it.
+      } # /dates
+   
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
+  
+} # /where
+
+ORDER BY ?prop_label
+')) |>
+  sparql2df(endpoint=bn_endpoint) |>
+  mutate(s = str_remove(s, "https://beyond-notability.wikibase.cloud/entity/statement/")) |>
+  mutate(p = str_remove(prop, "https://beyond-notability.wikibase.cloud/entity/")) |>
+  mutate(prop_type = str_remove(prop_type, "http://wikiba.se/ontology#")) |>
+  relocate(p) |>
+  make_bn_item_id(person) 
+
+# because you might need to be able to get at the latest version without internet access...
+# perhaps you should just write to csv/r data and then read back in?
+# bn_women_datable_query_offline <-
+#   write_csv(bn_women_datable_query, here::here("_outputs/bn_women_datable_query_offline.csv"), na="")
+```
+
+
+```{r}
+bn_women_datable <-
+bn_women_datable_query |>
+  # record unknown value in date cols
+  # but for mdate what about the blanks that you think are uv? case_when to handle either.
+  # not sure this is quite right for qdate; could there be other <uv> in the col that aren't dates?
+  mutate(qdate_unk = if_else(str_detect(qdate, "^_:t.*$"), "y", NA)) |>
+  mutate(mdate_unk = case_when(
+    prop_type %in% c("Edtf", "Time") & str_detect(mdate, "^_:t.*$") ~ "y", 
+    prop_type %in% c("Edtf", "Time") & mdate=="" ~ "y",
+    .default = NA)) |>
+  # remove unknown value. at some point need to highlight these but it can wait
+  mutate(across(c(qdate, mdate), ~str_remove(., "^_:t.*$"))) |>
+  # make "" NA
+  mutate(across(c(qdate_label, mdate, qdate), ~na_if(., ""))) |>
+  mutate(across(c(qdate,mdate), ~parse_date_time(., "ymdHMS"))) |>
+      mutate(myear = year(mdate), qyear=year(qdate))
+
+
+
+
+##main never dates
+bn_women_props_never_mdates <-
+bn_women_datable |>
+  count(p, prop_label, is.na(mdate)) |>
+  rename(m_notdated = `is.na(mdate)`) |>
+  group_by(p) |>
+  mutate(pc = n/sum(n)) |>
+  ungroup() |>
+  filter(m_notdated==TRUE & pc==1)
+
+
+## datable main
+bn_women_datable_main <-
+bn_women_datable |>
+  anti_join(bn_women_props_never_mdates, by="p")
+
+
+##qualifier never dates
+bn_women_props_never_qdates <-
+bn_women_datable |>
+  count(p, prop_label, is.na(qdate)) |>
+  rename(q_notdated = `is.na(qdate)`) |>
+  group_by(p) |>
+  mutate(pc = n/sum(n)) |>
+  ungroup() |>
+  filter(pc==1 & q_notdated==TRUE)
+
+
+
+## datable qualifiers
+bn_women_datable_qualifiers <-
+bn_women_datable |>
+  anti_join(bn_women_props_never_qdates, by="p")
+
+```
+
+
+
+## Notes
+
+A "datable" property is one that has at least one date (of any kind) associated with it somewhere in the wikibase. Some are "main" properties (including the must have properties dates of birth/death) but the majority are used in qualifiers. 
+
+The query is currently limited to pages about women (for manageability!) so it does not cover every possible datable property. I can expand this later.
+
+TODO: 
+
+- differentiate &lt;unknown value&gt; from missing
+
+
+## Main properties
+
+```{r}
+bn_women_datable_main_summary <-
+bn_women_datable_main |>
+  count(p, prop, prop_label, is.na(mdate)) |>
+  rename(m_notdated = `is.na(mdate)`) |>
+  group_by(p) |>
+  mutate(pc_dated = round(n/sum(n)*100, 2)) |>
+  ungroup() |>
+  # might not always be able to assume that there will always be FALSE for all props...
+  filter(m_notdated==FALSE) |>
+  arrange(prop_label) |>
+  select(-m_notdated)
+
+```
+
+Here the undated should be all &lt;unknown value&gt; as the query doesn't include women who haven't had the property added at all. [Date of birth/death missing stats are covered [here](http://sharonhoward.org/bn/bn_notes/posts/missing-data-2023-09-01/).]
+
+```{r}
+bn_women_datable_main_summary |>
+  select(-prop) |>
+  kable(
+    col.names = c('property', 'name', 'count', '% dated')
+  ) |>
+  kable_styling()
+```
+
+
+```{r}
+# bn_women_datable_query |>
+#   filter(prop_type %in% c("Edtf", "Time")) |>
+#   count(qdate, sort=T) |> 
+#   # record unknown value in date cols
+#   mutate(qdate_unk = if_else(str_detect(qdate, "^_:t.*$"), "y", NA)) |>
+#   # but for mdate what about the blanks that you think are uv? case_when to handle either.
+#   mutate(mdate_unk = case_when(
+#     prop_type %in% c("Edtf", "Time") & str_detect(mdate, "^_:t.*$") ~ "y", 
+#     prop_type %in% c("Edtf", "Time") & mdate=="" ~ "y",
+#     .default = NA)) |>
+#   #count(mdate_unk, sort = T)
+#   # remove unknown value. at some point need to highlight these but it can wait
+#  # mutate(across(c(qdate, mdate), ~str_remove(., "^_:t.*$"))) |>
+#   # make "" NA
+#   mutate(across(c(qdate_label, mdate, qdate), ~na_if(., ""))) |>
+#   mutate(across(c(qdate,mdate), ~parse_date_time(., "ymdHMS"))) |>
+#       mutate(myear = year(mdate), qyear=year(qdate))
+
+
+```
+
+
+
+## Qualifiers
+
+The query for qualifiers works slightly differently from that for main dates, and undated are a mix of &lt;unknown value&gt; (a minority) and unrecorded.
+
+```{r}
+# the married in dates are real, they're end dates, maybe divorces or ?widowing? before a subsequent marriage.
+# though are they used consistently?
+bn_women_datable_qualifiers |>
+  count(p, prop_label, is.na(qdate)) |>
+  rename(q_notdated = `is.na(qdate)`) |>
+  filter(n>1) |>
+  group_by(p) |>
+  mutate(pc = n/sum(n)) |>
+  ungroup() |> 
+  filter(q_notdated==FALSE) |>
+  mutate(prop_label = fct_reorder(prop_label, pc)) |>
+#  mutate(prop_label = fct_rev(prop_label)) |>
+  ggplot(aes(prop_label, pc)) +
+  #geom_col() +
+  geom_point(aes(size=n)) +
+  coord_flip() +
+  scale_y_continuous(labels = percent_format())+
+  labs(x=NULL, y="% dated", title="Dated qualifiers", size="count", caption = "count>1")
+```
+
+
+The full list of datable qualifiers including single instances.
+
+```{r}
+bn_women_datable_qualifiers |>
+  count(p, prop_label, is.na(qdate)) |>
+  rename(q_notdated = `is.na(qdate)`) |>
+  group_by(p) |>
+  mutate(pc = round(n/sum(n)*100, 2)) |>
+  ungroup() |> 
+  #count(p)  #49
+  #add_count(p, name="n_p") |>
+  # looks like this filter is safe too. all n_p=1 are FALSE. and counts match. but could it change?
+  filter(q_notdated==FALSE) |>
+  arrange(str_to_lower(prop_label)) |>
+  select(-q_notdated) |>
+  kable(col.names = c('property', 'name', 'count', '% dated')) |>
+  kable_styling()
+
+```
