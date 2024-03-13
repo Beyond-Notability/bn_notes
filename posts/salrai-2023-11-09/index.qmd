@@ -52,6 +52,30 @@ tribble(~year, ~men, ~women,
 ) 
 
 
+
+rai_xlsx_path <- "~/r_projects/beyond_notability/bn_wikibase/outputs/ocr/rai_members_lists_sample_20240103_ed.xlsx"
+#read in all the sheets
+rai_sheets <-
+   rai_xlsx_path |>
+   read_bn_sheets() |>
+   map(read_bn_excel, path=rai_xlsx_path)
+
+# added gender/initials to doctor and professor
+rai_members_combined <-
+bind_rows(
+  rai_sheets$rai1901  |>  mutate(p = as.numeric(p)) |>  mutate(src="rai1901"),
+  rai_sheets$rai1911 |> mutate(src="rai1911"),
+  rai_sheets$rai1923 |> mutate(src="rai1923"),
+  rai_sheets$rai1931 |> mutate(src="rai1931"),
+  rai_sheets$rai1940 |> mutate(src="rai1940")
+)  |>
+  mutate(gender = case_when(
+    is.na(name_type) ~ NA,
+    str_detect(name_type, "female") ~ "female",
+    str_detect(name_type, "\\b(male)|military") ~ "male",
+    str_detect(name_type, "initials") ~ "initials"
+  ))
+
 ```
 
 
@@ -737,7 +761,59 @@ all_supporters_pair_cor_graph <-
 
 ```
 
+## SAL and RAI trends in female fellows/members
 
+### SAL
+
+
+```{r}
+bn_fellows_lists |>
+  select(year, men, women) |>
+  pivot_longer(men:women, names_to = "gender", values_to = "n") |>
+  ggplot(aes(factor(year), n, fill=gender)) +
+  geom_col() +
+  scale_fill_manual(values = c("#33bbee", "#ee7733")) +
+  theme(legend.position = "bottom") +
+  labs(title = "Annual totals of FSAs, 1921-50", y="number of Fellows", x="year") +
+  
+bn_fellows_lists |>
+  mutate(pw = women/(men+women)) |>
+  ggplot(aes(factor(year), pw)) +
+  geom_point() +
+  scale_y_continuous(labels = percent_format(), limits = c(0, .2)) +
+  labs(title = "Women as percentage of FSAs 1921-50", y="% of Fellows", x="year")  
+  
+#  plot_annotation(caption = "data: BN sample of annual Fellows Lists")
+
+```
+
+### RAI
+
+update: added RAI 1901-1940 sample from membership lists. It's easy to use titles and full names to assign gender to men and women, but I don't know whether initials-only names (of which there are a lot) can be assumed to be male.
+
+```{r}
+rai_members_combined |>
+  filter(gender %in% c("male", "female")) |>
+  count(gender, src) |>
+  ggplot(aes(src, n, fill=gender)) +
+  geom_col(position = "fill")  +
+  scale_fill_manual(values = c("#33bbee", "#ee7733")) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(title="excluding initials", x=NULL, y=NULL) +
+  
+rai_members_combined |>
+  #mutate(gender = if_else(gender=="initials", "male", gender)) |>
+  filter(!is.na(gender)) |>
+  count(gender, src) |>
+  ggplot(aes(src, n, fill=gender)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("#33bbee", "lightgray", "#ee7733")) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(title="including initials", x=NULL, y=NULL) +
+  
+  #plot_layout(guides = "collect") + 
+  plot_annotation(title = "RAI female membership 1901-1940")
+```
 
 
 ## Comparison of SAL and RAI election supporters

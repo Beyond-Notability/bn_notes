@@ -333,15 +333,21 @@ bn_academic_degree |>
 Breakdown of types by conferring institutions.
 
 - "Oxbridge" includes TCD (for convenience in labelling)
-- We don't currently have any "Scottish" masters (ie: Edinburgh, Glasgow, St Andrews, Aberdeen) but they'll be handled separately if any are added to the database (They need to be treated separately from postgraduate Masters, but I don't think they should be lumped in with Oxbridge MAs.)
+- Scottish masters (ie: Edinburgh, Glasgow, St Andrews, Aberdeen) are handled separately 
+  - note on Scottish terminology: "ordinary" = 3 year degree and "honours" = 4 year (latter is nowadays the norm, but not necessarily so in BN period), but sources won't always make the distinction
 - It's then assumed that a masters conferred by any other known institution is a "proper" postgraduate qualification. (About 2/3 are from the university of London.)
 
-However, there are a lot of unknowns! (They can be found in the table by filtering **degree** by "master" and sorting **conferred** to bring blanks to the top.)
+However, there are (still) a lot of unknowns! (They can be found in the table by filtering **degree** by "master" and sorting **conferred** to bring blanks to the top.)
 
 Thinking about ways to reduce unknowns, on a more probabilistic basis...
 
-- other qualifications: three women with unknown MAs have a U of London *BA* (Q1101 Q1423 Q1439), which makes it extremely unlikely (though from what I've read not impossible) that they would have an Oxbridge/TCD MA. I think it would be reasonable to add them to the postgrad masters category.
-- correlation with educated at information: some women with an unknown provenance MA were educated at Oxford or Cambridge colleges. If they have neither educated at nor academic degree data from any other instition it seems quite likely that their MAs are also from Oxbridge, and for the purposes of this kind of analysis I would be fairly comfortable with that assumption. But they could have studied for a MA somewhere else that we don't have any information about.
+- other qualifications: a few women with unknown MAs have a U of London *BA* (Q1101 Q1423 Q1439), which makes it extremely unlikely (though from what I've read not impossible) that they would have an Oxbridge/TCD MA. I think it would be reasonable to add them to the postgrad masters category.
+
+```{r}
+## moved this bit out of text because the linkage turned out to be much harder than I hoped, so probably this is best avoided
+# - correlation with educated at information: some women with an unknown provenance MA were educated at Oxford or Cambridge colleges. If they have neither educated at nor academic degree data from any other instition it seems quite likely that their MAs are also from Oxbridge, and for the purposes of this kind of analysis I would be fairly comfortable with that assumption. But they could have studied for a MA somewhere else that we don't have any information about. 
+```
+
 
 
 ```{r}
@@ -426,8 +432,7 @@ bn_academic_degree |>
   labs(y="count", fill="type", title="Degrees awarded per decade")
 ```
 
-
-Latest dates cluster in the final decades, which also suggests they may be very imprecise.
+Update: Now there are more precise dates filled in; latest date still clusters a bit towards the end, but nowhere near as much as it did. 
 
 ```{r}
 bn_academic_degree |>
@@ -442,9 +447,10 @@ bn_academic_degree |>
   labs(fill="date type", y="count")
 ```
 
-Version with point in time dates only; however, this includes only about half the records and I'm a bit doubtful that it's reliable. 
+Update: About 3/4 of degrees now have a point in time date, and the pattern is much closer to the overall.
 
 ```{r}
+# 149/195
 bn_academic_degree |>
   filter(!is.na(decade)) |>
   filter(date_label=="point in time") |>
@@ -480,6 +486,7 @@ All women
 #   scale_fill_ptol() +
 #   labs(x=NULL, fill="degree", title="Degrees awarded, by institution", y="count")
 ```
+
 
 
 ```{r}
@@ -537,15 +544,17 @@ bn_academic_degree |>
 
 The full set has too many titles and colours for this treemap to work (which might be improved but that would take more time than I have at the moment), but I think the FSA-only subset makes a nice comparison with [educated at](http://sharonhoward.org/bn/bn_notes/posts/education-2023-09-09/).
 
+
 ```{r}
 library(treemapify)
-
 
 # hmm too much text here isn't there...
 bn_academic_degree |>
   semi_join(bn_fsa_query, by="bn_id") |>
   filter(!is.na(byLabel) & !str_detect(byLabel, "^t\\d")) |>
-  count(byLabel, by) |>
+  mutate(byLabel = if_else(by=="Q3273", "University of Oxford", byLabel)) |>
+  mutate(by = if_else(by=="Q3273", "Q364", by)) |>
+  count(byLabel, by, sort = T) |>
   ggplot(aes(area=n, fill=by, label=byLabel)) +
   geom_treemap(show.legend = F) +
   geom_treemap_text(fontface = "italic", colour = "white", place = "centre", grow = TRUE) +
@@ -604,6 +613,7 @@ bn_academic_degree |>
 
 
 ## Multiple degrees
+
 
 ```{r}
 bn_academic_degree |>

@@ -2,11 +2,13 @@
 
 ## BEFORE std_queries.R ##
 
+# date of R session
+session_date_ymd <- format(Sys.time(), "%Y%m%d") 
 
-today_date_ymd <- format(Sys.time(), "%Y%m%d") 
-
-
-## BEFORE std_queries.R ##
+# today's date as a string, for filenames
+today_date_ymd <- function(){
+  format(Sys.time(), "%Y%m%d") 
+}
 
 # libraries ####
 
@@ -25,6 +27,8 @@ library(tidytext)
 library(tidyverse)
 
 # viz/ggplot extras
+
+library(patchwork)
 
 library(ggthemes)
 library(ggalt)
@@ -95,8 +99,167 @@ make_date_year <-function(data){
 
 
 
+## to get stuff in shared data folder... 
+
+# this might be slightly different in _site project ?
+get_folder_one_above_root <- function(ext_folder){
+  file.path(dirname(here::here()), ext_folder)  ## nb creates absolute path
+}
+
+
+
+##function to read all tabs in a spreadsheet...
+# based on stuff in https://readxl.tidyverse.org/articles/articles/readxl-workflows.html
+
+read_bn_excel <- function(sheet, path) {
+  pathbase <- path |>
+    basename() |>
+    tools::file_path_sans_ext()
+  path |>
+    readxl::read_excel(sheet = sheet) |>
+    clean_names(case="snake")
+}
+# 
+read_bn_sheets <- function(path){
+  path |>
+    readxl::excel_sheets() |>
+    set_names()
+}
+
+
+## example usage
+
+# #read in all the sheets
+# bn_sheets <-
+#   bn_xlsx_path %>%
+#   read_bn_sheets() %>%
+#   map(read_bn_excel, path=bn_xlsx_path)
+# 
+# # get sheet1
+# bn_sheet1_xlsx <-
+#   bn_sheets$sheet1
+
+
+## PPA buckets
+# v1 Feb 2024
+
+bn_ppa_buckets <-
+  read_csv(here::here("_data/bn_ppa_buckets_v1_240212.csv"), show_col_types = F)
+
+
+## moved from std-queries.r
+## Sorted Properties (needs WikipediR)
+## https://beyond-notability.wikibase.cloud/wiki/MediaWiki:Wikibase-SortedProperties
+## this is simpler structure than the queries page and query shouldn't break...
+## thing to watch out for is that some properties might be in more than one page section (and not all properties are included!)
+
+# fetch the page
+bn_sorted_properties_fetch <-
+  page_content(
+    domain = "beyond-notability.wikibase.cloud",
+    page_name = "MediaWiki:Wikibase-SortedProperties",
+    as_wikitext = TRUE
+  )
+
+# parse the page content into sections, ids, labels
+bn_sorted_properties <-
+  bn_sorted_properties_fetch$parse$wikitext$`*` |>
+  enframe() |>
+  select(-name) |>
+  # drop initial ==
+  mutate(value=str_remove(value, "^ *==+ *")) |>
+  # use start of line == to make new rows
+  unnest_regex(section, value, pattern = "\n+ *==", to_lower = F) |>
+  # use end of line == to separate heading sfrom text
+  separate(section, into = c("section", "text"), sep=" *== *\n+ *") |>
+  # include \n here in case there's ever a literal * in the text
+  unnest_regex(text, text, pattern = " *\n+\\* *", to_lower = F) |>
+  # get rid of the remaining * at start of text
+  mutate(text = str_remove(text, "^ *\\* *")) |>
+  # extract P id from text
+  mutate(bn_prop_id = word(text)) |>
+  # extract label in (...) nb that some of the labels contain ()
+  mutate(label = str_match(text, "\\((.+)\\) *$")[,2]) |>
+  mutate(across(c(section, label), str_trim)) |>
+  relocate(bn_prop_id, label)
+
+
+
+# ## Wikibase example queries (needs WikipediR) ####
+# ## not in use - a big frequently changing page and turned out to be safer to C&P queries as needed; they often need adjusting anyway
+# ## but keep the code for reference.
+
+# bn_example_queries_fetch <- 
+#   page_content(
+#     domain = "beyond-notability.wikibase.cloud",
+#     page_name = "Project:SPARQL/examples",
+#     as_wikitext = TRUE
+#   )
+# 
+# # same but as html; easier to work with wikitext for examples queries
+# # bn_example_queries_html <- page_content(
+# #   domain = "beyond-notability.wikibase.cloud",
+# #   page_name = "Project:SPARQL/examples"
+# # )
+# 
+# 
+# bn_example_queries <-
+#   bn_example_queries_fetch$parse$wikitext$`*` |> 
+#   #write("test-wikipage.txt")
+#   enframe() |>
+#   select(-name) |>
+#   # have a feeling this may not be the most robust regex ever but we'll see
+#   unnest_regex(section, value, pattern = "(?<![A-Za-z=])==(?!=)", to_lower = F) |>
+#   separate(section, into=c("section", "queries"), sep="==\n+", extra = "merge", fill="right") |> # hmm this has started giving a missing pieces warning which it wasn't doing before...
+#   ## there are a few ==== ! but they have their own headings so I think it'll be ok to drop their ===
+#   unnest_regex(query, queries, pattern = "====?(?=[A-Za-z ])", to_lower = F) |>
+#   separate(query, into=c("title", "query"), sep="====?\n+", fill="right") |> # warning started here as well
+#   relocate(section, .after = last_col()) |>
+#   relocate(query) |>
+#   mutate(query = str_remove_all(query, "\\s*</?sparql[^>]*>\\s*")) |>
+#   # separate pre-comments from query. doesn't seem to matter for sending a query so this is purely to make it easier to look at here.
+#   # start-query terms: PREFIX SELECT #defaultView: not sure if there are any others?
+#   # BUT start-query terms could also be in pre-comments...
+#   # SO only split on the start-query terms at the beginning of the query or the beginning of a line. (a comment/comment line can't start with a term given that it has to be preceded by #
+#   # is it worth separating any post-comments as well? not sure i fancy working out that regex...
+#   separate(query, into=c("pre", "query_txt"), sep="(?=((\n|^)\\s*(PREFIX|#defaultView:|SELECT)))", extra = "merge", remove = F) |> # missing pieces warning started here as well
+#   mutate(across(c(section, title, query, pre, query_txt), str_trim))  |>
+#   # quick fix (hopefully...) for queries that only specify en-gb in SERVICE language. i think auto_language doesn't work when querying from here rather than in browser
+#   mutate(query = str_replace(query, '\\[AUTO_LANGUAGE\\], *en-gb *(?=["\'])', '[AUTO_LANGUAGE], en-gb, en'))
+# 
+# # nb: query for lines that start # *except* #defaultView
+# #filter(str_detect(query, "^\\s*#(?!defaultView)"))
+
+
+
+
+
+
 ## labels and display ####
 
 # for abbreviating names of the three main societies in labels (use in str_replace_all)
 sal_rai_cas_abbr <-
   c("Society of Antiquaries of London"="SAL", "Royal Archaeological Institute"="RAI", "Congress of Archaeological Societies"="CAS")
+
+##(make sure you do this after sal_rai_cas_abbr if you're using that)
+organisations_abbr <-
+  c("Archaeological" = "Arch", "Antiquarian" = "Antiq", "Society" = "Soc", "Association" = "Assoc")
+
+
+# see dates_timelines_231114 rmd
+# function to make a named vector of colours for variable values
+# df needs cols: group, colour_category
+# get rows in required order before using this (this sorts by frequency; could make another version for random/uncounted etc) and then add rowid
+# grpname is the name of the group or bucket in the group col
+# **grpcols has to be a vector of colour codes** - sthg like viridis_pal()(16)  will work, just have to have enough colours. may need to reverse direction to stop the first one being white grr.
+make_named_colours <- function(df, grpname, grpcols){
+  df |>
+    filter(group==grpname) |>
+    count(colour_category, sort = TRUE) |>
+    rowid_to_column() |>
+    left_join(grpcols |> enframe(), by=c("rowid"="name")) |>
+    fill(value) |>
+    select(colour_category, value) |>
+    # turn the df into a named vector with deframe and this can be used in scale_color_manual
+    deframe()
+}

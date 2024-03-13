@@ -1,0 +1,1594 @@
+---
+title: "Participation in events"
+author: "Sharon Howard"
+date: "2024-03-04"
+date-modified: today
+categories: 
+  - ppa
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+## Wikibase queries
+
+[PPA Buckets](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#PPA_Buckets_for_Women)
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# library(ggbeeswarm)
+# library(ggridges)
+
+library(GGally)
+library(widyr)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+
+
+```{r}
+##for beeswarms you only need dob not dod as well... unless you want to reconstruct missing dobs from dods? hmm.
+## this is a quick query so i think just run it.
+bn_women_dob_sparql <-
+'SELECT distinct ?person ?date 
+WHERE {
+   ?person bnwdt:P3 bnwd:Q3 .
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
+  ?person bnwdt:P26 ?date .   
+}'
+
+bn_women_dob_query <-
+  bn_std_query(bn_women_dob_sparql) |>
+  make_bn_item_id(person) |>
+  select(-person) |>
+  make_date_year() |>
+  rename(dob=date, yob=year) |>
+  group_by(bn_id) |>
+  top_n(1, dob) |>
+  ungroup() 
+# top_n for a few women with >1 dob...
+# some of these look like a year + more specific date. you only need year for this anyway... use top_n. if that's not enough, will need distinct(bn_id, yob) and top_n(yob)
+
+
+
+# organised by P109: union query for linked event pages or in quals, excluding human organisers. atm all are items.
+
+bn_organised_by_sparql <-
+'SELECT distinct ?person ?organised_by ?organised_byLabel ?prop ?ev ?evLabel ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person ( bnp:P71 | bnp:P24 | bnp:P72 | bnp:P23 | bnp:P13 | bnp:P120 | bnp:P113 ) ?s .
+    ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ev .  
+   
+  ?person ?p ?s .
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps.  
+
+  # organised by  
+  {
+    # in linked event page
+   ?ev bnwdt:P109 ?organised_by .  
+  }
+  union
+  {
+    # in qualifier
+     ?s bnpq:P109 ?organised_by . 
+    }
+  
+  # exclude human organisers... P12 Q2137
+       filter not exists { ?organised_by bnwdt:P12 bnwd:Q2137 . }
+        
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}'
+
+bn_organised_by_query <-
+  bn_std_query(bn_organised_by_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(ev, prop, organised_by, s)) |>
+  select(-person) |>
+  rename(ppa=prop)
+```
+
+
+
+
+```{r}
+
+# path to CSV
+bn_events_csv_file <- 
+  paste(bn_fetched_data, "bn_ppa_events.csv", sep="/")
+
+
+bn_women_events_sparql <-
+  'SELECT distinct ?person ?personLabel ?propLabel ?ppaLabel  ?qual_propLabel ?qual_valueLabel ?qual_value ?prop ?ppa ?qual_prop
+?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person ( bnp:P71 | bnp:P24 | bnp:P72 | bnp:P23 | bnp:P13 | bnp:P120 | bnp:P113 ) ?s .
+    ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ppa .  
+   
+  ?person ?p ?s .
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps.      
+          
+  # qualifiers
+   optional { 
+     ?s ?qual_p ?qual_value .   
+     ?qual_prop wikibase:qualifier ?qual_p . 
+    }
+        
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+
+order by ?personLabel '
+
+
+
+# if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
+# Cmd+enter doesn't work when this is on more than 1 line...
+bn_events_fetched <-
+if(file.exists(bn_events_csv_file))  read_csv(bn_events_csv_file) else  
+  # otherwise fetch the sparql query and save to csv and then read the csv. 
+  bn_query_to_csv(bn_women_events_sparql, bn_events_csv_file)
+  
+
+# process the data a bit
+bn_women_events_query <-
+  bn_events_fetched |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(ppa, s, qual_value, prop, qual_prop)) |>
+  mutate(across(c(qual_value, qual_valueLabel, qual_prop, qual_propLabel), ~na_if(., ""))) |>
+  relocate(person, .after = last_col()) |>
+  arrange(bn_id, s)
+
+
+
+#  main only
+# bn_women_ppa_events <-
+bn_women_events <-
+bn_women_events_query |>
+  distinct(bn_id, personLabel, propLabel, ppaLabel, prop, ppa, s) |>
+  left_join(bn_women_dob_query, by="bn_id") |>
+  left_join(bn_organised_by_query |> 
+              # just in case you get another with multiple organisers
+              group_by(s) |>
+              top_n(1, row_number()) |>
+              ungroup() |>
+              select(s, organised_by, organised_byLabel), by="s") |>
+  #renaming to match original
+  rename(event=ppaLabel, event_id=ppa) |>
+  rename(ppa=prop, ppa_label=propLabel) |>
+  relocate(ppa, .after = ppa_label) |>
+  relocate(s, .after = last_col())
+
+# propLabel was ppa_label
+# ppaLabel was ppa_valueLabel
+# ppa was ppa_value
+# prop was ppa
+
+# bn_women_ppa_events_qualifiers <-
+bn_women_events_qualifiers <-
+bn_women_events_query |>
+  #renaming to match original
+  rename(event=ppaLabel, event_id=ppa) |>
+  rename(ppa=prop, ppa_label=propLabel) |>
+  rename(qual_label = qual_propLabel, qual_p=qual_prop) |>
+  relocate(ppa, .after = ppa_label) |>
+  relocate(event_id, .after = event)
+
+# qualifiers 
+# qual_propLabel (eg point in time) was qual_label
+# qual_prop unchanged
+# qual_valueLabel (timestamps, text (incl society names)) unchanged?
+# qual_value (timestamps, Qs, text) unchanged?
+```
+
+
+```{r}
+# not saved (yet)
+# get instance of for qualifiers
+# i think it's better to get them separately esp as there are multis etc
+# problems adapting the query for events only... just get all for ppa for now and get moving
+# but i think you may need to work it out so you can narrow down? for now do a semi join afterwards
+
+bn_women_ppa_qual_inst_sparql <-
+  'SELECT distinct ?person ?ppa ?qual ?qual_instance ?qual_instanceLabel  ?s
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person ?p ?s .  
+ 
+      ?ppa wikibase:claim ?p;      
+         wikibase:statementProperty ?ps.       
+      ?ppa bnwdt:P12 bnwd:Q151 . # i/o ppa      
+ 
+      # get stuff about ?s 
+      ?s ?ps ?qual.
+  
+      # get instance of for qual
+        ?qual bnwdt:P12 ?qual_instance .
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+order by ?s'
+
+bn_women_ppa_qual_inst_query <-
+  bn_std_query(bn_women_ppa_qual_inst_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(ppa, qual, qual_instance, s)) |>
+  select(-person) |>
+  semi_join(bn_women_events, by="s")
+
+# probably best not to use this if some events don't have i/o; go the other way and do left join
+# bn_women_events_qual_io <-
+# bn_women_ppa_qual_inst_query |>
+#   semi_join(bn_women_events, by="s")
+```
+
+
+
+```{r}
+bn_events_time_precision_csv_file <- 
+  paste(bn_fetched_data, "bn_ppa_events_time_precision.csv", sep="/")
+
+
+# this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
+
+bn_women_events_time_precision_sparql <-
+'SELECT distinct ?person ?prop ?ppa  ?date ?date_precision ?date_prop ?date_propLabel ?pqv  ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person ( bnp:P71 | bnp:P24 | bnp:P72 | bnp:P23 | bnp:P13 | bnp:P120 | bnp:P113 ) ?s .
+    ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ppa .  
+   
+  ?person ?p ?s .
+      ?prop wikibase:claim ?p;
+         wikibase:statementProperty ?ps.      
+
+  # qualifier timevalue and precision.
+      ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 ) ?pqv.
+          ?pqv wikibase:timeValue ?date .  
+          ?pqv wikibase:timePrecision ?date_precision .
+     
+  # check number of results but this seems to work 
+        ?s ?pq ?date .   
+          ?date_prop wikibase:qualifier ?pq .
+          ?date_prop wikibase:propertyType wikibase:Time.  
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+'
+
+
+
+
+# if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
+# Cmd+enter doesn't work when this is on more than 1 line...
+bn_events_time_precision_fetched <-
+if(file.exists(bn_events_time_precision_csv_file))  read_csv(bn_events_time_precision_csv_file) else  
+  # otherwise fetch the sparql query and save to csv and then read the csv. 
+  bn_query_to_csv(bn_women_events_time_precision_sparql, bn_events_time_precision_csv_file)
+
+bn_women_events_time_precision_query <-
+  bn_events_time_precision_fetched |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(prop, ppa, date_prop, pqv, s)) |>
+  #make_date_year() |> # um.
+  select(-person)
+
+# read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
+#bn_std_query(bn_women_events_time_precision_sparql) # not converted
+#read_csv(bn_events_timeprecision_csv_file) # converted
+
+
+
+bn_women_events_dates <-
+  bn_women_events_time_precision_query |>
+  # you need to keep the date as well as the precision when you pivot, to join. c() in values_from
+  # start/end pivot to a single row
+  filter(date_prop %in% c("P27", "P28")) |>
+  pivot_wider(names_from = date_propLabel, values_from = c(date_precision, date), id_cols = s) |>
+  clean_names("snake") |>
+  rename(start_precision=date_precision_start_time, end_precision = date_precision_end_time) |>
+  # then add p.i.t.
+  bind_rows(
+    bn_women_events_time_precision_query |>
+      filter(date_prop %in% c("P1")) |>
+      select(s, pit_precision=date_precision, date)
+  ) |> 
+  mutate(date = case_when(
+    !is.na(date) ~ date,
+    !is.na(date_start_time) ~ date_start_time
+  )) |>
+  mutate(date_precision = case_when(
+    !is.na(pit_precision) ~ pit_precision,
+    !is.na(start_precision) ~ start_precision
+  )) |>
+  mutate(year = year(date)) |>
+  # drop extra stuff; you can always get it back if you need it right.
+  select(s, date, date_precision, year)
+
+
+
+
+# add a new step before of_dates for doing of_org combination
+bn_women_events_of <-
+bn_women_events |> 
+  left_join(bn_women_events_qualifiers |>
+              # of (item/free text)
+              filter(qual_p %in% c("P78", "P66")) |>
+              anti_join(bn_women_events |> filter(event_id=="Q3644"), by="s") |> # exclude CAS AGM of 
+              distinct(s, qual_p, qual_label, qual_value, qual_valueLabel) |> # do i need distinct? possibly not.
+              # ensure you have only 1 per stmt. these are all spoke_at; are they the ones with multiple papers?
+              group_by(s) |>
+              top_n(1, row_number()) |>
+              ungroup() |>
+              rename(of_label=qual_label, of=qual_p, of_id=qual_value, of_value=qual_valueLabel) 
+              , by="s") |>
+  # prefer of if you have both
+  # i think organised_by is Items only, but use the id here just in case
+  mutate(of_org = case_when(
+    !is.na(of_value) ~ of_value,
+    !is.na(organised_by) ~ organised_byLabel
+  )) |>
+  mutate(of_org_id = case_when(
+    !is.na(of_id) ~ of_id,
+    !is.na(organised_by) ~ organised_by
+  )) 
+
+
+# had manytomany warning. caused by multiple orgs in of. top_n as a quick hack to get rid. there are only a handful.
+bn_women_events_of_dates <-
+  bn_women_events_of |>
+  left_join(bn_women_events_dates, by="s")  |>
+  relocate(s, .after = last_col())
+
+
+
+# before adding organised_by
+# # watch out for manytomany warning. caused by multiple orgs in of. top_n as a quick hack to get rid. there are only a handful.
+# bn_women_events_of_dates <-
+# bn_women_events |> 
+#   left_join(bn_women_events_qualifiers |>
+#               # of (item/free text)
+#               filter(qual_p %in% c("P78", "P66")) |>
+#               anti_join(bn_women_events |> filter(event_id=="Q3644"), by="s") |> # exclude CAS AGM of 
+#               distinct(s, qual_p, qual_label, qual_value, qual_valueLabel) |> # do i need distinct? possibly not.
+#               # ensure you have only 1 per stmt. 
+#               group_by(s) |>
+#               top_n(1, row_number()) |>
+#               ungroup() |>
+#               rename(of_label=qual_label, of=qual_p, of_id=qual_value, of_value=qual_valueLabel) 
+#               , by="s") |>
+#   left_join(bn_women_events_dates, by="s")  |>
+#   relocate(s, .after = last_col())
+# 
+
+```
+
+
+
+```{r}
+
+## even newer versions: of_org replaces use of of_value
+
+bn_women_events_of_dates_types_all <-
+bn_women_events_of_dates |>
+  # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
+  left_join(
+    bn_women_ppa_qual_inst_query |>
+      filter(qual_instanceLabel %in% c("meeting", "conference", "exhibition")) |>
+      distinct(qual, qual_instance, qual_instanceLabel) |>
+      rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
+  ) |>
+  # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
+  # left_join(
+  #   bn_women_ppa_qual_inst_query |>
+  #     filter(!qual_instanceLabel %in% c("meeting", "conference", "exhibition", "event", "bucket", "locality", "venue")) |>
+  #     distinct(qual, qual_instance, qual_instanceLabel) |>
+  #     rename(instance2_id=qual_instance, instance2=qual_instanceLabel), by=c("event_id"="qual")
+  # )  |>
+  # add directly available locations
+  left_join(
+    bn_women_events_qualifiers |>
+      filter(qual_label=="location") |>
+      group_by(s) |>
+      top_n(1, row_number()) |>
+      ungroup() |>
+      select(s, qual_location=qual_valueLabel, qual_location_value=qual_value)
+  , by="s") |>
+  
+  # consolidate ppa_label item/text. currently only for delegate
+  mutate(ppa_type = case_when(
+    str_detect(ppa_label, "was delegate") ~ "was delegate at",
+    .default = ppa_label
+  )) |>
+  relocate(ppa_type, .after = ppa)  |>
+  
+  # make event type. adjusted to do more as you dropped second i/o join. tweak for F.S.
+  mutate(event_type = case_when(
+    event %in% c("meeting", "exhibition", "conference") ~ event,
+    event_id=="Q292" & is.na(of_org) ~ "meeting",  # folklore society not specified as meetings, but they almost certainly are
+    #event_id=="Q682" ~ "conference", # Annual Meeting as conference? - to work this has to go before instance
+    instance %in% c("meeting", "exhibition", "conference") ~ instance,
+    event %in% c("committee", "museum") ~ "other",
+    str_detect(event, "Meeting|Congress of the Congress of Archaeological Societies") ~ "meeting",
+    str_detect(event, "Conference|Congress") | str_detect(of_org, "Conference|Congress") ~ "conference",
+    #str_detect(instance2, "society|organisation|museum|institution|library") ~ "other",
+    str_detect(of_org, "Society|Museum|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") | str_detect(event, "Society|Museum|Museo|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") ~ "other",
+    .default = "misc"
+  )) |>
+  
+    mutate(event_org = case_when(
+    !is.na(of_org) ~ of_org,
+    event_id=="Q292" & is.na(of_org) ~ event,
+    event_type=="other" ~ event,
+    str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Royal Archaeological Institute", 
+    str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Society of Antiquaries of London",
+    str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Congress of Archaeological Societies",
+    str_detect(event, "Royal Academy") ~ "Royal Academy",
+    str_detect(event, "Society of Lady Artists") ~ "Society of Women Artists", 
+    str_detect(event, "Folklore Society") ~ "The Folklore Society",
+    # i think use event name for conferences/exhibitions without an of. but not generic
+    event_type %in% c("conference", "exhibition", "misc")  & !event %in% c("meeting", "exhibition", "event", "petition", "conference")  ~ event
+  )) |>
+
+  # need an org id as well as org name. not quite the same as of_org_id... probably
+  mutate(org_id = case_when(
+    !is.na(of_org_id) ~ of_org_id,
+    event_id=="Q292" & is.na(of_org) ~ event_id,
+    # need these IDs 
+    str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Q35", 
+    str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Q8",
+    str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Q186", 
+    str_detect(event, "Royal Academy") ~ "Royal_Academy",
+    str_detect(event, "Society of Lady Artists") ~ "Q1891", # probably don't need this now ?
+    str_detect(event, "Folklore Society") ~ "Q292",
+    !is.na(event_org) ~ event_id,
+    # conferences etc without an of - use event_id. but not if generic
+    event_type %in% c("conference", "exhibition", "misc") & !event %in% c("meeting", "exhibition", "event", "petition", "conference") ~ event_id
+  )) |>
+  
+  # event title. still probably wip. this is now not going to exactly match grouping of instance id, i think.
+  # adding organised by -> needs some sort of tweak
+  mutate(event_title = case_when(
+    # for FS. not sure if still needed...
+    event_id=="Q292" & is.na(of_org) ~ paste("meeting,", event),
+    #  use year if other info is lacking. either should match instance id without a problem 
+    event %in% c("exhibition", "meeting", "event", "conference") & is.na(of_org) & !is.na(year) ~ paste0(event, " (", year, ")"),
+    event_id %in% c("Q1918") ~ event,  # society of ladies exhibition- don't want organised by in title here.
+    !event %in% c("meeting", "event", "conference") & !is.na(organised_by) ~ event,
+    is.na(of_org) ~ event,
+    event=="event" ~ of_org,
+    .default = paste(event, of_org, sep=", ")
+  )) |>
+  # some abbreviations
+  mutate(event_title = str_replace_all(event_title, sal_rai_cas_abbr))  |>
+
+  # grouping date for distinct events according to type of event
+  # do i need to check this again after adjusting event_type? 
+  mutate(event_instance_date = case_when(
+    is.na(date) ~ NA,
+    event_id=="Q682" ~ paste0(year, "-01-01"),
+    event_type %in% c("misc", "meeting", "other") ~ as.character(date), # should i make this month?
+    event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
+  ))  |>
+  
+# NB: there is no event_of_id now; event_org_id instead.
+  # id columns for convenience
+  # mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
+  # mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
+  mutate(event_instance_id = paste(event_instance_date, org_id, event_type, sep="_"))  |>
+  
+  # hmm, this may not quite work. and might need a bit of extra work for CAS etc. 
+  mutate(event_org_id = case_when(
+    # if generic and no other info except date, add year to the id [as in event_title].
+    event %in% c("exhibition", "meeting", "event", "conference", "Annual Meeting", "petition") & is.na(of_org) & !is.na(year) ~ paste(org_id, event_type, year, sep="_"),
+    # otherwise exclude date info
+    .default =  paste(org_id, event_type, sep="_"))
+         
+         ) |>
+  relocate(event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, of_org, of_org_id, .after = ppa_type) 
+  
+bn_women_events_of_dates_types <-
+bn_women_events_of_dates_types_all |>
+  # losing ppa_label, but keep ppa in case you need any joins. just bear in mind slight difference.
+  # also dropping separate organised by and of cols.
+  distinct(bn_id, personLabel, ppa_type, ppa, event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, dob, yob)
+
+# unique event instances based on the workings
+# but this is probably not quite right because it includes too much stuff incl title in group by
+bn_women_event_instances <-
+bn_women_events_of_dates_types_all |>
+  group_by(event_instance_id, event_org_id, event_title, event_type, event_org, event, of_org, event_id, of_org_id, event_instance_date, year) |>
+  # get all unique dates listed for the event instance, in chronological order
+  arrange(date, .by_group = T) |>
+  summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
+  ungroup() 
+
+```
+
+
+
+```{r}
+## deprecating...
+# ## new versions
+# bn_women_events_of_dates_types_all <-
+# bn_women_events_of_dates |>
+#   # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
+#   left_join(
+#     bn_women_ppa_qual_inst_query |>
+#       filter(qual_instanceLabel %in% c("meeting", "conference", "exhibition")) |>
+#       distinct(qual, qual_instance, qual_instanceLabel) |>
+#       rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
+#   ) |>
+#   # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
+#   # left_join(
+#   #   bn_women_ppa_qual_inst_query |>
+#   #     filter(!qual_instanceLabel %in% c("meeting", "conference", "exhibition", "event", "bucket", "locality", "venue")) |>
+#   #     distinct(qual, qual_instance, qual_instanceLabel) |>
+#   #     rename(instance2_id=qual_instance, instance2=qual_instanceLabel), by=c("event_id"="qual")
+#   # )  |>
+#   # add directly available locations
+#   left_join(
+#     bn_women_events_qualifiers |>
+#       filter(qual_label=="location") |>
+#       group_by(s) |>
+#       top_n(1, row_number()) |>
+#       ungroup() |>
+#       select(s, qual_location=qual_valueLabel, qual_location_value=qual_value)
+#   , by="s") |>
+#   
+#   # consolidate ppa_label item/text. currently only for delegate
+#   mutate(ppa_type = case_when(
+#     str_detect(ppa_label, "was delegate") ~ "was delegate at",
+#     .default = ppa_label
+#   )) |>
+#   relocate(ppa_type, .after = ppa)  |>
+#   
+#   # make event type. adjusted to do more as you dropped second i/o join. tweak for F.S.
+#   mutate(event_type = case_when(
+#     event %in% c("meeting", "exhibition", "conference") ~ event,
+#     event_id=="Q292" & is.na(of_value) ~ "meeting",  # folklore society not specified as meetings, but they almost certainly are
+#     #event_id=="Q682" ~ "conference", # Annual Meeting as conference? - to work this has to go before instance
+#     instance %in% c("meeting", "exhibition", "conference") ~ instance,
+#     event %in% c("committee", "museum") ~ "other",
+#     str_detect(event, "Meeting|Congress of the Congress of Archaeological Societies") ~ "meeting",
+#     str_detect(event, "Conference|Congress") | str_detect(of_value, "Conference|Congress") ~ "conference",
+#     #str_detect(instance2, "society|organisation|museum|institution|library") ~ "other",
+#     str_detect(of_value, "Society|Museum|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") | str_detect(event, "Society|Museum|Museo|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") ~ "other",
+#     .default = "misc"
+#   )) |>
+#   
+#     mutate(event_org = case_when(
+#     !is.na(of_value) ~ of_value,
+#     event_id=="Q292" & is.na(of_value) ~ event,
+#     event_type=="other" ~ event,
+#     str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Royal Archaeological Institute", 
+#     str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Society of Antiquaries of London",
+#     str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Congress of Archaeological Societies",
+#     str_detect(event, "Royal Academy") ~ "Royal Academy",
+#     str_detect(event, "Society of Lady Artists") ~ "Society of Women Artists", 
+#     str_detect(event, "Folklore Society") ~ "The Folklore Society",
+#     # i think use event name for conferences/exhibitions without an of. but not generic
+#     event_type %in% c("conference", "exhibition", "misc")  & !event %in% c("meeting", "exhibition", "event", "petition", "conference")  ~ event
+#   )) |>
+# 
+#   # need an org id as well as org name.
+#   mutate(org_id = case_when(
+#     !is.na(of_id) ~ of_id,
+#     event_id=="Q292" & is.na(of_value) ~ event_id,
+#     # need these IDs 
+#     str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Q35", 
+#     str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Q8",
+#     str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Q186", 
+#     str_detect(event, "Royal Academy") ~ "Royal_Academy",
+#     str_detect(event, "Society of Lady Artists") ~ "Q1891",
+#     str_detect(event, "Folklore Society") ~ "Q292",
+#     !is.na(event_org) ~ event_id,
+#     # conferences etc without an of - use event_id. but not if generic
+#     event_type %in% c("conference", "exhibition", "misc") & !event %in% c("meeting", "exhibition", "event", "petition", "conference") ~ event_id
+#   )) |>
+#   
+#   # event title. still probably wip. this is now not going to exactly match grouping of instance id, i think.
+#   mutate(event_title = case_when(
+#     # for FS
+#     event_id=="Q292" & is.na(of_value) ~ paste("meeting,", event),
+#     #  use year if other info is lacking. either should match instance id without a problem 
+#     event %in% c("exhibition", "meeting", "event", "conference") & is.na(of_value) & !is.na(year) ~ paste0(event, " (", year, ")"),
+#     is.na(of_value) ~ event,
+#     event=="event" ~ of_value,
+#     .default = paste(event, of_value, sep=", ")
+#   )) |>
+#   # some abbreviations
+#   mutate(event_title = str_replace_all(event_title, sal_rai_cas_abbr))  |>
+# 
+#   # grouping date for distinct events according to type of event
+#   # do i need to check this again after adjusting event_type? 
+#   mutate(event_instance_date = case_when(
+#     is.na(date) ~ NA,
+#     event_id=="Q682" ~ paste0(year, "-01-01"),
+#     event_type %in% c("misc", "meeting", "other") ~ as.character(date), # should i make this month?
+#     event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
+#   ))  |>
+#   
+# # NB: there is no event_of_id now; event_org_id instead.
+#   # id columns for convenience
+#   # mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
+#   # mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
+#   mutate(event_instance_id = paste(event_instance_date, org_id, event_type, sep="_"))  |>
+#   # hmm, this may not quite work. might need a bit of extra work for CAS etc. 
+#   mutate(event_org_id = paste(org_id, event_type, sep="_")) |>
+#   relocate(event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, .after = ppa_type) 
+#   
+# bn_women_events_of_dates_types <-
+# bn_women_events_of_dates_types_all |>
+#   # losing ppa_label, but keep ppa in case you need any joins. just bear in mind slight difference.
+#   distinct(bn_id, personLabel, ppa_type, ppa, event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, dob, yob)
+# 
+# # unique event instances based on the workings
+# # but this is probably not quite right because it includes too much stuff incl title in group by
+# bn_women_event_instances <-
+# bn_women_events_of_dates_types_all |>
+#   group_by(event_instance_id, event_org_id, event_title, event_type, event_org, event, of_value, event_id, of_id, event_instance_date, year) |>
+#   # get all unique dates listed for the event instance, in chronological order
+#   arrange(date, .by_group = T) |>
+#   summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
+#   ungroup() 
+```
+
+
+
+
+
+```{r}
+## original
+# bn_women_events_of_dates_types <-
+# bn_women_events_of_dates |>
+#   # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
+#   left_join(
+#     bn_women_ppa_qual_inst_query |>
+#       filter(qual_instanceLabel %in% c("meeting", "conference", "exhibition")) |>
+#       distinct(qual, qual_instance, qual_instanceLabel) |>
+#       rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
+#   ) |>
+#   # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
+#   # add directly available locations
+#   left_join(
+#     bn_women_events_qualifiers |>
+#       filter(qual_label=="location") |>
+#       group_by(s) |>
+#       top_n(1, row_number()) |>
+#       ungroup() |>
+#       select(s, qual_location=qual_valueLabel, qual_location_value=qual_value)
+#   , by="s") |>
+#   # make event type. adjusted to do more as you dropped second i/o join
+#   mutate(event_type = case_when(
+#     event %in% c("meeting", "exhibition", "conference") ~ event,
+#     instance %in% c("meeting", "exhibition", "conference") ~ instance,
+#     event %in% c("committee", "museum") ~ "other",
+#     str_detect(event, "Meeting|Congress of the Congress of Archaeological Societies") ~ "meeting",
+#     str_detect(event, "Conference|Congress") | str_detect(of_value, "Conference|Congress") ~ "conference",
+#     #str_detect(instance2, "society|organisation|museum|institution|library") ~ "other",
+#     str_detect(of_value, "Society|Museum|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") | str_detect(event, "Society|Museum|Museo|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") ~ "other",
+#     .default = "misc"
+#   )) |>
+#   # consolidate ppa_label item/text. currently only delegate
+#   mutate(ppa_type = case_when(
+#     str_detect(ppa_label, "was delegate") ~ "was delegate at",
+#     .default = ppa_label
+#   )) |>
+#   relocate(ppa_type, event_type, .after = ppa)  |>
+#   # grouping date for distinct events according to type of event... workings/rules further down this doc.
+#   # do i need to check this again after adjusting event_type? i think it's ok. only a handful changed and even fewer made a difference to the group date. only change to general rules other=ymd. 
+#   mutate(event_instance_date = case_when(
+#     is.na(date) ~ NA,
+#     event_id=="Q682" ~ paste0(year, "-01-01"),
+#     event_type %in% c("misc", "meeting", "other") ~ as.character(date),
+#     event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
+#   ))  |>
+#   # and id columns for convenience
+#   mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
+#   mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
+#   # to ignore the free text of/event IDs but keep NA of. drops about 11 rows.
+#   #filter(str_detect(event_of_id, "Q\\d.*_(Q|NA)")) |>
+#   # event title... wip.
+#   mutate(event_title = case_when(
+#     # if there's a location and no other specific info, use it. hmm but how to ensure instance id matches. 
+#     # you could use year (or even instance date). either should match instance id without a problem
+#     #!is.na(qual_location) & event %in% c("exhibition", "meeting", "event") & is.na(of_value) ~ paste0(event, " (", qual_location, ")"),
+#     # fix flipping Gomme
+#     event %in% c("exhibition", "meeting", "event", "conference") & is.na(of_value) & !is.na(year) ~ paste0(event, " (", year, ")"),
+#     is.na(of_value) ~ event,
+#     event=="event" ~ of_value,
+#     event_type=="meeting" ~ paste0(event, " of ", of_value),
+#     .default = paste(event, of_value, sep=", ")
+#   )) |>
+#   mutate(event_title = str_replace_all(event_title, sal_rai_cas_abbr)) |>
+#   mutate(event_org = case_when(
+#     !is.na(of_value) ~ of_value,
+#     event_type=="other" ~ event,
+#     str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Royal Archaeological Institute", 
+#     str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Society of Antiquaries of London",
+#     str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Congress of Archaeological Societies",
+#     str_detect(event, "Royal Academy") ~ "Royal Academy",
+#     str_detect(event, "Society of Lady Artists") ~ "Society of Lady Artists",
+#   )) 
+# 
+# 
+# # this is still a bit WIP, disambiguation may still be improvable
+# # unique event instances based on the workings.  
+# bn_women_event_instances <-
+# bn_women_events_of_dates_types |>
+#   group_by(event_instance_id, event_of_id, event, event_type, of_value, event_id, of_id, event_instance_date, event_title, event_org, year) |>
+#   # get all unique dates listed for the event instance, in chronological order
+#   arrange(date, .by_group = T) |>
+#   summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
+#   ungroup() 
+
+```
+
+
+
+
+```{r}
+## grouping
+# since your brain is very small and pathetic
+# 1. distinct event *instances* per woman ("attendances")
+# excluding different activities:  distinct(bn_id, personLabel, event_title,  event_type, event_org, event_org_id, org_id, year, event_instance_date, event_instance_id)
+# including different activities: distinct(bn_id, personLabel, ppa_type, event_title,  event_type, event_org, event_org_id, org_id, year, event_instance_date, event_instance_id) 
+# - can add year to the above but not date.
+# 2. distinct *events* per woman . this is not working right at the moment anyway.
+# excluding different activities: distinct(bn_id, event_title, event, of_value, event_of_id)
+# including different activites: distinct(bn_id, ppa_type, event_title, event, of_value, event_of_id)
+```
+
+
+
+## Notes
+
+This analysis refers only to PPAs in the "event participation" bucket:
+
+ 
+
+```{r}
+bn_ppa_buckets |>
+  filter(label=="event participation") |>
+  select(ppa, ppa_id) |>
+  kable() |>
+  kable_styling()
+```
+
+
+"was delegate at (item)" and "was delegate at (free text)" will be merged into a single PPA type "was delegate at" for purposes of analysis.
+
+### Definitions! 
+
+(a bit nerdy, sorry)
+
+There are basically two different kinds of event in the data: recurring events (eg society monthly meetings or AGMs) and one-off events. Recurring events are a bit more complicated to handle when counting things. So, for recurring events, "event" will refer to any/all instances of (eg) "meeting of the Folklore Society" (Q31 / Q292), "Royal Archaeological Institute Meeting" (Q29), and so on. 
+
+An "event instance" refers to a *single occurrence* of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903). For counting one-off events "event" and "event instance" are the same thing.
+
+An "event attendance" refers to one woman participating at one event instance. Sometimes the same event instance appears more than once on a woman's page under different PPAs; unless the emphasis is on the specific activity rather than the event, I'll reduce them to one for counting purposes.
+
+Identifying what is a single instance of a recurring event is not always perfectly simple, especially given the different kinds of event present in the database. At present it's based on three elements:
+
+- the main event item, which may be generic such as "meeting" (Q31) or a named event like the "Conference on the Future of Archaeology" (Q1859)
+- particularly for generic events, the `of` qualifier is used for more specific info (eg the name of the event/the organisation responsible). The less frequent `organised by` qualifier is also used (but only where it doesn't have instance of human).
+- the date
+
+There are occasional variations in recording that might cause records of the same event instance to be counted separately. Eg there can be variations in date precision across different records of an event or an event might have been held over several days, so some assumptions have to be made about date grouping which could occasionally go wrong. 
+
+Conversely, in a very small number of cases, the absence of specific information might cause distinct events to be collapsed into a single instance. 
+
+In a few cases, there's more than one possible way to structure a record of what could be the same event, and this will mean that they get treated as different things. Eg, there are specific items for SAL and RAI Meetings, but there are also occasional records in the form "meeting (Q31) `of` RAI/SAL" and it's unclear to me whether it's intentional (a different sort of meeting?) or just an oversight. (But I'd emphasise that this is *very* occasional and a minor issue.)
+
+### updates
+
+- added more about event activities
+
+### TODO
+
+- I may be able to make a few further improvements by pulling in some infrequently used qualifiers
+- Several events are related to suffrage activities (or other interesting subjects); nothing is being done with this kind of information at the moment.
+- I want to look at locations, but this will involve more complicated queries. (As a more general TODO, I really need to write out reusable code for fetching location data as reliably as possible.)
+- Look into adding text annotations for data points of interest
+
+
+## Event types
+
+- meeting: meeting Q31, Annual Meeting Q682 or a named event which has `instance of` Q31 or Q682
+- exhibition: exhibition Q756, or a named event which has `instance of` Q756, or free text item mentions "Exhibition".
+- conference: conference Q699 or a named event with `instance of` Q699, or free text item mentions "Conference".
+- other: an event (eg a lecture) that's associated with a named organisation but doesn't seem to be part of one of the above. Some of these are meetings but not distinctly labelled as such.
+- misc: mainly free text or generic events that don't seem to fall into any of the categories above (a few improvements can be made to this as well but there are only about 20 of them)
+
+
+```{r}
+bn_women_event_instances |> 
+  count(event_type) |>
+  mutate(event_type=fct_reorder(event_type, n)) |>
+  ggplot(aes(y=event_type, x= n)) +
+  geom_col() +
+  labs(y=NULL, x="event instances", title="Event types")
+```
+
+
+
+## Most frequently attended events
+
+Counting by attendance (and ignoring different activities by the same woman) 
+
+Some labels are very long so they're abbreviated (SAL, RAI, CAS; "Society"-> "Soc", etc); occasionally this might result in something that looks a bit odd.
+
+
+### by event type
+
+meetings (at least 6 attendances)
+
+
+```{r}
+# organisations_abbr for shorter labels in shared.r
+# was  distinct(bn_id, personLabel, event_title,  event_type, event_org, event_org_id, org_id, year, event_instance_date, event_instance_id) |>
+bn_women_events_of_dates_types |>
+  distinct(bn_id, event_title, event_org, event_type, event_org_id, event_instance_date, event_instance_id, year, org_id) |>
+  filter(event_type=="meeting") |>
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  count(event_title, event_org, event_org_id, sort = T) |>
+  filter(n>=6) |>
+  mutate(event_title = fct_reorder(event_title, n)) |>
+  ggplot(aes(x=n, y=event_title)) +
+  geom_col() +
+  labs(y=NULL, x="event attendances", title = "Meetings")
+```
+
+conferences (only those attended by more than 1 woman)
+
+```{r}
+# organisations_abbr for shorter labels in shared.r
+bn_women_events_of_dates_types |>
+  #distinct(bn_id, event_title,  event_type, event_org, event_org_id, org_id, event_instance_date, event_instance_id) |>
+  filter(event_type=="conference") |>
+
+  distinct(bn_id, event_title, event_org, event_type, event_org_id, event_instance_date, event_instance_id, year, org_id) |>
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  add_count(event_title, name="n_bn") |>
+  count(event_title, event_org, event_org_id, n_bn, sort = T) |>
+  filter(n>1) |>
+  mutate(event_title = fct_reorder(event_title, n_bn)) |>
+  ggplot(aes(x=n, y=event_title)) +
+  geom_col() +
+  labs(y=NULL, x="event attendances", title="Conferences")
+```
+
+
+exhibitions (more than 1 attendance)
+
+
+```{r}
+# organisations_abbr for shorter labels in shared.r
+bn_women_events_of_dates_types |>
+  #distinct(bn_id, event_title,  event_type, event_org, event_org_id, org_id, event_instance_date, event_instance_id) |>
+  filter(event_type=="exhibition") |>
+  distinct(bn_id, event_title, event_org, event_type, event_org_id, event_instance_date, event_instance_id, year, org_id) |>
+ 
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  add_count(event_title, name="n_bn") |>
+  count(event_title, event_org, event_org_id, n_bn, sort = T) |>
+
+  filter(n>1) |>
+  mutate(event_title = fct_reorder(event_title, n_bn)) |>
+  ggplot(aes(x=n, y=event_title)) +
+  geom_col() +
+  labs(y=NULL, x="event attendances", title="Exhibitions")
+```
+
+```{r}
+## original
+# organisations_abbr for shorter labels in shared.r
+# bn_women_events_of_dates_types |>
+#   distinct(bn_id, event_title, event, event_id, of_value, of_id, event_type, event_of_id, event_instance_date, event_instance_id) |>
+#   filter(event_type=="exhibition") |>
+#   mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+#   add_count(event_title, name="n_bn") |>
+#   count(event_title, event, of_value, event_of_id, n_bn, sort = T) |>
+#   filter(n>1) |>
+# #  top_n(20, n) |>
+#   mutate(event_title = fct_reorder(event_title, n_bn)) |>
+#   ggplot(aes(x=n, y=event_title)) +
+#   geom_col() +
+#   labs(y=NULL, x="event attendances", title="Exhibitions")
+```
+
+other (more than 1 attendance)
+
+
+```{r}
+# organisations_abbr for shorter labels in shared.r
+bn_women_events_of_dates_types |>
+    #distinct(bn_id, event_title,  event_type, event_org, event_org_id, org_id, event_instance_date, event_instance_id) |>
+   distinct(bn_id, event_title, event_org, event_type, event_org_id, event_instance_date, event_instance_id, year, org_id) |>
+  filter(event_type=="other") |>
+  
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  add_count(event_title, name="n_bn") |>
+  count(event_title, event_org, event_org_id, n_bn, sort = T) |>
+
+  filter(n>1) |>
+  mutate(event_title = fct_reorder(event_title, n_bn)) |>
+  ggplot(aes(x=n, y=event_title)) +
+  geom_col() +
+  labs(y=NULL, x="event attendances", title="Organisations other")
+```
+
+
+
+
+
+
+
+## Frequent attenders
+
+Many women turn up at only a small number of event instances. Who are the most frequent event attenders?
+
+```{r}
+#Of these, who are often going to the same event, and who go to many different events? 
+# bn_women_events_of_dates_types |>
+#   distinct(bn_id, personLabel, event_title, event, of_value, event_type, event_of_id, event_instance_date, event_instance_id, year) |>
+#   count(bn_id, name="n_bn") |>
+#   filter(n_bn==1)
+```
+
+
+At least 8 attendances (ignoring different PPAs). About 140 women have only a single event attendance; about 40 went to 8 or more.
+
+Jessie MacGregor is at the top because she exhibited at the RA Summer Exhibition almost every year from 1872 to 1904 (as well as six times at the Society of Lady Artists Exhibition).
+
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id) |>
+ 
+  add_count(bn_id, name="n_bn") |>
+  filter(n_bn>=8) |>
+  count(bn_id, personLabel, event_type, n_bn) |>
+  mutate(personLabel=fct_reorder(personLabel, n_bn)) |>
+  ggplot(aes(y=personLabel, x=n, fill=event_type)) +
+  geom_col() +
+  scale_fill_ptol() +
+  labs(y=NULL, x="attendances", title = "Most frequent attenders of events, with breakdown by type")
+```
+
+By age groups
+
+at least 8 attendances
+
+- fewer women in the late group
+- earlier women more likely to accumulate >20 attendances
+- but in the 8-12 attendances range the numbers in each group are actually very similar 
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, yob) |>
+  
+  mutate(birth = case_when(
+    yob <= 1850 ~ "born 1850 or earlier",
+    between(yob, 1851, 1880) ~ "born 1851-1880",
+    yob >1880 ~ "born 1881 or after",
+    #.default = "year of birth unknown"
+  )) |>
+  filter(!is.na(birth)) |>
+  add_count(bn_id, name="n_bn") |>
+  # group_by(birth) |>
+  # top_n(10, n_bn) |>
+  # ungroup() |>
+  filter(n_bn>=8) |> 
+  #count(birth)
+  count(bn_id, personLabel, birth, n_bn, event_type) |>
+ # filter(n <=12) |> arrange(birth)
+  mutate(personLabel=fct_reorder(personLabel, n_bn)) |>
+  ggplot(aes(y=personLabel, x=n, fill=event_type)) +
+  geom_col() +
+  facet_wrap(~birth, scales = "free_y", ncol=1) +
+  scale_fill_ptol() +
+  labs(y=NULL, x="attendances", title = "Most frequent attenders of events, by age groups")
+```
+
+
+```{r}
+# bn_women_events_of_dates_types |>
+#   distinct(bn_id, personLabel, event_title, event, of_value, event_type, event_of_id, event_instance_date, event_instance_id, year) |>
+#   add_count(bn_id, name="n_bn") |>
+#   filter(n_bn>=8) |>
+#   count(bn_id, personLabel, event_type, n_bn) |>
+#   mutate(personLabel=fct_reorder(personLabel, n_bn)) |>
+#   ggplot(aes(y=personLabel, x=n, fill=event_type)) +
+#   geom_col() +
+#   scale_fill_ptol() +
+#   labs(y=NULL, x="attendances")
+```
+
+But overall counts can obscure interesting differences in patterns of participation. Some women, like Jessie MacGregor, might tend to attend just one or a few events; others might be spread more or less evenly across a wider range of events and/or organisations. 
+
+There are too many different events/organisations to show labelled breakdowns but it's still possible to use a breakdown to get an overview of the patterns. It's possible to see the extent to which Jessie's participation is concentrated in just the one event, compared to, say, Margaret Murray's profile (though Murray is also exceptional!). 
+
+It's noticeable that in many cases, even women who attend several different events tend to favour one over the rest.
+
+```{r}
+## by organisation; virtually identical to event...
+# bn_women_events_of_dates_types |> 
+#   #distinct(bn_id, personLabel, event_title, event_type, event_org_id, event_org, org_id, event_instance_date, event_instance_id) |>
+#   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>  
+#   filter(!is.na(event_org)) |> 
+#   add_count(bn_id, name="n_bn") |>
+#   filter(n_bn>=8) |>
+# 
+#   group_by(bn_id, personLabel, n_bn, event_org) |>
+#   summarise(n_ev=n(),  .groups = "drop_last") |>
+#   arrange(n_ev, .by_group = T) |>
+#   mutate(cum_sum_ev = cumsum(n_ev)) |>
+#   ungroup() |>
+#     
+#   mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
+#   ggplot(aes(x=n_ev, y=personLabel)) +
+#   geom_col(colour="white", fill="darkblue") +
+#   labs(y=NULL, x="event attendances", title = "Most frequent attenders, with breakdown by organisation")
+```
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+  #filter(event_type !="misc") |>
+  add_count(bn_id, name="n_bn") |>
+  filter(n_bn>=8)  |>
+  group_by(bn_id, personLabel, n_bn, event_title) |>
+  summarise(n_ev=n(),  .groups = "drop_last") |>
+  mutate(rnum = row_number() ) |>
+  arrange(n_ev, .by_group = T) |>
+  mutate(cum_sum_ev = cumsum(n_ev)) |>
+  ungroup() |>
+  mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
+  # errm how is this working? what was the point of cumsum?
+  ggplot(aes(personLabel, n_ev )) +
+  geom_col(colour="white", fill="darkblue") +
+  coord_flip() +
+  labs(x=NULL, y="event attendances", title = "Most frequent attenders, with event breakdown")
+```
+
+
+
+
+This colour codes the segments by event type; it's kinda cute but I'm not sure if it's useful
+
+```{r}
+## group by event type. works but i'm not sure it's helpful
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, ppa_type, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+  #filter(event_type !="misc") |>
+  add_count(bn_id, name="n_bn") |>
+  filter(n_bn>=8)  |>
+  # get count of evs without event_type grouping
+  group_by(bn_id, event_title) |>
+  mutate(sort_ev=n()) |>
+  ungroup() |>
+  # sort_ev needs to be before other things to get right order... is it possible to use desc() to flip it round though? nope.
+  group_by(bn_id, sort_ev, personLabel, n_bn, event_title, event_type) |>
+  #arrange(-sort_ev, .by_group = T) |> # this makes no difference
+  summarise(n_ev=n(),  .groups = "drop_last") |>
+  mutate(cum_sum_ev = cumsum(n_ev)) |>
+  ungroup() |>
+  mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
+  ggplot(aes(personLabel, n_ev , fill=event_type)) +
+  geom_col(colour="white") +
+  coord_flip() +
+  labs(x=NULL, y="event attendances", title = "Most frequent attenders with event breakdown, by event type") +
+  scale_fill_ptol()
+```
+
+
+The chart can be flipped around, to look at patterns of participation by event rather than by person.
+
+
+Conferences, as they're all (or nearly all) one-off events aren't very interesting except to show what a uniform one person per event pattern looks like.
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+    filter(event_type=="conference") |>
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  #filter(event_type !="misc") |>
+  add_count(event_title, name="n_bn") |>
+  filter(n_bn>=1)  |>
+  group_by(event_title, n_bn, bn_id) |>
+  summarise(n_ev=n(),  .groups = "drop_last") |>
+  arrange(n_ev, .by_group = T) |>
+  mutate(cum_sum_ev = cumsum(n_ev)) |>
+  ungroup() |>
+  mutate(event_title = fct_reorder(event_title, n_bn)) |>
+  ggplot(aes(event_title, n_ev )) +
+  geom_col(colour="white", fill="brown") +
+  coord_flip() +
+  labs(x=NULL, y="event attendances", title = "Top conferences, with attender breakdown")
+  # scale_fill_tableau()
+
+```
+
+Recurring events tend to share a similar and familiar sort of pattern (the flip side of women tending to prefer one event over others), that a relatively small number of people account for a high proportion of attendances, with a larger number of more irregular/occasional attenders. But the exact distribution varies; it may be more pronounced for smaller organisations' events.
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+    filter(event_type=="meeting") |>
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  #filter(event_type !="misc") |>
+  add_count(event_title, name="n_bn") |>
+  filter(n_bn>=7)  |> 
+  group_by(event_title, n_bn, bn_id) |>
+  summarise(n_ev=n(),  .groups = "drop_last") |>
+  arrange(n_ev, .by_group = T) |>
+  mutate(cum_sum_ev = cumsum(n_ev)) |>
+  ungroup() |>
+  mutate(event_title = fct_reorder(event_title, n_bn)) |>
+  ggplot(aes(event_title, n_ev )) +
+  geom_col(colour="white", fill="brown") +
+  coord_flip() +
+  labs(x=NULL, y="event attendances", title="Top meetings, with attender breakdown")
+  # scale_fill_tableau()
+
+```
+
+
+Because exhibitions are a mix of recurring and one-off events, they have a mixed pattern.
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+    filter(event_type=="exhibition") |>
+  mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
+  #filter(event_type !="misc") |>
+  add_count(event_title, name="n_bn") |>
+  filter(n_bn>=2)  |>
+  group_by(event_title, n_bn, bn_id) |>
+  summarise(n_ev=n(),  .groups = "drop_last") |>
+  arrange(n_ev, .by_group = T) |>
+  mutate(cum_sum_ev = cumsum(n_ev)) |>
+  ungroup() |>
+  mutate(event_title = fct_reorder(event_title, n_bn)) |>
+  ggplot(aes(event_title, n_ev )) +
+  geom_col(colour="white", fill="brown") +
+  coord_flip() +
+  labs(x=NULL, y="event attendances", title = "Top exhibitions, with attender breakdown")
+  # scale_fill_tableau()
+
+```
+
+
+
+
+
+
+## By organisation
+
+(some of these for conferences/exhibitions are not really "organisations" as such)
+
+at least 7 attendances
+
+```{r}
+bn_women_events_of_dates_types |> 
+  distinct(bn_id, event_title, event_type, event_org_id, event_org, org_id, event_instance_date, event_instance_id) |>
+  filter(!is.na(event_org)) |> 
+  mutate(event_org=str_replace_all(event_org, sal_rai_cas_abbr)) |>
+  mutate(event_org=str_replace_all(event_org, organisations_abbr))  |>
+  mutate(event_org=str_replace_all(event_org, c("Conference"="Conf", "Congress"="Cong"))) |>
+  count(event_org, sort = T)  |>
+  filter(n>=7) |>
+  mutate(event_org = fct_reorder(event_org, n)) |>
+  ggplot(aes(x=n, y=event_org)) +
+  geom_col() +
+  labs(y=NULL, x="event attendances", title = "Top organisations, by attendances")
+```
+
+ 
+
+at least 4 women
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_org, org_id) |>
+  filter(!is.na(org_id) ) |>
+  mutate(event_org=str_replace_all(event_org, sal_rai_cas_abbr)) |>
+  mutate(event_org=str_replace_all(event_org, organisations_abbr)) |>
+  add_count(event_org, org_id, name="n_bn") |>
+  filter(n_bn>=4)  |> # 
+  count(event_org, org_id, n_bn) |>
+  mutate(event_org = fct_reorder(event_org, n_bn)) |>
+  ggplot(aes(x=n, y=event_org)) +
+  geom_col() +
+  labs(y=NULL, x="women", title = "Top organisations, by attenders")
+```
+
+Slight differences between charts for women vs women's individual attendances again point to different patterns of participation.
+
+The breakdown by attenders for organisations.
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+  filter(!is.na(org_id)  ) |>
+  mutate(event_org=str_replace_all(event_org, sal_rai_cas_abbr)) |>
+  mutate(event_org=str_replace_all(event_org, organisations_abbr)) |>
+  mutate(event_org=str_replace_all(event_org, c("Conference"="Conf", "Congress"="Cong"))) |>
+  add_count(event_org, org_id, name="n_bn") |>
+  filter(n_bn>=7)  |> # 
+  #top_n(20, n_bn) |>
+  group_by(event_org, org_id, n_bn, bn_id) |>
+  summarise(n_ev=n(),  .groups = "drop_last") |>
+  arrange(n_ev, .by_group = T) |>
+  mutate(cum_sum_ev = cumsum(n_ev)) |>
+  ungroup() |>
+  mutate(event_org = fct_reorder(event_org, n_bn)) |>
+  ggplot(aes(event_org, n_ev )) +
+  geom_col(colour="white", fill="brown") +
+  coord_flip() +
+  labs(x=NULL, y="attendances", title="Top organisations, with attender breakdown")
+  # scale_fill_tableau()
+
+```
+
+
+```{r}
+##At meetings, very few organisations average more than 1 woman attending per event
+# average per event for each organisation?
+
+# bn_women_events_of_dates_types |>
+#   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
+#   filter(!is.na(org_id)  ) |>
+#   filter(event_type=="meeting") |>
+#   mutate(event_org=str_replace_all(event_org, sal_rai_cas_abbr)) |>
+#   mutate(event_org=str_replace_all(event_org, organisations_abbr)) |>
+#   mutate(event_org=str_replace_all(event_org, c("Conference"="Conf", "Congress"="Cong"))) |>
+#   add_count(event_org, org_id, name="n_bn") |>
+#  # filter(n_bn>=7)  |> # 
+#   count(event_instance_id, event_org, event_org_id, n_bn) |>
+#   group_by(event_org, event_org_id, n_bn) |>
+#   summarise(s=sum(n), mn=mean(n), med=median(n), .groups = "drop_last") |>
+#   ungroup() |>
+#   filter(mn>1) |>
+#   #top_n(20, mn)
+#     mutate(event_org = fct_reorder(event_org, mn)) |>
+#   ggplot(aes(x=mn, y=event_org)) +
+#   geom_col() +
+#   labs(y=NULL, x="mean", title="Meetings: top average attendances per meeting")
+
+```
+
+
+
+## Time
+
+In general, I assume the data is unlikely to be anywhere near comprehensive enough to say anything about trends, though I don't know if that might be less true within specific more fully recorded organisations/events.
+
+
+Nonetheless the shape of the data we have is interesting.
+
+(The late peak is largely due to the year of the future of archaeology conference; the one in the middle is partly accounted for by the 1891 folklore objects exhibition.)
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(year, bn_id, event_instance_id) |>
+  count(year, sort = T) |>
+  filter(!is.na(year)) |>
+  ggplot(aes(year, n)) +
+  geom_point() +
+ # geom_smooth()
+  labs(y="attendances", title = "Event attendances per year, 1851-1950")
+```
+
+by event types
+
+```{r}
+bn_women_events_of_dates_types |>
+  distinct(year, bn_id, event_instance_id, event_type) |>
+  filter(event_type!="misc") |>
+  count(year, event_type, sort = T) |>
+  filter(!is.na(year)) |>
+  ggplot(aes(year, n)) +
+  geom_col() +
+  facet_wrap(~event_type, scales = "free_y") +
+  labs(y="attendances", title = "Event attendances per year, by event type")
+ # geom_smooth()
+```
+
+### beeswarms
+
+event types by date
+
+```{r}
+bn_women_events_of_dates_types |>
+  filter(between(year, 1871, 1950))  |>
+  filter(event_type != "misc") |>
+  ggplot(aes(y=year, x=event_type)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  #scale_colour_ptol() +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL, title = "Beeswarm of event attendance by event type, 1871-1950")
+
+```
+
+
+
+
+```{r}
+bn_women_events_of_dates_types |>
+  #relocate(year, yob) |>
+  mutate(age = year-yob) |> 
+  filter(between(year, 1871, 1950) & !is.na(age))  |>
+  filter(event_type !="misc") |>
+  arrange(age) |>
+  ggplot(aes(y=age, x=event_type)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2, corral = "gutter", corral.width = 1.4) + #, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  #scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  #guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL, title = "Beeswarm of age of event attendance by event type, 1871-1950")
+```
+
+
+
+
+## Activities
+
+```{r}
+bn_women_events_of_dates_types |>
+  count(ppa_type, sort = T) |>
+  mutate(ppa_type=fct_reorder(ppa_type, n)) |>
+  ggplot(aes(x=n, y=ppa_type)) +
+  geom_col() +
+  labs(y=NULL, x="event attendances", title = "PPA types")
+```
+
+
+Including this in part because the presence of performed at in both misc and other might suggest something I'm not quite capturing in those two groups that I need to look into.
+
+```{r}
+bn_women_events_of_dates_types |>
+  count(ppa_type, event_type) |>
+  #filter(event_type!="misc") |>
+  ggplot(aes(event_type, n, fill=ppa_type)) +
+  geom_col(position = "fill") +
+  #facet_wrap(~event_type, scales = "free_y") +
+  scale_fill_pander() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y="% of attendances", x=NULL, title = "PPA types and Event types")
+```
+
+
+
+### beeswarms 
+
+(probably repeats charts I've already posted, but may as well have them in this post)
+
+```{r}
+bn_women_events_of_dates_types |>
+  filter(between(year, 1871, 1950))  |>
+  ggplot(aes(y=year, x=ppa_type)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  #scale_colour_ptol() +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL, title = "Beeswarm of event attendance by activity type, 1871-1950")
+
+```
+
+
+
+```{r}
+bn_women_events_of_dates_types |>
+  #relocate(year, yob) |>
+  mutate(age = year-yob) |>
+  filter(between(year, 1871, 1950) & !is.na(age))  |>
+  arrange(age) |>
+  ggplot(aes(y=age, x=ppa_type)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2, corral = "gutter", corral.width = 1.4) + #, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  #scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  #guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL, title = "Beeswarm of age of event attendance by activity type, 1871-1950")
+```
+
+
+
+
+
+
+```{r}
+## Event attendance in life courses?
+# problem with interpretation. women *might* be attending events younger later in the period, but it might just be an artefact of data collection.
+# bn_women_events_of_dates_types |>
+#   # distinct event instances without activity types
+#   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, yob) |>
+#   mutate(birth = case_when(
+#     yob <= 1850 ~ "born 1850 or earlier",
+#     between(yob, 1851, 1880) ~ "born 1851-1880",
+#     yob >1880 ~ "born 1881 or after",
+#     #.default = "year of birth unknown"
+#   )) |>
+#   filter(!is.na(birth)) |>
+#   filter(!is.na(year)) |>
+# #   filter(!is.na(yob)) |>
+# #   # b. 1840 = 30 in 1870 and probably d. c. 1920. b. 1880 = 30 in 1910 and 70 in 1950.
+# #   # filter(between(yob, 1840, 1879)) |>
+#   group_by(bn_id, personLabel, yob, birth) |>
+#   summarise(n=n(), earliest=min(year), latest=max(year), .groups = "drop_last") |>
+#   ungroup() |>
+# #   #count(yob<1860) # 1830-89 not quite as even as all, but not far off...
+#    filter(n>2) |>
+# #   # hang on a minute, what are you actually plotting here?
+#    mutate(age_first = earliest-yob, age_last = latest-yob) |>
+# #   #count(age_first<40)
+# #   mutate(decade_birth = yob - (yob %% 10)) |>
+# #   mutate(birth_group = if_else(yob<1860, "a", "b")) |>
+# #   filter(between(decade_birth, 1840, 1890)) |>
+# #   # if you take out the ends maybe it works? first is getting younger, and that shouldn't be because of data.
+# #   # but you need a better way to show it!
+# #   filter(between(age_first, 30, 50)) |> 
+# #   count(age_first, birth_group, decade_birth) |>
+# #   #count(age_first) |>
+#    ggplot(aes(age_first)) +
+#    geom_histogram(binwidth = 1) +
+#    facet_wrap(~birth) +
+#    scale_colour_ptol()
+
+# pretty even split around birth year 1860 so let's make two groups
+# ok but what about early and late birth decades not being fully represented in teh data? ie if someone was born in 1910s she was only 30-40 at cut off date for project, or born in 1810s were between 30 and 40 at earliest dated event.  
+# try dropping any b < 1830 and > 1889 ?
+```
+
+
+```{r}
+#what are the earliest and latest events in the database? start 1851 (but v few before 1870) and end 1950
+# bn_women_event_instances |>
+#   count(year)
+```
+
+
+
+## Connections
+
+
+```{r}
+events_correlation_pairs <-
+bn_women_events_of_dates_types |>
+  # distinct event instances without activity types
+  distinct(bn_id, personLabel, event_title, event_type, event_org, event_org_id, event_instance_date, event_instance_id, year) |>
+  add_count(bn_id) |>
+  filter(n>=2) |>
+  pairwise_cor(personLabel, event_instance_id, upper=F, sort=T) |>
+  filter(correlation>=0.3) |>
+  rename(from=item1, to=item2)
+
+events_counts_pairs <-
+  bn_women_events_of_dates_types |>
+  # distinct event instances without activity types
+  distinct(bn_id, personLabel, event_title, event_type, event_org, event_org_id, event_instance_date, event_instance_id, year) |>
+  add_count(bn_id) |>
+  #filter(n>=2) |>
+  pairwise_count(personLabel, event_instance_id, upper=F, sort=T) |>
+  rename(from=item1, to=item2)
+
+
+meetings_correlation_pairs <-
+bn_women_events_of_dates_types |>
+  # distinct event instances without activity types
+  filter(event_type=="meeting") |>
+  distinct(bn_id, personLabel, event_title, event_type, event_org, event_org_id, event_instance_date, event_instance_id, year) |>
+  add_count(bn_id) |>
+  filter(n>=2) |>
+  pairwise_cor(personLabel, event_instance_id, upper=F, sort=T) |>
+  filter(correlation>=0.3) |>
+  rename(from=item1, to=item2)
+```
+
+```{r}
+bn_women_pairs <-
+bn_women_events_of_dates_types |>
+  # distinct event instances without activity types
+  #distinct(bn_id, personLabel, event_instance_id, event_title, event, of_value, event_type, event_of_id, event_instance_date, year) |>
+   distinct(bn_id, personLabel, event_title, event_org, event_type, event_org_id, event_instance_date, event_instance_id, year, org_id) |>
+  add_count(bn_id) |>
+  filter(n>8)
+
+
+bn_women_pairs_tab <-
+with(bn_women_pairs, table(event_instance_id, personLabel))
+```
+
+
+
+
+In network graphs or other visualisations of connections I'm often using *correlation coefficients* rather than simple counts of pairs, so this is a brief explanation of what that means.
+
+Correlation isn't simply how often people are found together, which tends to give prominence to the people who appear most often in the data - Margaret Murray would turn up a lot for example, but that's partly because she's *everywhere*. Correlation coefficients are a measure of how likely pairs are to appear together *relative to* all the other possible pairs in the data. So they may be helpful for surfacing relationships that might not be immediately obvious simply from numbers. 
+
+Hence it's possible to have negative as well as positive scores. Greens in the correlation plot show pairs who appear together more often than expected, purples (probably blues to James) are people who are apart more often than expected (which might sometimes be interesting too). 
+
+Caveats
+
+Correlations can be misleading in the opposite way from counts, if you have a lot of single appearances in the data (as we do). That can result in impressive looking scores of 1.0, but it just means that two women happen to be recorded just once, at the same event, which may be completely random and unrepresentative. So usually I'll set a threshold of at least two/three appearances. 
+
+Most of the correlations in this kind of data aren't very strong by statisticians' standards: +/- 0.4 is usually the threshold for "moderate" strength, although I think for exploratory purposes anything from 0.25 upwards *can* be of interest. (For reference, the Jessie MacGregor-Rosa Wallis link scores only 0.21.)
+
+
+A correlation plot of women with at least 9 attendances (it's not really possible to squeeze more names in).
+
+
+```{r}
+## wallis-macgregor is only .21
+ggcorr(cor(bn_women_pairs_tab), layout.exp = 3, geom = "circle", hjust = 1, size = 3, low = "#762a83", mid="#eeeeee", high="#1b7837")
+```
+
+
+
+
+Network graphs
+
+
+```{r}
+
+#library(igraph)
+library(ggraph)
+#library(tidygraph) 
+```
+
+(darker lines represent stronger correlations)
+
+```{r}
+set.seed(1234)
+events_correlation_pairs %>%
+  filter(correlation>=0.3) |>
+  igraph::graph_from_data_frame() %>%
+   ggraph(layout = "graphopt") +
+   geom_edge_link(aes(edge_alpha = correlation), edge_colour = "salmon", show.legend = FALSE) +
+  #ggraph(layout = 'linear', circular = TRUE) +
+  #geom_edge_arc(aes(edge_alpha = correlation), colour = "cyan4", show.legend = FALSE) +
+   geom_node_point(size = 1) +
+   geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"), size=3) +
+   theme_void() +
+  labs(caption = "minimum count = 3, correlation > 0.3", title = "Network graph of women at events")
+  
+```
+
+
+
+```{r}
+#Meetings only
+# set.seed(1234)
+# meetings_correlation_pairs %>%
+#   filter(correlation>=0.3) |>
+#   igraph::graph_from_data_frame() %>%
+#    ggraph(layout = "graphopt") +
+#    geom_edge_link(aes(edge_alpha = correlation), edge_colour = "salmon", show.legend = FALSE) +
+#   #ggraph(layout = 'linear', circular = TRUE) +
+#   #geom_edge_arc(aes(edge_alpha = correlation), colour = "cyan4", show.legend = FALSE) +
+#    geom_node_point(size = 1) +
+#    geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"), size=3) +
+#    theme_void() +
+#   labs(caption = "minimum count = 3, correlation > 0.3", title = "Network graph of women at events")
+  
+```

@@ -22,6 +22,10 @@ Updates
 - added colleges which (following the addition of new data) have now reached the six student threshold
 - improved display
 
+TODO
+
+- UCL "cohorts" by subject/teacher
+
 
 ## Wikibase query 
 
@@ -84,15 +88,45 @@ order by ?personLabel ?collegeLabel ?date
 
 
 
-# 38 no date/uv
-# initially let's just go with people who have at least a start date... 178
-# quite a lot don't have an end date :-/ 51
-# what is the usual sort of duration from the start date where both exist?
+# bn_educated_ucl_sparql <- 
+#   'SELECT DISTINCT ?person ?personLabel ?qual ?qual_p_label ?qualLabel ?s
+# 
+# WHERE {  
+#   ?person bnwdt:P3 bnwd:Q3 . #select women
+#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+#   
+#   # note: academic degree is P59. possible extra info?
+#   ?person bnp:P94 ?s .  # educated at
+#     ?s bnps:P94 bnwd:Q542 .
+#    
+#   # qualifiers 
+#     optional {
+#     ?s ?pq ?qual .       
+#       ?qual_prop wikibase:qualifier ?pq;
+#               rdfs:label ?qual_p_label . filter(lang(?qual_p_label)="en") . 
+#       } # /dates
+#      
+#   
+#   SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+# }
+# order by ?personLabel '
 
-##will the statement id help avoid dup problems with pivot wider? yes, doh.
-## a few people had more than 1 point in time date for the same statement, which i think was the source of problem with pivot wider
-## this should be getting fixed... one has been changed to start/end dates and hopefully the others will be turned into separate stmts.
+# bn_educated_ucl_query <-
+#   bn_std_query(bn_educated_ucl_sparql) |>
+#   make_bn_item_id(person) |>
+#   make_bn_ids(s) |>
+#   relocate(person, .after = last_col())
+# 
+# # 38 no date/uv
+# # initially let's just go with people who have at least a start date... 178
+# # quite a lot don't have an end date :-/ 51
+# # what is the usual sort of duration from the start date where both exist?
+# 
+# ##will the statement id help avoid dup problems with pivot wider? yes, doh.
+# ## a few people had more than 1 point in time date for the same statement, which i think was the source of problem with pivot wider
+# ## this should be getting fixed... one has been changed to start/end dates and hopefully the others will be turned into separate stmts.
 
+ 
 bn_educated_start_end <-
 bn_educated_query |>
   filter(!is.na(date)) |>
@@ -102,7 +136,7 @@ bn_educated_query |>
   clean_names("snake") |>
   filter(!is.na(start_time) | !is.na(end_time) )  |>
   mutate(date_type = if_else( is.na(end_time) | is.na(start_time) , "inferred", "actual")) |>
-## Q825 23 years... "The LSE Register notes that Chapman was full time at LSE 1903-14, and thereafter an occasional student." 
+## Q825 23 years... "The LSE Register notes that Chapman was full time at LSE 1903-14, and thereafter an occasional student."
 ## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
   mutate(end_time_n = case_when(
     bn_id=="Q825" & college=="Q1162" & end_time==1923 ~ 1914,
@@ -132,8 +166,126 @@ bn_educated_query |>
   mutate(name_y = paste(row_number(),name))
 
 
+## updated ucl query
+
+bn_educated_ucl_sparql <- 
+  'SELECT DISTINCT ?person ?personLabel ?qual ?qual_p_label ?qualLabel ?qual_prop ?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  # note: academic degree is P59. possible extra info?
+  ?person bnp:P94 ?s .  # educated at
+    ?s bnps:P94 bnwd:Q542 .
+   
+  # qualifiers 
+    optional {
+    ?s ?pq ?qual .       
+      ?qual_prop wikibase:qualifier ?pq;
+              rdfs:label ?qual_p_label . filter(lang(?qual_p_label)="en") . 
+      } # /dates
+     
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}
+order by ?s ?qual_prop ?qual_p_label'
+
+bn_educated_ucl_query <-
+  bn_std_query(bn_educated_ucl_sparql) |>
+  make_bn_item_id(person) |>
+  # maybe shouldn't do qual here in case something includes a / ??
+  make_bn_ids(c(s, qual, qual_prop)) |>
+  relocate(person, .after = last_col())
 
 
+
+# should be equiv to educated start end for college cohort vizes, but with subject instead of college... hopefully
+bn_educated_ucl_subjects_start_end <-
+bn_educated_ucl_query |>
+  filter(qual_p_label=="academic subject") |>
+  distinct(bn_id, personLabel, qualLabel, qual, s) |>
+  inner_join(
+    bn_educated_ucl_query |> 
+  filter(qual_p_label %in% c("end time", "start time")) |>
+  mutate(date = parse_date_time(qual, "ymdHMS")) |>
+  mutate(year = year(date)) |>
+  pivot_wider(id_cols = s, names_from = qual_p_label, values_from = year) |>
+  clean_names("snake") |>
+  select(s, start_time, end_time) |>
+  mutate(date_type = if_else( is.na(end_time) | is.na(start_time) , "inferred", "actual")) |>
+  ## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
+  mutate(start_time_n = case_when(
+    is.na(start_time) & !is.na(end_time) ~ end_time-4,
+    .default = start_time
+  )) |>
+  mutate(end_time_n = case_when(
+    is.na(end_time) & !is.na(start_time) ~ start_time+4,
+    .default = end_time
+  )) |>
+  # only 4 p.i.t. lol
+  bind_rows(
+    # you need two columns to match start_time_n and end_time_n, just that they're both the same. i think. don't want pivot at all
+    bn_educated_ucl_query |>
+      filter(qual_p_label %in% c("point in time")) |>
+      mutate(date = parse_date_time(qual, "ymdHMS")) |>
+      mutate(year = year(date)) |>
+      mutate(end_time_n=year) |>
+      mutate(date_type="single") |>
+      rename(start_time_n=year) |>
+      select(s, start_time_n, end_time_n, date_type)
+  ) |>
+  select(-start_time, -end_time) 
+  , by="s" ) |>
+  rename(name=personLabel, subject=qualLabel, subject_id=qual) |>
+  # arrange by dates rather than persons... then make unique person id for y axis (some women appear more than once)
+  arrange(start_time_n, end_time_n) |>
+  mutate(name_y = paste(row_number(),name))
+
+bn_educated_ucl_teachers_start_end <-
+bn_educated_ucl_query |>
+  filter(qual_p_label=="student of") |>
+  select(bn_id, personLabel, qualLabel, qual, s) |>
+  inner_join(
+    bn_educated_ucl_query |> 
+  filter(qual_p_label %in% c("end time", "start time")) |>
+  mutate(date = parse_date_time(qual, "ymdHMS")) |>
+  mutate(year = year(date)) |>
+  pivot_wider(id_cols = s, names_from = qual_p_label, values_from = year) |>
+  clean_names("snake") |>
+  select(s, start_time, end_time) |>
+  mutate(date_type = if_else( is.na(end_time) | is.na(start_time) , "inferred", "actual")) |>
+  ## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
+  mutate(start_time_n = case_when(
+    is.na(start_time) & !is.na(end_time) ~ end_time-4,
+    .default = start_time
+  )) |>
+  mutate(end_time_n = case_when(
+    is.na(end_time) & !is.na(start_time) ~ start_time+4,
+    .default = end_time
+  )) |>
+  # only 4 p.i.t. lol
+  bind_rows(
+    # you need two columns to match start_time_n and end_time_n, just that they're both the same. i think. don't want pivot at all
+    bn_educated_ucl_query |>
+      filter(qual_p_label %in% c("point in time")) |>
+      mutate(date = parse_date_time(qual, "ymdHMS")) |>
+      mutate(year = year(date)) |>
+      mutate(end_time_n=year) |>
+      mutate(date_type="single") |>
+      rename(start_time_n=year) |>
+      select(s, start_time_n, end_time_n, date_type)
+  ) |>
+  select(-start_time, -end_time) 
+  , by="s" ) |>
+  rename(name=personLabel, teacher=qualLabel, teacher_id=qual) |>
+  # arrange by dates rather than persons... then make unique person id for y axis (some women appear more than once)
+  arrange(start_time_n, end_time_n) |>
+  mutate(name_y = paste(row_number(),name))
+```
+
+
+```{r dumbbell-functions}
 # for when you need the two colours, force text to be black or dark grey and add the scale to the bits you do separately
 # bn_college_dumbbell <- function(data){
 #   data |>
@@ -166,12 +318,81 @@ bn_college_dumbbell <- function(f){
   geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
   theme(axis.text.y = element_blank(), axis.ticks.y=element_blank(), legend.position=c(.9,.85)) + # incl move legend inside plot
   guides(colour = guide_legend(override.aes = list(size=2))) + # size of points
-  scale_colour_tableau() +
+  #scale_colour_tableau() +
+      scale_colour_manual(values=c("actual"="#0072b2", "inferred"="#e69f00", "single"="#009e73")) +
   labs(x=NULL, y=NULL, title=title, colour="date")
 }
+
+
+# for ucl by subject/teacher
+
+bn_ucl_subject_dumbbell <- function(f){
+  
+  # filter by college= f
+  filtered_data <-
+  bn_educated_ucl_subjects_start_end |>
+    # use label rater than id for this one
+  filter(subject==f) |> 
+  mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) 
+  
+  # use subject to make a title
+  title <-
+    filtered_data |>
+    distinct(subject) |>
+    pull(subject)
+    
+  # NOT including scale_x adjustments
+  # put legend in top right corner of plot where there's lots of space and make points a bit bigger
+  filtered_data |>
+  ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
+  geom_dumbbell() +
+  geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+  theme(axis.text.y = element_blank(), axis.ticks.y=element_blank(), legend.position=c(.9,.85)) + # incl move legend inside plot
+  guides(colour = guide_legend(override.aes = list(size=2))) + # size of points in legend
+    # this really needs to be manual so you can fix colour to type consistently
+ # scale_colour_tableau() +
+      scale_colour_manual(values=c("actual"="#0072b2", "inferred"="#e69f00", "single"="#009e73")) +
+  labs(x=NULL, y=NULL, title=title, colour="dates")
+}
+
+
+bn_ucl_teacher_dumbbell <- function(f){
+  
+  # filter by college= f
+  filtered_data <-
+  bn_educated_ucl_teachers_start_end |>
+# use id for teachers 
+  filter(teacher_id==f) |> 
+  mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) 
+  
+  # use name of teacher to make a title
+  title <-
+    filtered_data |>
+    distinct(teacher) |>
+    pull(teacher)
+    
+  # NOT including scale_x adjustments
+  # put legend in top right corner of plot where there's lots of space and make points a bit bigger
+  filtered_data |>
+  ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
+  geom_dumbbell() +
+  geom_text(aes(label=name, x=end_time_n), size=3, hjust = 0, nudge_x = 0.5, show.legend = FALSE, colour="#525252") +
+  theme(axis.text.y = element_blank(), axis.ticks.y=element_blank(), legend.position=c(.9,.85)) + # incl move legend inside plot
+  guides(colour = guide_legend(override.aes = list(size=2))) + # size of points in legend
+    # this really needs to be manual so you can fix colour to type consistently
+  #scale_colour_tableau() +
+  scale_colour_manual(values=c("actual"="#0072b2", "inferred"="#e69f00", "single"="#009e73")) +
+  labs(x=NULL, y=NULL, title=title, colour="dates")
+}
+
 ```
 
 
+```{r}
+# to check college counts for threshold. 
+# bn_educated_start_end |>
+#   count(college_label, sort = T)
+```
 
 
 
@@ -223,8 +444,92 @@ bn_college_dumbbell <- function(f){
 ```
 
 
+```{r}
+# ucl cohorts by subject and/or student of (as well as?) dates.
+# difficult to work with subject + student of because of structure of data
+# are there more subject than student of?
+# i *think* this is the only source of duplication though...
+
+
+```
+
+
+```{r}
+# bn_educated_ucl_query |>
+#   distinct(bn_id, personLabel, qualLabel, qual_p_label, s) |>
+#   filter(!qual_p_label %in% c("sourcing circumstances", "note", "student of", "subject")) |>
+#   pivot_wider(names_from = qual_p_label, values_from = qualLabel, id_cols = c(bn_id, s, personLabel))
+```
+
 
 ## University College London
+
+Limited to more popular subjects/teachers.
+
+### by subjects 
+
+```{r warning=FALSE}
+bn_ucl_subject_dumbbell("Egyptology") +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1890,1948), breaks = seq(1890, 1940, 10)) 
+  #theme(aspect.ratio = 1) # if you adjust htis also need to adjust fig.height
+```
+
+
+
+
+
+```{r warning=FALSE}
+bn_ucl_subject_dumbbell("archaeology") +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1880,1955), breaks = seq(1880, 1940, 10)) 
+```
+
+
+```{r warning=FALSE}
+bn_ucl_subject_dumbbell("history")  +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1875,1935), breaks = seq(1870, 1930, 10)) 
+```
+
+```{r warning=FALSE}
+bn_ucl_subject_dumbbell("English") +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1875,1908), breaks = seq(1875, 1905, 10)) 
+```
+
+
+### by teachers
+
+
+```{r warning=FALSE}
+# Q567 (13), Q2376 (10)
+# Q3008 has 6
+bn_ucl_teacher_dumbbell("Q567") +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1890,1913), breaks = seq(1890, 1910, 5)) 
+```
+
+
+
+```{r warning=FALSE}
+bn_ucl_teacher_dumbbell("Q2376") +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1888,1898), breaks = seq(1888, 1896, 4)) 
+```
+
+
+
+```{r warning=FALSE}
+bn_ucl_teacher_dumbbell("Q3008") +
+  # adjust width to allow for late people's long names
+  scale_x_continuous(limits = c(1880,1890), breaks = seq(1880, 1888, 4)) 
+```
+
+
+### all
+
+I've kept this even though it's a bit absurd...
 
 To view this at full size (so it's easier to read the names!), right-click [or tap with two fingers] on the image and select "open image in new tab" (or something similar) in the menu.
 
@@ -362,6 +667,7 @@ bn_college_dumbbell("Q2278") +
 ```
 
 
+## Bedford College (Q2027)
 
 ```{r warning=FALSE}
 
@@ -370,10 +676,7 @@ bn_college_dumbbell("Q2027") +
 ```
 
 
-```{r warning=FALSE}
-bn_college_dumbbell("Q2278")  +
-  scale_x_continuous(breaks = seq(1905, 1935, 10), limits = c(1900, 1942))
-```
+
 
 
 

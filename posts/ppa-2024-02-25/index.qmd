@@ -1,0 +1,402 @@
+---
+title: "PPA Buckets"
+author: "Sharon Howard"
+date: "2024-02-25"
+date-modified: today
+categories: 
+  - ppa
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+## Wikibase queries
+
+The buckets are not part of the wikibase, but as the number is quite small they can be hand-coded into a query. The query below is a starting point for this.
+
+* [PPA buckets](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#PPA_Buckets_for_Women)
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# library(ggbeeswarm)
+# library(ggridges)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+
+
+```{r}
+# to check what files are in the _date/queries folder...
+# list.files(bn_fetched_data)
+```
+
+```{r}
+## new workflow to save output of queries into CSV files which can be reused.
+## but you need to remember to delete/rename the files to force a new fetch!
+## also you need to be careful about naming output files to ensure you don't accidentally try to re-use a name for a different query
+## could you get the CSV file timestamps to use in a data-last-modified field in some way?
+
+# moved funciton to std_queries.R
+# bn_query_to_csv <- function(sparql, filepath) {
+#   data <-
+#   bn_std_query(sparql)
+#   
+#   data |>
+#     write_csv(filepath)
+#   
+#   read_csv(file=filepath)
+# }
+
+## ppa buckets main statements
+
+# path to CSV
+bn_ppa_buckets_main_csv_file <- 
+  here::here("_data", "queries", "bn_ppa_buckets_main.csv")
+
+
+bn_ppa_buckets_sparql <-
+  'SELECT distinct ?person ?personLabel ?ppa_label ?ppa ?bucket ?ppa_value ?ppa_valueLabel ?s
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person ?p ?s .  
+ 
+      ?ppa wikibase:claim ?p;      
+         wikibase:statementProperty ?ps.      
+          
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". 
+                       ?ppa rdfs:label ?ppa_label.  # you need this for the bind() - *Label wont work... i think
+                } # /label service
+  
+      ?ppa bnwdt:P12 bnwd:Q151 . # limit to i/o ppa      
+ 
+      # get stuff about ?s 
+      ?s ?ps ?ppa_value.
+  
+    bind(
+      if( str(?ppa_label) in ("attended", "exhibited at", "organiser of", "performed at", "spoke at", "was delegate at (free text)", "was delegate at (item)" ), "events",
+        if( str(?ppa_label) in ("curated (item)", "donor to", "loaner to", "recovered (free text)", "seller to", "was collector of", "was donor of" ), "collections",
+          if( str(?ppa_label) in ("educated at"),  "education" ,
+            if( str(?ppa_label) in ("election to Council of CAS proposed by", "election to RAI proposed by", "election to SAL proposed by", "proposed election to RHS signed by (personal)"),  "elections" ,
+              if( str(?ppa_label) in ("Member of Committee for Archaeological Fieldwork", "President of Committee for Archaeological Fieldwork", "director of archaeological fieldwork", "director of expedition", "member of excavation during archaeological fieldwork", "member of expedition", "travelled overseas for"
+),   "fieldwork" ,
+                 if( str(?ppa_label) in ("acknowledged for role", "applicant to", "employed as", "held position", "held position (free text)", "served on"),   "positions" ,
+                   if( str(?ppa_label) in ("contributed to", "illustrated in", "work(s) published in"),  "publishing",
+                     if( str(?ppa_label) in ("corresponded with", "was fellow of", "was member of"),  "societies",
+                       if( str(?ppa_label) in ("benefactor to", "fundraiser for", "founded"),  "charitable" ,
+       "none")))))))))
+    as ?bucket).
+        
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+order by ?personLabel ?ppa_label'
+
+
+
+# if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
+# Cmd+enter doesn't work when this is on more than 1 line...
+bn_ppa_buckets_fetched <-
+if(file.exists(bn_ppa_buckets_main_csv_file))  read_csv(bn_ppa_buckets_main_csv_file) else  
+  # otherwise fetch the sparql query and save to csv and then read the csv. 
+  bn_query_to_csv(bn_ppa_buckets_sparql, bn_ppa_buckets_main_csv_file)
+  
+
+# process the data a bit
+bn_ppa_buckets_query <-
+  bn_ppa_buckets_fetched |>
+  make_bn_item_id(person) |>
+  # forgot c() again...
+  make_bn_ids(c(s, ppa, ppa_value)) |>
+  relocate(person, .after = last_col())
+
+# name mirrors original version
+bn_women_ppa_main <-
+  bn_ppa_buckets_query |>
+  filter(bucket !="none")
+```
+
+
+
+```{r}
+## ppa qualifiers
+## shouldn't need to include buckets stuff in sparql
+## not currently needed for this post, so commented out.
+
+
+# bn_ppa_qual_sparql <-
+# 'SELECT distinct ?person ?qual_value ?qual_prop ?qual_propLabel ?qual_valueLabel ?s
+# 
+# WHERE {  
+#   ?person bnwdt:P3 bnwd:Q3 .
+#   ?person ?p ?s .  
+#  
+#       ?ppa wikibase:claim ?p;      
+#          wikibase:statementProperty ?ps.      
+#   
+#       ?ppa bnwdt:P12 bnwd:Q151 . # i/o ppa      
+#    
+#   # get any qualifiers
+#      ?s ?qual_p ?qual_value .   
+#      ?qual_prop wikibase:qualifier ?qual_p;
+#            wikibase:propertyType ?qual_prop_type .
+#      
+# 
+#   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+# }
+# 
+# order by ?personLabel'
+# 
+# # this is definitely one to reuse?
+# bn_ppa_quals_csv_file <- here::here("_data", "queries", "bn_ppa_qualifiers.csv")
+# 
+# 
+# # if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
+# # Cmd+enter doesn't work as usual when this is on more than 1 line...
+# bn_ppa_quals_fetched <-
+# if(file.exists(bn_ppa_quals_csv_file))  read_csv(bn_ppa_quals_csv_file) else  
+#   # otherwise fetch the sparql query and save to csv and then read the csv. 
+#   bn_query_to_csv(bn_ppa_qual_sparql, bn_ppa_quals_csv_file)
+#   
+# 
+# # process the data a bit
+# bn_women_ppa_qual_query <-
+#   bn_ppa_quals_fetched |>
+#   make_bn_item_id(person) |>
+#   make_bn_ids(c(s, qual_value, qual_prop)) |>
+#   select(-person)
+
+```
+
+
+
+
+```{r}
+## function for colours in grouped bar chart things
+ # df needs cols: group, colour_category
+ # get rows in required order *before* using this (this sorts by frequency; could make another version for random/uncounted etc) and then add rowid
+ # grpname is the name of the group or bucket in the group col
+ # **grpcols has to be a vector of colour codes** - sthg like viridis_pal()(16)  will work, just have to have enough colours. may need to reverse direction to stop the first one being white grr.
+# choice of palette and calculate number dynamically
+ 
+make_named_colours2 <- function(df, grpname, pal){
+  # pal needs to be one of the colorbrewer palette names
+  
+  # make the count, add at least 1.
+  num <-
+    df |>
+    filter(group==grpname) |>
+    tally() |>
+    mutate(n=n+2) |>
+    pull()
+  
+  df |>
+    filter(group==grpname) |>
+    count(colour_category, sort = TRUE) |>
+    rowid_to_column() |>
+    # direction -1 makes it dark to light... i think. then with the extra in num it cuts off the very light values.
+    # feels like there should be a better way to do that, but i can't see anything in brewer_pal
+    left_join( brewer_pal(palette=pal, direction=-1)(num) |> enframe(), by=c("rowid"="name")) |>
+    fill(value) |>
+    select(colour_category, value) |>
+    # turn the df into a named vector with deframe and this can be used in scale_color_manual
+    # probably a more sensible way to do this than enframe-deframe too....
+    deframe()
+}
+
+```
+
+```{r}
+# example use
+#make_named_colours2(for_colours, "positions", "BuGn")
+
+
+# if you had a set number you could do something like
+# brewer_pal_num <- function(p, num){
+#   brewer_pal(palette=p, direction=-1)(num)
+# }
+# for_colours |> make_named_colours("events", brewer_pal_num("BuGn", 9))
+```
+
+
+
+
+```{r}
+# NB using ppa IDs *not* labels.
+
+for_colours <-
+  bn_women_ppa_main |>
+  count(bucket, ppa_label, ppa) |>
+  rename(group=bucket) |>
+  mutate(colour_category=ppa)
+
+
+
+charitable_colours <-
+  for_colours |>
+  make_named_colours2("charitable", "BuGn")
+
+collections_colours <-
+  for_colours |>
+  make_named_colours2("collections", "BuPu")
+
+education_colours <-
+  for_colours |>
+  make_named_colours2("education", "GnBu")
+
+elections_colours <-
+  for_colours |>
+  make_named_colours2("elections", "OrRd")
+
+events_colours <-
+  for_colours |>
+  make_named_colours2("events", "PuBu")
+
+fieldwork_colours <-
+  for_colours |>
+  make_named_colours2("fieldwork",  "RdPu")
+
+positions_colours <-
+  for_colours |>
+  make_named_colours2("positions", "PuRd")
+
+publishing_colours <-
+  for_colours |>
+  make_named_colours2("publishing", "YlOrRd")
+
+societies_colours <-
+  for_colours |>
+  make_named_colours2("societies",  "YlGn")
+
+all_the_colours <-
+  c(events_colours, societies_colours, education_colours, positions_colours, elections_colours, collections_colours, publishing_colours, fieldwork_colours, charitable_colours, societies_colours)
+```
+
+
+
+## Notes
+
+The purpose of the buckets is to group PPAs together in reasonably coherent (and not too unbalanced) categories to facilitate various kinds of analysis from comparative overviews to digging into the detail of specific categories.
+
+```{r}
+bn_ppa_buckets_query |>
+  mutate(ppa = paste0(ppa_label, " (", ppa, ")")) |>
+  select(bucket, ppa=ppa_label) |>
+  count(bucket, ppa) |>
+  kable() |>
+  kable_styling()
+```
+
+
+Not all PPAs are in buckets! Some are more useful for network-y analysis.
+
+- publishing will need reviewing once we have more bibliographical data (eg `editor` specifically intended for editions of primary sources)
+- `corresponded with` should only be included in buckets if it's to an institution rather than an individual, but I haven't yet amended queries to handle that. (Correspondence with individuals is a small minority of results at present.)
+- charitable/organisational is a very small bucket that will probably be mostly ignored for big picture stuff
+- collections and fieldwork are buckets i haven't looked at at all yet, will need to do something about that soon. 
+
+
+
+## Overview
+
+Labels for activities within buckets have been omitted as a) there isn't space for them and b) this just gives an overview of distributions.
+
+```{r}
+bn_women_ppa_main |>
+  add_count(bucket, name="n_grp") |>
+  count(bucket, ppa_label, ppa, n_grp) |>
+  mutate(bucket = fct_reorder(bucket, n_grp)) |>
+  ggplot(aes(bucket, n, fill=ppa)) +
+  geom_col(show.legend = F) +
+  coord_flip() +
+  # it doesn't matter if you don't actually have all the categories...
+  scale_fill_manual(values = all_the_colours) +
+  labs(x=NULL, y="count", title = "PPA Buckets")
+
+
+```
+
+## By bucket
+
+```{r}
+bn_ppa_bucket_bar <- function(df, f){
+  
+  # filter df by bucket
+  filtered_data <-
+    df |>
+    filter(bucket==f) 
+  
+  # use bucket name to make a title
+  title <-
+    filtered_data |>
+    distinct(bucket) |>
+    pull(bucket)
+  
+  filtered_data  |>
+    count(ppa, ppa_label) |>
+    mutate(ppa_label=fct_reorder(ppa_label, n)) |>
+    ggplot(aes(ppa_label, n)) +
+    geom_col(show.legend = F) +
+    coord_flip() +
+    labs(x=NULL, y="count", title=title)
+  
+}
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "societies") 
+```
+
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "events") 
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "positions") 
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "elections") 
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "education") 
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "collections") 
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "publishing") 
+```
+
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "fieldwork") 
+```
+
+```{r}
+bn_ppa_bucket_bar(bn_women_ppa_main, "charitable") 
+```
+
+
+

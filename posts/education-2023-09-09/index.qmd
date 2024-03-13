@@ -179,7 +179,7 @@ bn_fsa_education_summary |>
   ggplot(aes(area=n, fill=tei, label=tei)) +
   geom_treemap(show.legend = F) +
   geom_treemap_text(fontface = "italic", colour = "white", place = "centre", grow = TRUE) +
-  scale_fill_manual(values = c("orange", "lightgrey", "#41b6c4", "#1d91c0")) + # i think this ordering is alphabetical
+  scale_fill_manual(values = c("orange", "lightgrey",  "#56B4E9",  "#0072B2")) + # i think this ordering is alphabetical
   labs(title="FSAs' Higher Education")
 ```
 

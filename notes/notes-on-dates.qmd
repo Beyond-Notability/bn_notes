@@ -1,7 +1,8 @@
 ---
-title: "Notes on Dates"
+title: "Work in progress: notes on dates"
 author: "Sharon Howard"
 description: "Why are dates so hard?"
+date: "2023-11-21"
 date-modified: today
 categories: 
   - dates
@@ -14,27 +15,6 @@ execute:
 ## Wikibase queries
 
 See the [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section of the example queries.
-
-## Notes on some complexities
-
-Dates may be recorded as main values or qualifiers, which need different queries. 
-
-The majority of dates are qualifiers, and there are at least 50 different properties representing events or activities that can be dated.
-
-Main level dates may have one of two different datatypes: "Time" (ymdHMS format) or "EDTF" ([Extended Date/Time Format](https://www.loc.gov/standards/datetime/)) for "fuzzier" dates. Qualifier dates only have Time datatype.
-
-- Time dates are always stored and exported by the wikibase (and handled by R) in year-month-day format, even if they've been recorded at a lower level of precision (eg year only); the precision level is stored separately and has to be specifically queried.  
-- EDTF dates are exported as text strings which need to be converted to real dates. So far they've been used in a fairly straightforward way, mirroring the precision levels for Time dates, but they could be much more complex. [This comment is not intended as encouragement.]
-
-For qualifier dates there are five different properties: point in time; start time; end time; earliest date; latest date.
-  - a pair of start and end time represents a date range
-  - but often only one of start/end is recorded
-  - point in time may represent either a discrete short term event or a known moment in what could have been a longer duration
-  - latest date can be *very* imprecise
- 
-Dates may not be recorded at all; some dates are more likely to be recorded than others. Conversely, occasionally there may be more than one recorded date to choose from apart from start/end pairs (or for annoying technical reasons queries return more than one)
-
-There are occasional (apparent) inconsistencies in usage which can be difficult to interpret: eg at time of writing there is one date for the property `married name` (for Olwen Brogan) and it's not clear why this isn't recorded as `married in` instead.
 
 
 ```{r}
@@ -50,208 +30,38 @@ library(ggbeeswarm)
 # standard query strings and queries ####
 
 source(here::here("_R/std_queries.R"))
-```
-
-
-```{r}
-## main dates PIT and EDTF
-
-bn_women_dates_main_sparql <-
-'SELECT distinct ?person ?personLabel ?date_prop_label ?date_pit ?date_pit_precision   ?date_edtf  ?date_prop  ?s
-
-WHERE {
- 
- { # PIT 
-   
-   ?person bnwdt:P3 bnwd:Q3 . #select women
-   FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
-      
-   ?person ?p ?s .   
-      ?date_prop wikibase:claim ?p;     	 
-         wikibase:statementValue ?psv .  
-      ?date_prop wikibase:propertyType wikibase:Time . # for PIT only. 
-      ?date_prop rdfs:label ?date_prop_label. filter(lang(?date_prop_label)="en-gb") . 
-   
-  # get dates detail via ?s and psv
-      ?s ?psv ?wdv .
-        ?wdv wikibase:timeValue ?date_pit ;
-           wikibase:timePrecision ?date_pit_precision .
-
-   }
-  
-  union
-  
-  { # EDTF
-  
-    ?person bnwdt:P3 bnwd:Q3 . 
-       FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
-     
-       ## can do this union first but makes no difference to results except possibly a bit slower.
-       #?person ( bnp:P131 | bnp:P132 | bnp:P133  ) ?s .
-       #   ?s ( bnps:P131 | bnps:P132 | bnps:P133  ) ?date_edtf .
-
-       ?person ?p ?s . # so you can get the statement id and date prop label
-           ?claim wikibase:claim ?p;       
-                 rdfs:label ?date_prop_label. filter(lang(?date_prop_label)="en") .        
-
-           ?s ?date_prop ?date_edtf . # cant name this date again. 
-              
-    ## filter for edtf dates
-    ## docs: https://github.com/ProfessionalWiki/WikibaseEdtf
-    ## cant see any way other than a filter to get the edtf value.
-    FILTER ( datatype(?date_edtf) = xsd:edtf  ) .
-   }
-  
- SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en". } 
-  
-} # /where
-
-ORDER BY ?person ?date_value ?date_edtf
-'
-
-
-bn_women_dates_main_query <-
-  bn_std_query(bn_women_dates_main_sparql) |>
-  make_bn_item_id(person)  |>
-  make_bn_ids(c(s, date_prop)) |>
-  mutate(across(c(date_prop_label, date_pit, date_edtf), ~na_if(., ""))) |>
-  #make_date_year() |> # leave this to the next stage.
-  relocate(person, .after = last_col())
 
 
 
 
-
-# revised qualifiers. needs bnpqv prefix...
-# revised again: fetch both simple date value and timevalue and then need to dedup by filtering
-bn_women_dates_qual_sparql <-
-'SELECT distinct ?person ?personLabel ?prop_label ?prop_valueLabel ?date_qual_label  ?date_qual ?date_qual_precision ?date_qual_simple ?prop_value ?prop ?s
-
-WHERE {
-     #VALUES (?person) {(bnwd:Q106) (bnwd:Q1675)}  # for testing 
-    ?person bnwdt:P3 bnwd:Q3 . # women
-    FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
-  
-    # get stuff about ?person   
-    ?person ?p ?s .   
-  
-      # the claim for ?p .  do i need psv as well as ps?
-      ?prop wikibase:claim ?p;      
-         wikibase:statementProperty ?ps;     
-         wikibase:statementValue ?psv.
-      ?prop rdfs:label ?prop_label. filter(lang(?prop_label)="en") .  # spoke at etc
- 
-  # the direct value (usually item) for the property, things like annual meeting, girton college. .
-        ?s ?ps ?prop_value.
-     
-  # get date qualifiers. [assumes no edtf in quals. ]
-        ?s ?pq ?date_qual_simple .  # this causes dups but need to get the label
-          ?qual_prop wikibase:qualifier ?pq .
-          ?qual_prop wikibase:propertyType wikibase:Time. 
-          ?qual_prop rdfs:label ?date_qual_label . filter(lang(?date_qual_label)="en") . 
-
-  # qualifier timevalue and precision. requires the bnpqv: prefix; i dont know how to do it without specifying them. 
-  # pit/start/end/earliest/latest - anything else?
-      ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 | bnpqv:P51 | bnpqv:P53 ) ?pqv.
-          ?pqv wikibase:timeValue ?date_qual .  
-          ?pqv wikibase:timePrecision ?date_qual_precision .
-      
- SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en, en-gb". } 
-  
-} # /where
-
-ORDER BY ?personLabel ?s ?prop_label'
-
-
-
-# still slooow. 
-# since the query is pretty slow and you might want to be able to check the unfiltered version, let's do this in two steps...
-bn_women_dates_qual_query_unfiltered <-
-  bn_std_query(bn_women_dates_qual_sparql) |>
-  make_bn_item_id(person) |> 
-  make_bn_ids(c(prop, prop_value, s)) |>
-  relocate(person, .after = last_col())
-
-# **fudge to get rid of nasty dups** i THINK it works. it is possible to do this filter inside the query so i might update once i'm sure it works, if i don't find a proper way to do it.
-bn_women_dates_qual_query <-
-  bn_women_dates_qual_query_unfiltered |>
-  filter(date_qual==date_qual_simple) |>
-  select(-date_qual_simple)
-
-# pretty sure these queries drop <uv> dates. but might not always be the case
-# qual prop value can contain stuff other than Qs
-
+# function to make a named vector of colours for variable values
+# must have cols: rowid, group_label, colour_category
+# get rows in required order before using this (this sorts by frequency; could make another version for random/uncounted etc) and then add rowid
+# grpname is the name of the group in the group col
+# grpcols has to be a vector of colour codes
+make_named_colours <- function(df, grpname, grpcols){
+  df |>
+  filter(group_label==grpname) |>
+  count(colour_category, sort = TRUE) |>
+  rowid_to_column() |>
+  left_join(grpcols |> enframe(), by=c("rowid"="name")) |>
+  fill(value) |>
+  select(colour_category, value) |>
+  # turn the df into a named vector with deframe and this can be used in scale_color_manual
+  deframe()
+}
 ```
 
 
 
-```{r}
-bn_women_dates_main <-
-bn_women_dates_main_query  |>
-  # in case there are any <uv>, and keep the original.
-  mutate(date_pit_parsed = if_else(str_detect(date_pit, "t"), NA, date_pit))  |>
-  mutate(date_pit_parsed = parse_date_time(date_pit_parsed, "ymdHMS"))  |>
-  mutate(date_edtf_parsed = parse_date_time(date_edtf, c("ymd", "ym", "y")) ) |>
-  # make single date / year column. 
-  mutate(date = if_else(!is.na(date_pit_parsed), date_pit_parsed, date_edtf_parsed)) |>
-  mutate(year = year(date)) |>
-  # do this after parsing and consolidating pit/edtf, dummy
-  mutate(date_string = case_when(
-           date_pit_precision==11 ~  as.character(date),
-           date_pit_precision==10 ~ str_replace(as.character(date), "-01$", "-00"),
-           date_pit_precision==9 | str_length(date_edtf)==4 ~ paste0(year, "-00-00"),
-           str_length(date_edtf)==10 ~ date_edtf,
-           str_length(date_edtf)==7 ~ paste0(date_edtf, "-00")
-        ) ) |>
-  mutate(date_precision = case_when(
-    date_pit_precision==11 | str_length(date_edtf)==10 ~ "ymd",
-    date_pit_precision==10 | str_length(date_edtf)==7 ~ "ym",
-    date_pit_precision==9 | str_length(date_edtf)==4 ~ "y",
-  )) |>
-  # use case_when in case you need to do anything different with <uv> pit dates at some point
-  mutate(date_format = case_when(
-    !is.na(date_pit) ~ "point in time", 
-    !is.na(date_edtf) ~ "edtf"
-    )) |>
-  mutate(date_type = "main") |>
-  relocate(date, year, date_precision, date_format, date_type, date_string, .after = date_prop_label) |>
-  relocate(date_pit:date_edtf, .after = person)
-  
+
+```{r dates-data}
+## amazingly this seemed to work fine first time...
+
+source(here::here("_R/dates.R"))
 
 
-bn_women_dates_qual <-
-bn_women_dates_qual_query |>
-    mutate(date = if_else(str_detect(date_qual, "t"), NA, date_qual))  |> # shouldn't be any of these actually!
-    mutate(date = parse_date_time(date, "ymdHMS"))  |>
-    mutate(year = year(date)) |>
-  mutate(date_string = case_when(
-           date_qual_precision==11 ~  as.character(date),
-           date_qual_precision==10 ~ str_replace(as.character(date), "-\\d\\d$", "-00"),
-           date_qual_precision==9 ~ paste0(year, "-00-00")
-        ) ) |>
-  mutate(date_precision = case_when(
-    date_qual_precision==11  ~ "ymd",
-    date_qual_precision==10 ~ "ym",
-    date_qual_precision==9 ~ "y",
-  )) |>
-  # just rename rather than make dup column
-  rename(date_format = date_qual_label) |>
-  mutate(date_type = "qual") |>
-  relocate(date, year, date_precision, date_format, date_type, date_string, .after = personLabel) |>
-  # remove AT recorded by dates. should i ask about these? i suspect not current practice and they're awkward.
-  # keep na for now, check them.
-  filter(year < 2020 | is.na(year))
 
-
-bn_women_dates <-
-  bind_rows(
-  bn_women_dates_main |> select(-date_pit:-date_edtf_parsed) ,
-  bn_women_dates_qual |> select(-date_qual, -date_qual_precision) |>
-    rename(date_prop=prop, date_prop_label= prop_label)
-)  |>
-  relocate(prop_valueLabel, .after = date_prop_label) |>
-  relocate(prop_value, .after = date_prop) |>
-  arrange(bn_id)
 
 bn_women_dates_death <-
 bn_women_dates |>
@@ -272,7 +82,7 @@ bn_women_dates |>
   ungroup()
 
 
-# all dates for women who have both DOB and DOD, hopefully in the right order
+# all dates for women who have both DOB and DOD... hopefully in the right order
 bn_women_dates_birth_death <-
 bind_rows(
   bn_women_dates_birth,
@@ -292,8 +102,8 @@ bind_rows(
   ) |>
   group_by(bn_id) |>
   arrange(year, date, .by_group = TRUE) |>
-  # tweaks to ensure birth date is always 1 and death date is always last...
-  # occasional date like resided is same year as birth and sorting can get buggered up. so assume similar things could happen with death
+  # tweaks to ensure birth date is always 1st and death date is always last...
+  # occasional date like resided is same year as birth and sorting can get buggered up. do death as well in case it could happen there too
   mutate(bn_date_id=row_number()+1, l=last(bn_date_id)) |>
   ungroup() |>
   mutate(bn_date_id = case_when(
@@ -307,57 +117,257 @@ bind_rows(
   mutate(bn_date_id = row_number()) |>
   ungroup() |>
   select(-l) |>
-  relocate(bn_date_id, .after = bn_id) 
+  relocate(bn_date_id, .after = bn_id)
+
+
+
+
+bn_women_dates_subcat <-
+bn_women_dates_categories |>
+  mutate(subcat = case_when(
+    date_prop_label %in% c("date of birth", "date of death") ~ "birth/death",
+    # use ppa buckets first. short forms if appropriate. make charitable na
+    category=="PPA" & ppa_bucket=="event participation" ~ "events",
+    category=="PPA" & ppa_bucket=="charitable/organisational" ~ NA,
+    category=="PPA" & ppa_bucket=="no buckets" ~ NA,
+    category=="PPA" ~ ppa_bucket,
+    category=="personal" ~ category,
+    # family and marriage. this is now covered by family category.
+    # education - now in ppa or personal. or excluded.
+    # category=="education" ~ category,
+    category=="family" ~ category,
+    
+    # ppa work; for this incl excavations
+    #str_detect(date_prop_label, "held position|employed as|contributed to|applicant to") ~ "work",
+    #date_prop %in% c("P36", "P37") ~ "work", #excavations, long labels cba to write them out
+    
+    # other ppa 
+    #date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
+    
+  #   #str_detect(date_prop_label, "attended|performed at|travelled overseas|was delegate") ~ "activity?", # 41
+  #   #str_detect(date_prop_label, "gave money|loaner to|was donor|donor to") ~ "resources",   # 99
+
+     # this ends up being big....
+    #date_prop_label %in% c("was member of", "was fellow of") ~ "societies",
+    #date_prop %in% c("P16", "P7", "P155", "P49") ~ "societies",
+    
+    #date_prop_label %in% c("served on", "organiser of", "fundraiser for") ~ "service",
+    #str_detect(date_prop_label, "Member of Committee") ~ "service",
+  #   #date_prop=="P38" ~ "service", # committee for archaeological fieldwork. excavations
+    
+    #date_prop %in% c("P101") ~ "publishing",  
+    
+    # everything else with instance of ppa
+    #category=="ppa" ~ "other ppa",
+    
+    #.default = "other" leave anything else NA - there are some now. but i think not filter them out yet?
+  ))  |>
+  
+  # group_label instead of group
+  mutate(group_label = case_when(
+    
+    category=="personal" ~ "1 personal",
+    category=="family" ~ "2 family",
+    subcat=="positions" ~ "3 ppa:positions",
+    category=="PPA" ~ "4 ppa:other",
+    #.default = "ng" # leave this so you can check for rogue NAs
+  )) 
+  
+  # # for display labels only; don't use in processing. in dates.r but keep here in case that doesn't work out
+  # # remove minor variations in name labels: free text v item, EDTF v PIT
+  # # don't forget can't use std_ col for joins back to original...
+  # mutate(date_prop_label_std = str_trim(str_remove(date_prop_label, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
+  # # shorten a few very long labels...
+  # mutate(date_prop_label_std = case_when(
+  #   date_prop=="P36" ~ "excavation director",
+  #   date_prop=="P37" ~ "excavation worker",
+  #   date_prop=="P142" ~ "paternal occupation",
+  #   date_prop=="P38" ~ "archaeological committee",
+  #   date_prop=="P49" ~ "proposed CAS",
+  #   date_prop=="P7" ~ "proposed RAI",
+  #   date_prop=="P16" ~ "proposed SAL",
+  #   date_prop=="P155" ~ "signed RHS personal",
+  #   .default = date_prop_label_std
+  # ))
+
+
+
+
+bn_women_dates_birth_death_subcat <-
+bn_women_dates_birth_death |>
+  left_join(bn_women_dates_subcat |> ##select(-date_prop_label) 
+              filter(!is.na(subcat)) |>
+            distinct(date_prop, date_prop_label_std, section, category, subcat, group_label)
+            , by="date_prop") |>
+  # make a single colour_category column with value to use in the make colours function
+  mutate(colour_category = case_when(
+    
+    group_label == "4 ppa:other" ~ "ppa",
+    .default = date_prop_label_std
+  )) |>
+  mutate(age = year-year_birth) |>
+    mutate(period = case_when(
+    between(year_birth, 1815, 1854) ~ "1815-1853",
+    between(year_birth, 1855, 1877) ~ "1854-1876",
+    between(year_birth, 1878, 1924) ~ "1877-1924"
+  )) 
+# original period groups
+  # mutate(period = case_when(
+  #   between(year_birth, 1825, 1858) ~ "1825-1858",
+  #   between(year_birth, 1855, 1881) ~ "1859-1881",
+  #   between(year_birth, 1881, 1924) ~ "1882-1924"
+  # ))
+```
+
+
+
+
+
+```{r dates-categories-deprecated}
+# original version of categories
+# bn_women_dates_categories <-
+# bn_women_dates_birth_death |> 
+#   left_join(
+#   bn_instance_of_query |> 
+#   filter(str_detect(bn_id, "P") & !instance %in% c( "Q2903", "Q2904", "Q415", "Q2137", "Q2319", "Q2947", "Q89"))  |> select(bn_id, instance_label), by=c("date_prop"="bn_id")
+# ) |>
+#   count(date_prop_label, date_prop, instance_label) |>  #, sort = T) |>
+#   # remove minor variations in name labels: free text v item, EDTF v PIT
+#   # but don't forget can't use std_ col for joins back to original...
+#   mutate(date_prop_label_std = str_trim(str_remove(date_prop_label, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
+#   # shorten a few very long labels (but keep distinct)...
+#   mutate(date_prop_label_std = case_when(
+#     date_prop=="P36" ~ "excavation director",
+#     date_prop=="P37" ~ "excavation worker",
+#     .default = date_prop_label_std
+#   )) |>
+#   # consolidation into categories
+#   mutate(category = case_when(
+#     date_prop_label %in% c("resided at") ~ date_prop_label,
+#     date_prop_label %in% c("date of birth", "date of death") ~ "birth/death",
+#     # family and marriage
+#     str_detect(date_prop_label, "was married in|had child in|was widowed") ~ "family" ,
+#     # education
+#     date_prop_label %in% c("educated at", "academic degree") ~ "education",  # leave out "student of" unless you see more of them
+#     # ppa: work
+#     date_prop_label_std %in% c("held position", "employed as", "contributed to", "applicant to") ~ "work",
+#     date_prop %in% c("P36", "P37") ~ "work", #excavations, long labels cba to write them out
+#     # other ppa - aim for around 6 categories?
+#     date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
+#     date_prop_label %in% c("was member of", "was fellow of") ~ "societies",
+#     date_prop %in% c("P16", "P7", "P155") ~ "societies",
+#     date_prop_label %in% c("served on", "organiser of") ~ "service",
+#     str_detect(date_prop_label, "Member of Committee") ~ "service",
+#     date_prop %in% c("P101") ~ "publication", # might be more to go in here
+#     # everything else with instance of ppa
+#     instance_label=="public and professional activity" ~ "other ppa",
+#     # add any bits and pieces that are other ppa but lack instance of
+#     #date_prop_label %in% c(.....) ~ "other ppa",
+#     # other bits and pieces can go in ng
+#     .default = "other"
+#   ))  |>
+#   mutate(group = case_when(
+#     date_prop_label %in% c("date of birth", "date of death") ~ "ng",
+#     date_prop_label %in% c("resided at") ~ "ng",
+#     category=="other" ~ "ng",
+#     
+#     category=="education" ~ "1 education",
+#     
+#     category=="family" ~ "2 family",
+#     
+#     category=="work" ~ "3 ppa:work",
+#     
+#     # separate props for group 4
+#     category %in% c("spoke at", "exhibited at", "corresponded with") ~ "4 ppa:other",
+#     # categorised for group 4
+#     category %in% c("societies", "service", "publication", "other ppa") ~ "4 ppa:other",
+#     
+#     #.default = "ng" # leave this so you can check for rogue NAs
+#   )) |>
+#   distinct(date_prop, date_prop_label_std, category, group, date_prop_label)
+
 
 ```
 
 
-```{r}
-# to make a palette for use in scale_colour_manual: top 9 values are in colour, then the rest are grey.
-# need the set without grey for the table  
 
-pal9 <- c( '#CC6677', '#332288', '#F67E4B', '#117733', '#0077BB', '#882255', '#44AA99', '#999933', '#AA4499' )
+```{r colours-vectors}
+# to make a palette for use in scale_colour_manual by groups
+gg <- c( "g1"= '#CC6677', "g2"= '#DDCC77' , "g3"= '#88CCEE', "g4"= '#882255')
 
-pal9_light <- c('#EE3377','#77AADD', '#EE8866', '#EEDD88',  '#99DDFF','#FFAABB', '#44BB99', '#BBCC33',  '#AAAA00')
+#group 1 = 2 at present. so colour ramp not needed.
+#g1 <- c('#abcce6','#4292c6')
+g1 <- c("#e57e8e", '#CC6677')
+# to convert...
+# colorRampPalette(c('#abcce6','#4292c6'))(6)
+ 
+# group 2 = 3. small numbers and needs to be brighter to stand out
+#g2 <- c('#F7CB45', '#F6C141', '#F4A736', '#F1932D')
+g2 <- c("#e2d17d", "#DDCC77", "#cdc089")
 
-pal8_light <- c('#77AADD', '#EE8866', '#EEDD88',  '#99DDFF','#FFAABB', '#44BB99', '#BBCC33',  '#AAAA00')
+#group 3 = 6 atm. 
+#you could probably add the counts programmatically too...
+#g3 <- colorRampPalette(c('#c7e9c0','#74c476'))(6)
+g3 <- colorRampPalette(c("#9cdeff", "#88CCEE", "#5ca1c1"))(6)
 
-pal9df <- 
-  c(pal8_light, '#dddddd') |>
-  enframe()
+#group 4 = 7 categories . 
+#g4 <- colorRampPalette(c('#D9CCE3', "#BA8DB4"))(7)
+g4 <- colorRampPalette(c("#882255", "#600037"))(7)
 
-# pal10df <- 
-#   c(pal9, '#dddddd') |>
-#   enframe()
-# 
-# pal10df_light <- 
-#   c(pal9_light, '#dddddd') |>
-#   enframe()
 
-make_palette <-
-bn_women_dates_birth_death |>
-  count(date_prop_label) |>
-  # make date of birth and date of death NA
-  mutate(n = if_else(date_prop_label %in% c("date of birth", "date of death"), NA, n)) |>
-  # now they sort to the end of the table
-  arrange(-n) |>
-  # so they're excluded from top row numbers
+# do this one without the function
+# are you sure you want to lump in the bits and pieces with the big categories??? it's ok for now.
+group_bd <-
+bn_women_dates_birth_death_subcat |>
+  #filter(group_label=="ng") |>
+  filter(is.na(group_label)) |>
+  distinct(colour_category) |>
+  # set neutral colour you want for date of birth/death
+  mutate(value= "#bbbbbb") |>
+  deframe()
+
+# with this method it doesn't matter if there are more colours than props because the join will ignore the extras anyway 
+# the important bit is to make sure you have the props in descending order of frequency and to get the colours in appropriate order
+# if you always add fill() it also won't matter if there are more props than colours; the small ones at the bottom will just get the same colour
+
+group_1 <-
+  bn_women_dates_birth_death_subcat |>
+  make_named_colours("1 personal", g1)
+
+group_2 <-
+bn_women_dates_birth_death_subcat |>
+  make_named_colours("2 family", g2)
+
+group_3 <-
+bn_women_dates_birth_death_subcat |>
+  make_named_colours("3 ppa:positions", g3)
+
+# group 4 needs tweak to push other ppa to the bottom
+# (actually you could generalise this with an "other" value... wouldn't matter if there isn't one. hmm maybe.)
+group_4 <-
+bn_women_dates_birth_death_subcat |>
+  filter(group_label=="4 ppa:other") |>
+  count(colour_category) |>
+   # make `other ppa` NA
+   mutate(n = if_else(colour_category %in% c("other ppa"), NA, n)) |>
+   # now sorts to the end of the table because that's what NA does
+   arrange(-n) |>
   rowid_to_column() |>
-  left_join(pal9df, by=c("rowid"="name")) |>
-  # set colour you want for date of birth/death separately
-  mutate(value=if_else(date_prop_label %in% c("date of birth", "date of death"), "#bbbbbb", value)) |>
-  # and now you can fill the rest with lighter grey... 
+  left_join(g4 |> enframe(), by=c("rowid"="name")) |>
+  # don't need fill atm, but again keep as a fall back.
   fill(value) |>
-  select(date_prop_label, value) |>
+  select(colour_category, value) |>
   # turn the df into a named vector with deframe and this can be used in scale_color_manual
   deframe()
 
-# and get the names back into a table again for display
-coloured_props <-
-make_palette |>
-  enframe() |>
-  select(name) |>
-  head(8)
+
+# the final named vector of everything...
+grouped_colours_ng <-
+  c(group_bd, group_1, group_2, group_3, group_4)
+
+## or everything except ng
+grouped_colours <-
+  c(group_1, group_2, group_3, group_4)
 ```
 
 
@@ -367,40 +377,195 @@ make_palette |>
 ### Beeswarm plots of activity by age
 
 - every date is a single point
-- only women who have both birth and death dates
-- split women up into three groups by birth date between 1825 and 1914 (there are only a few women before/after those dates) 
-- birth at 0 is not shown; death is coloured grey; the top eight properties apart from those two are highlighted in colour and the rest are shown but in very light grey [second version will do colours in a more rational manner, hopefully]
+- split women up into three groups by birth date between 1825 and 1924 (there are very few women before/after those dates) 
+  - I've adjusted the dates for even size groups rather than equal periods
+- only includes women who have both birth and death dates
+
+This is considerably simplified from the first version...
+
+- I've taken out death as well as birth to (I may put women without death dates back in; it'll depend how many data points that adds)
+- I've dropped resided at dates and a small number of miscellaneous categories so that it's easier to focus on four main groups of activities:
+
+1. personal
+2. marriage/family 
+3. work/employment activities 
+4. other public and professional activities 
+
+
+```{r with-death}
+# bn_women_dates_birth_death_with_categories |>
+#   filter(between(year_birth, 1825, 1914)) |>
+#   filter(date_prop_label != "date of birth") |>
+#   # mutate(age = year-year_birth) |>
+#   # mutate(period = case_when(
+#   #   between(year_birth, 1825, 1854) ~ "1825-1854",
+#   #   between(year_birth, 1855, 1879) ~ "1855-1879",
+#   #   between(year_birth, 1880, 1914) ~ "1880-1914"
+#   # )) |>
+#   filter(date_prop_label !="date of birth") |>
+#   arrange(group) |>
+#   ggplot(aes(period, age, colour=colour_category)) +
+#   ggbeeswarm::geom_beeswarm(size=1, show.legend = F, method = "center") +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+# #  geom_quasirandom(orientation = "y") +
+#   scale_colour_manual(values = grouped_colours_ng) +
+#   scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+#   #theme(legend.position = "bottom", aspect.ratio = 5/4) +
+#  # theme(aspect.ratio = 6/15) +
+#   labs(y=NULL, x="birth period")
+```
+
+
 
 ```{r}
-bn_women_dates_birth_death |>
-  filter(between(year_birth, 1825, 1914)) |>
+## colour by group if you're adding the breakdown in the interactive
+##lower cex makes each swarm narrower so they fit in better; might also mean more overplotting though.
+bn_women_dates_birth_death_subcat |>
+  filter(between(year_birth, 1815, 1924)) |>
   filter(date_prop_label != "date of birth") |>
-  mutate(age = year-year_birth) |>
-  mutate(period = case_when(
-    between(year_birth, 1825, 1854) ~ "1825-1854",
-    between(year_birth, 1855, 1879) ~ "1855-1879",
-    between(year_birth, 1880, 1914) ~ "1880-1914"
-  )) |>
-  filter(date_prop_label !="date of birth") |>
-  #mutate(period = fct_rev(period)) |>
-  ggplot(aes(period, age, colour=date_prop_label)) +
-  geom_beeswarm(size=1, show.legend = F) +
-#  geom_quasirandom(orientation = "y") +
-  #scale_color_ptol() +
-  scale_colour_manual(values = make_palette) +
-  #theme(legend.position = "bottom", aspect.ratio = 5/4) +
-  labs(y=NULL, x="birth period")
+  filter(!is.na(group_label)) |>
+#  filter(group_label !="ng") |> 
+  arrange(group_label, year) |>
+  ggplot(aes(period, age, colour=group_label)) +
+  ggbeeswarm::geom_beeswarm(size=0.8,  method = "swarm", cex = 0.8) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  scale_colour_manual(values = c(  '#CC6677', '#DDCC77' , '#88CCEE',  '#882255')) +
+  #scale_colour_manual(values = c( '#AA4499','#DDCC77' ,  '#88CCEE',  '#CC6677')) + # almost
+  
+  #scale_colour_manual(values = grouped_colours) + # if you do it by category
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=4))) +
+  labs(y=NULL, x="birth period", colour=NULL)
+
+#ggsave("_test-bees.png", width=7.3, height=4.5)
 ```
 
-Colour key
+
+
+### An interactive version
+
+Usage:
+
+- hover over points for more info in tooltips (todo: other info in the tooltips)
+- single-click items in the legend to toggle them off and on individually
+- double-click items in the legend to toggle off/on *all the others* (this one seems a bit temperamental sometimes but it does work) 
+
+(Eg double-click on `exhibited at` for a nice contrast, or on `publication` for a reminder about the incompleteness of some of our data.)
+
+
+
 
 ```{r}
-coloured_props |>
-  kable() |>
-  kable_styling() |>
-  column_spec(1, color = "white" , background = pal8_light
-              )
+bn_bees <-
+bn_women_dates_birth_death_subcat |>
+  filter(between(year_birth, 1815, 1924)) |>
+  filter(date_prop_label != "date of birth") |>
+  filter(!is.na(group_label)) |>
+#  filter(group_label !="ng") |> 
+  arrange(group_label, year) |>
+  ggplot(aes(period, age, colour=colour_category)) +
+  ggbeeswarm::geom_beeswarm(size=0.8, show.legend = F, method = "swarm", cex = 0.8) + 
+  scale_colour_manual(values = grouped_colours) +
+  labs(y=NULL, x="birth period")
+
+plotly::ggplotly(bn_bees)
 ```
+
+
+Legend notes:
+
+- some property names shortened for labels
+- some pairs of properties (EDTF/PIT or item/text) consolidated into single categories
+- some ppa:other properties also merged into single categories to make them more manageable, and smaller groups into a single "other"
+
+
+
+
+
+```{r original-deprecated-bees}
+# bn_women_dates_birth_death |>
+#   filter(between(year_birth, 1825, 1914)) |>
+#   filter(date_prop_label != "date of birth") |>
+#   mutate(age = year-year_birth) |>
+#   mutate(period = case_when(
+#     between(year_birth, 1825, 1854) ~ "1825-1854",
+#     between(year_birth, 1855, 1879) ~ "1855-1879",
+#     between(year_birth, 1880, 1914) ~ "1880-1914"
+#   )) |>
+#   filter(date_prop_label !="date of birth") |>
+#   #mutate(period = fct_rev(period)) |>
+#   ggplot(aes(period, age, colour=date_prop_label)) +
+#   geom_beeswarm(size=1, show.legend = F) +
+# #  geom_quasirandom(orientation = "y") +
+#   #scale_color_ptol() +
+#   scale_colour_manual(values = make_palette) +
+#   #theme(legend.position = "bottom", aspect.ratio = 5/4) +
+#   labs(y=NULL, x="birth period")
+
+
+# coloured_props |>
+#   kable() |>
+#   kable_styling() |>
+#   column_spec(1, color = "white" , background = pal8_light
+#               )
+```
+
+
+
+## Notes on some of the complexities
+
+### general concepts
+
+Broadly the main issues are variability in a. precision, b. certainty, c. formatting and d. omission rates. 
+
+Dates are a problem for just about everyone who has to work with them, whether historians or data people. (Sometimes the way that software attempts to deal with the problem makes them a problem for everyone else as well, such as the [notorious eagerness](https://github.com/jennybc/scary-excel-stories) of spreadsheet software to convert into date format *anything* that even remotely resembles a date.)
+
+
+### wikibase structure and variety
+
+Dates may be recorded as "main" (or top level) values or qualifiers, which need to be queried separately. 
+
+The majority of dates are qualifiers, and there are around 50 different properties for events or activities that might have qualifier dates. That is a *lot* of categories to try to analyse or visualise together.
+
+Then there are several different possible date properties
+
+
+### datatypes and technical constraints
+
+Main level dates may have one of two different datatypes: [Time](https://www.wikidata.org/wiki/Help:Dates#Time_datatype) (ymdHMS format), which is the built-in Wikibase datatype, or [EDTF](https://www.wikibase.consulting/wikibase-edtf/) ([Extended Date/Time Format](https://www.loc.gov/standards/datetime/)) for "fuzzier" dates. Qualifier dates (so far...) only have the Time datatype.
+
+- Time dates are always stored and exported by the wikibase (and handled by R) in a year-month-day format, even if they've been recorded at a lower level of [precision](https://www.wikidata.org/wiki/Help:Dates#Precision) (eg year only); the precision level is stored separately and has to be specifically queried. (A year-only date, for example, is stored as YYYY-01-01, so without the precision level it's impossible to differentiate it from an actual 1 January date.)
+- EDTF dates are exported as text strings which need to be converted to dates separately. So far they've been used in a fairly straightforward way, mirroring the precision levels for Time dates, but they could be much more complex including uncertainty, approximation, date ranges, etc. [This comment is not intended as encouragement.]
+
+If I run a basic union query in the WQS combining Time/EDTF dates in one column, the EDTF dates will be automatically simplified and converted to the same format as Time dates. So if I want to retain the extra information I have to separate out those variables and then re-combine them after processing.
+
+
+### varying precision/certainty in sources and recording them
+
+For qualifier dates there are five different properties which reflect different ways that dates might have been recorded, or degrees of certainty in interpreting them: `point in time`; `start time`; `end time`; `earliest date`; `latest date`.
+
+  - a pair of start time and end time represents a period of time
+  - but often only one of start/end is recorded
+  - point in time may represent *either* a discrete short term event or simply a known recorded moment in a longer duration
+  - it looks as though latest date can be *very* imprecise
+  - (and presumably earliest can be too, though I think there aren't many of them)
+
+<!-- CHECK WHAT HAPPENS TO THE RELATIVE LINK... -->
+
+Dates may not be recorded at all, and [some dates](/posts/exploring-dates-2023-09-13/) are more likely to be recorded than others. 
+
+A date might be missing because it really is completely unknown, or because the project doesn't have time and resources to track down everything (!), or because some sources are work in progress, or simply because of technical issues fetching the data (eg The Bug). 
+
+
+### data issues
+
+There are occasional apparent inconsistencies in usage on the wikibase which can be difficult to interpret (ie, they could be errors but equally they could be deliberate choices to handle unusual cases): eg at time of writing there is one date for the property `married name` (for Olwen Brogan) and it's not clear why this isn't recorded as `married in`. [Update: this particular example has now been fixed.] I'd emphasise that such inconsistencies seem rare and minor problems.
+
+Occasionally there may be more than one recorded date to choose from (apart from start/end pairs), though I think there are fewer of these now than there were a few months ago. I think this might tend to occur because an event was recorded with different precision/certainty in different sources, so deciding which of the two dates to use (whether by editing the wikibase or filtering one out at the analysis stage) can be a choice between precision and certainty. Most I've seen are in the same year, in which case it's a minor issue.
+
+(Annoyingly, some sparql queries return duplicates, which is a very different data problem from having multiple dates in a statement... but not necessarily immediately obvious to tell apart.)
+
+
+
 
 
 ## Table
@@ -439,10 +604,11 @@ reactable(
         sprintf('<a href="%s" target="_blank">%s</a>', paste(bn_women_dates_birth_death$person[index], bn_women_dates_birth_death$date_prop[index], sep="#"), value)
       }),
     date_precision = colDef(maxWidth = 100, name="precision"),
-    prop_valueLabel = colDef(name="qual value", maxWidth = 180),
+    prop_valueLabel = colDef(name="qual", maxWidth = 180),
     date = colDef(format = colFormat(date=TRUE), minWidth = 120),
-   date_type = colDef(name="type", maxWidth = 90),
-   date_format = colDef(name="format", maxWidth = 100),
+   date_level = colDef(name="level", maxWidth = 90),
+   date_label = colDef(name="type", maxWidth = 100),
+   date_certainty = colDef(name="other", maxWidth = 100),
    year = colDef(maxWidth = 90)
   )
 )

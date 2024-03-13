@@ -97,12 +97,15 @@ bn_wikidata_ids_query |>
 
 ```{r}
 bn_women_key_ids_sparql <-
-  'SELECT ?person ?personLabel ?isni_ID ?viaf_ID ?ads_ID  
+  'SELECT ?person ?personLabel ?isni_ID ?viaf_str ?ads_ID  
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 .                                 #select women
   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}            #filter out project team
     OPTIONAL {?person bnwdt:P125 ?isni_ID .}             #return wikidata ID
-    OPTIONAL {?person bnwdt:P119 ?viaf_ID .}                 #return VIAF ID
+    OPTIONAL {?person bnwdt:P119 ?viaf_ID .
+      
+         BIND(concat("idstr:", ?viaf_ID) as ?viaf_str ) 
+    }                 # viaf_str prepends a string to prevent R fxxing around with the very long ones.
     OPTIONAL {?person bnwdt:P34 ?ads_ID .}                   #return Archaeological Data Service ID
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
 }
@@ -111,7 +114,10 @@ ORDER BY ?personLabel'
 # this will need pivot longer and then distinct, i suspect
 bn_women_key_ids_query <-
   bn_std_query(bn_women_key_ids_sparql) |>
-  make_bn_item_id(person)
+  make_bn_item_id(person) |>
+  # this should keep viaf ids as char....
+  mutate(viaf_ID = str_remove(viaf_str, "idstr:"))  
+
 
 bn_women_key_ids <-
 bn_women_key_ids_query |>

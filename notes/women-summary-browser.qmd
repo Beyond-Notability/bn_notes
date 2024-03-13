@@ -2,11 +2,12 @@
 title: "All the Women"
 description: A summary table of key information for every woman in the wikibase
 author: "Sharon Howard"
+date: "2023-08-23"
+date-modified: today
 execute: 
   warning: false
   message: false
   echo: false 
-date-modified: today
 categories: 
   - summaries
   - musthave
@@ -187,7 +188,7 @@ bn_ids_musthave <-
 bn_women_musthave_ids <-
 bn_properties_musthave |>
   filter(property_type=="ExternalId") |>
-  mutate(ID = glue("bnwdt:{bn_id}")) |>
+  mutate(ID = glue("bnwdt:{bn_prop_id}")) |>
   summarise(bn_union = paste(ID, collapse = " | ")) |>
   # construct WHERE triples
   mutate(bn_triple_union = glue("?person ( {bn_union} ) ?id . ")) |>

@@ -1,0 +1,683 @@
+---
+title: "PPAs and change over time"
+author: "Sharon Howard"
+date: "2023-12-12"
+date-modified: today
+categories: 
+  - ppa
+  - dates
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+## Wikibase queries
+
+* [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section
+* [PPA buckets](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#PPA_Buckets_for_Women)
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(ggbeeswarm)
+library(ggridges)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+
+```{r}
+## PPA buckets and sorted properties match? almost...
+## travelled overseas for and educated at are in sorted-Personal details rather than PPA.
+## no buckets = sorted-PPA except editor which = sorted-Works
+# bn_sorted_properties |> 
+#   left_join(
+#     bn_ppa_buckets |> rename(bucket=label), by=c("bn_prop_id"="ppa_id")
+#   ) |>
+#   mutate(category = case_when(
+#     !is.na(bucket) ~ "PPA",
+#     #bn_prop_id %in% c("P94") ~ "education",   # don't understand why i included student of "P95"... now that educated at is in PPA you need a different filter to group it with academic degree anyway.
+#     bn_prop_id %in% c("P59", "P26", "P15", "P29") ~ "personal", # not sure why I had some IDs in here: "P142", "P143", "P134", HISCO/ALBS/90s 
+#     section == "Family" ~ "family",
+#     #section %in% c("Other Resources", "Land-Proprietor Activity") ~ "other". don't need this, just leave them out
+#   )) |>
+#  relocate(category, bucket, section, label)
+```
+
+
+
+```{r}
+# to check there's nothing in buckets that isn't in sorted properties...
+# bn_ppa_buckets |>
+#   anti_join(bn_sorted_properties, by=c("ppa_id"="bn_prop_id"))
+```
+
+
+```{r deprecation-oh-dear}
+# original terrible query that was getting loads of dups
+# fetch both simple date value and timevalue and then need to dedup by filtering
+# bn_women_dates_qual_sparql <-
+#   'SELECT distinct ?person ?personLabel ?prop_label ?prop_valueLabel ?date_qual_label  ?date_qual ?date_qual_precision ?date_qual_simple ?prop_value ?prop ?s
+# 
+# WHERE {
+#      #VALUES (?person) {(bnwd:Q106) (bnwd:Q1675)}  # for testing 
+#     ?person bnwdt:P3 bnwd:Q3 . # women
+#     FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
+#   
+#     # get stuff about ?person   
+#     ?person ?p ?s .   
+#   
+#       # the claim for ?p .  do i need psv as well as ps?
+#       ?prop wikibase:claim ?p;      
+#          wikibase:statementProperty ?ps;     
+#          wikibase:statementValue ?psv.
+#       ?prop rdfs:label ?prop_label. filter(lang(?prop_label)="en") .  # spoke at etc
+#  
+#   # the direct value (usually item) for the property, things like annual meeting, girton college. .
+#         ?s ?ps ?prop_value.
+#      
+#   # get date qualifiers. [assumes no edtf in quals. ]
+#         ?s ?pq ?date_qual_simple .  # this causes dups but need to get the label
+#           ?qual_prop wikibase:qualifier ?pq .
+#           ?qual_prop wikibase:propertyType wikibase:Time. 
+#           ?qual_prop rdfs:label ?date_qual_label . filter(lang(?date_qual_label)="en") . 
+# 
+#   # qualifier timevalue and precision. requires the bnpqv: prefix; i dont know how to do it without specifying them. 
+#   # pit/start/end/earliest/latest - anything else?
+#       ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 | bnpqv:P51 | bnpqv:P53 ) ?pqv.
+#           ?pqv wikibase:timeValue ?date_qual .  
+#           ?pqv wikibase:timePrecision ?date_qual_precision .
+#       
+#  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en, en-gb". } 
+#   
+# } # /where
+# 
+# ORDER BY ?personLabel ?s ?prop_label'
+# 
+# 
+# 
+# # still slooow. 
+# # since the query is slow and you might want to be able to check the unfiltered version, do this in two steps...
+# bn_women_dates_qual_query_unfiltered <-
+#   bn_std_query(bn_women_dates_qual_sparql) |>
+#   make_bn_item_id(person) |> 
+#   make_bn_ids(c(prop, prop_value, s)) |>
+#   relocate(person, .after = last_col())
+# 
+# ## **fudge to get rid of bad dups** 
+# ## it is possible to do this filter inside the query so i might update if i don't find a better way to do it.
+# bn_women_dates_qual_query <-
+#   bn_women_dates_qual_query_unfiltered |>
+#   filter(date_qual==date_qual_simple) |>
+#   select(-date_qual_simple)
+```
+
+
+
+```{r dates-data}
+source(here::here("_R/dates.R"))
+
+
+bn_women_dates_birth <-
+bn_women_dates |>
+  filter(date_prop %in% c("P26")) |>
+  #add_count(bn_id) |> filter(n>1) |>
+    group_by(bn_id) |>
+  arrange(date_precision, .by_group = TRUE) |>
+  top_n(1, row_number()) |>
+  ungroup()
+
+bn_women_dates_categories_birth <-
+  bn_women_dates_categories |>
+  # might as well add dob here...? will need a filter for dob specific charts
+  left_join(
+    bn_women_dates_birth |>
+      select(bn_id, date_birth=date, year_birth=year), by="bn_id"
+  ) |>
+  mutate(age = year - year_birth) |>
+  mutate(period = case_when(
+    between(year_birth, 1815, 1854) ~ "1815-1853",
+    between(year_birth, 1855, 1877) ~ "1854-1876",
+    between(year_birth, 1878, 1924) ~ "1877-1924"
+  )) 
+# earlier grouping. added a lot of dates since then!
+  # mutate(period = case_when(
+  #   between(year_birth, 1825, 1858) ~ "1825-1858",
+  #   between(year_birth, 1855, 1881) ~ "1859-1881",
+  #   between(year_birth, 1881, 1924) ~ "1882-1924"
+  # ))
+
+
+bn_women_dates_ppa <-
+bn_women_dates_categories_birth |>
+  filter(category %in% c("PPA")) |>
+  # this should be all you need now...
+  # need shorter labels for event participation and charitable/organisational !
+  mutate(subcat = case_match(
+    ppa_bucket,
+    "event participation" ~ "events",
+    "charitable/organisational" ~ "charitable",
+    .default = ppa_bucket
+  )) 
+
+## earlier version
+  # # ppa specific subcat
+  # # use _std label? no b/c only doing str_detect for work.
+  # mutate(subcat = case_when(
+  #   # work
+  #   str_detect(date_prop_label, "held position|employed as|contributed to|applicant to") ~ "work",
+  #   
+  #   category=="excavations" ~ category,
+  #   #date_prop %in% c("P36", "P37") ~ "excavations", #excavations, long labels cba to write them out
+  #   
+  #   # other ppa 
+  #   date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
+  #   
+  #   # this ends up being big.
+  #   date_prop_label %in% c("was member of", "was fellow of") ~ "membership",
+  #   date_prop %in% c("P16", "P7", "P155", "P49") ~ "elections",
+  #   
+  #   date_prop_label %in% c("served on", "organiser of", "fundraiser for") ~ "service",
+  #   #date_prop=="P38" ~ "service", # committee for archaeological fieldwork. excavations
+  #   
+  #   date_prop %in% c("P101") ~ "publishing", # works published in
+  #   date_prop %in% c("P111", "P87", "P115") ~ "resources", # loaner/gave money/donor
+  #   #str_detect(date_prop_label, "attended|performed at|travelled overseas|was delegate") ~ "activity?", # 41
+  #   #str_detect(date_prop_label, "gave money|loaner to|was donor|donor to") ~ "resources",   # 99
+  #   .default = "other"
+  # ))
+```
+
+
+```{r}
+## try this for education as well... but need to adjust to get 8 again...
+## what was this for exactly? omit for now, since educated at is now in ppas.
+# bn_women_dates_ppa_education <-
+# bn_women_dates_categories |>
+#   filter(category %in% c("ppa", "excavations", "education")) |>
+#   # ppa specific subcat
+#   # use _std label? no b/c only doing str_detect for work.
+#   mutate(subcat = case_when(
+#     # work
+#     str_detect(date_prop_label, "held position|employed as|contributed to|applicant to") ~ "work",
+#     
+#     category=="excavations" ~ category,
+#     category=="education" ~ category,
+#     #date_prop %in% c("P36", "P37") ~ "excavations", #excavations, long labels cba to write them out
+#     
+#     # other ppa 
+#     date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
+#     
+#     # this ends up being big.
+#     date_prop_label %in% c("was member of", "was fellow of") ~ "membership",
+#     date_prop %in% c("P16", "P7", "P155", "P49") ~ "elections",
+#     
+#     date_prop_label %in% c("served on", "organiser of", "fundraiser for") ~ "service",
+#     #date_prop=="P38" ~ "service", # committee for archaeological fieldwork. excavations
+#     
+#     date_prop %in% c("P101") ~ "publishing", # works published in
+#     date_prop %in% c("P111", "P87", "P115") ~ "resources", # loaner/gave money/donor
+#     #str_detect(date_prop_label, "attended|performed at|travelled overseas|was delegate") ~ "activity?", # 41
+#     #str_detect(date_prop_label, "gave money|loaner to|was donor|donor to") ~ "resources",   # 99
+#     .default = "other"
+#     
+#   )) 
+
+
+
+
+
+
+# women with ppa dates who have a DOB
+# add DOBs and calc age
+# no reason to limit this to both dob and dod for this
+
+# bn_women_dates_ppa_education_dob <-
+# bn_women_dates_ppa_education |>
+#   inner_join(
+#     bn_women_dates_birth |>
+#       select(bn_id, date_birth=date, year_birth=year), by="bn_id"
+#   ) |>
+#   mutate(age = year - year_birth) |>
+#   mutate(period = case_when(
+#     between(year_birth, 1825, 1858) ~ "1825-1858",
+#     between(year_birth, 1855, 1881) ~ "1859-1881",
+#     between(year_birth, 1881, 1924) ~ "1882-1924"
+#   ))
+```
+
+
+```{r}
+## but... how many of these have more than one dates essentially for the same event, ie start and end? 
+## hmm it might not matter too much unless you have very disproportionate coverage of pit v s/e in different categories?
+```
+
+
+
+
+## Beeswarms
+
+>Can you make a bee swarm-type diagram that plots the frequency of PPAs across all the women in the dataset, across the entire project period? So with years ascending up the y axis, and all the women considered one big blotchy group (am sure that's the technical term). What we want to get is an overview of whether certain kinds of PPA were more dominant at various periods of the overall period covered by the project, e.g. women suddenly started doing more excavation or whatnot in the 1910s, whereas before that there was almost no excavation activity associated with women. Project data on PPAs still very incomplete for post-1920s period, at least until CAS Earthworks and Blue Paper data is fully added, but even if we could begin to get a sense for the 1870 - 1920 period this would be very helpful to us. 
+
+
+Notes:
+
+- Updated to use the PPA buckets
+- I've moved the Big Blob versions to the bottom of the page since there was a clear preference for the separated approach!
+
+
+```{r}
+#This uses a slightly different layout method that forces all the swarms to the same width (so big categories are denser but don't overlap their neighbours which was happening with spoke at).
+
+# bn_women_dates_ppa |>
+#   filter(between(year, 1871, 1950))  |>
+#   filter(!subcat %in% c("membership", "other", "resources")) |>
+# #  filter(!date_prop %in% c("P75", "P67") & subcat!="other") |>
+#   arrange(year, subcat) |>
+#   ggplot(aes(y=year, x=subcat)) +
+#   ggbeeswarm::geom_quasirandom(size=0.4,  varwidth = TRUE) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+#   #scale_colour_ptol() +
+#   #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+#   theme(legend.position = "bottom") +
+#   guides(colour = guide_legend(override.aes = list(size=2))) +
+#   labs(y=NULL, x=NULL, colour=NULL)
+
+```
+
+### dates
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950))  |> 
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+#  filter(!date_prop %in% c("P75", "P67") & subcat!="other") |>
+  arrange(year, subcat) |>
+  ggplot(aes(y=year, x=subcat)) +
+  ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL)
+
+```
+
+Although it becomes (I think) less effective with very small categories, we can drill down into different properties in a larger category. 
+
+in the case of positions, most are `held position`
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950))  |>
+  filter(subcat =="positions") |>
+#  filter(!date_prop %in% c("P75", "P67") & subcat!="other") |>
+  #arrange(year, subcat) |>
+  ggplot(aes(y=year, x=date_prop_label_std)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL, title="positions")
+
+```
+
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950))  |>
+  filter(subcat =="elections") |>
+#  filter(!date_prop %in% c("P75", "P67") & subcat!="other") |>
+  #arrange(year, subcat) |>
+  ggplot(aes(y=year, x=date_prop_label_std)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL, title = "elections")
+
+```
+
+### age
+
+
+```{r}
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) & !is.na(age))  |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+#  filter(!date_prop %in% c("P75", "P67") & subcat!="other") |>
+  arrange(age, subcat) |>
+  ggplot(aes(y=age, x=subcat)) +
+  ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  #scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  #guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL)
+```
+
+### age and birth period
+
+This splits the women into age groups; I've reintroduced a colour element because the facets are too narrow for the category labels.
+
+```{r}
+bn_women_dates_ppa |> 
+  filter(between(year, 1861, 1950) & !is.na(age))  |> 
+  filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+  arrange(age, subcat) |>
+  ggplot(aes(y=age, x=subcat, colour=subcat)) +
+  ggbeeswarm::geom_beeswarm(size=0.2,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  scale_colour_ptol() +
+  facet_wrap(~period) +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  theme(legend.position = "bottom") +
+  theme(axis.text.x = element_blank()) +
+  labs(y=NULL, x=NULL, colour=NULL)
+```
+
+
+
+```{r fig.height=7.5}
+# bn_women_dates_ppa_education_dob |>
+#   filter(between(year, 1871, 1950))  |> 
+#   filter(!is.na(period)) |>
+#   filter(!subcat %in% c("membership", "other", "resources", "education")) |>
+# #  filter(!date_prop %in% c("P75", "P67") & subcat!="other") |>
+#   arrange(age, subcat) |>
+#   mutate(subcat = fct_rev(subcat)) |>
+#   ggplot(aes(x=age, y=subcat, colour=subcat)) +
+#   ggbeeswarm::geom_beeswarm(size=0.2,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9, show.legend = F) + #, cex=0.8
+#   #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+#   scale_colour_ptol() +
+#   facet_wrap(~period, ncol=1) +
+#   #guides(colour = guide_legend(override.aes = list(size=2))) +
+#   theme(#legend.position = "bottom"
+#     aspect.ratio = 1
+#         ) +
+#   #theme(axis.text.x = element_blank()) +
+#   labs(y=NULL, x=NULL, colour=NULL)
+```
+
+
+### playing around with variables
+
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+  arrange(year, subcat) |>
+  ggplot(aes(y=year, x=subcat, colour=subcat)) +
+  ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  facet_wrap(~period) +
+  scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(axis.text.x = element_blank()) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL)
+
+#ggsave("test-ppa-bees.png", width=7.3, height=4.5)
+```
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+  arrange(age, subcat) |>
+  ggplot(aes(y=age, x=period, colour=period)) +
+  ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  facet_wrap(~subcat, ncol=4) +
+  scale_colour_colorblind() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(axis.text.x = element_blank()) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL)
+
+#ggsave("test-ppa-bees.png", width=7.3, height=4.5)
+```
+
+### held position
+
+This only shows job titles with at least 10 dates. (I've included employed as for the handful that met the threshold.)
+
+```{r}
+# # why not do this with employed as well? then colour 
+# bn_women_dates_ppa_education |>
+#   filter(str_detect(date_prop_label_std, "held position") & !str_detect(prop_valueLabel, "job title unrecorded|^t\\d")) |>
+#   select(bn_id, personLabel, prop_valueLabel, date_prop_label, date_label, year, s) |>
+#   add_count(prop_valueLabel, date_prop_label, sort = T) |>
+#   filter(n>=10) |>
+#   ggplot(aes(x=year, y=prop_valueLabel)) +
+#   ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+#   #scale_colour_ptol() +
+#   #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+#   theme(legend.position = "bottom") +
+#   #guides(colour = guide_legend(override.aes = list(size=2))) +
+#   labs(y=NULL, x=NULL, colour=NULL)
+```
+
+```{r}
+bn_women_dates_ppa |>
+  filter(str_detect(date_prop_label_std, "held position|employed as") & !str_detect(prop_valueLabel, "job title unrecorded|^t\\d")) |>
+  select(bn_id, personLabel, prop_valueLabel, date_prop_label, date_prop_label_std, date_label, year, s) |>
+  add_count(prop_valueLabel, date_prop_label_std, sort = T) |>
+  filter(n>=10) |>
+  mutate(prop_valueLabel = fct_rev(fct_relevel(prop_valueLabel, "Honorary Secretary", "Local Secretary", "Secretary", "Academic", "Lecturer", "Lecturer (freelance)", "Lecturer (Extension)"))) |>
+  ggplot(aes(x=year, y=prop_valueLabel, colour=date_prop_label_std)) +
+  ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  scale_colour_tableau() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=1))) +
+  labs(y=NULL, x=NULL, colour=NULL, caption = "at least 10 dates")  
+
+# maybe a consolidated version?
+# ok maybe leave for now, but possibly want to do some reordering to group things together.
+# assistant (x) keep separate from (x) ? 
+# what about honorary (x) ? there are a lot of honorary secretary but few in other jobs
+```
+
+And by age, in birth groups. 
+
+```{r}
+bn_women_dates_ppa |>
+  filter(str_detect(date_prop_label_std, "held position|employed as") & !str_detect(prop_valueLabel, "job title unrecorded|^t\\d")) |>
+  select(bn_id, personLabel, age, period, prop_valueLabel, date_prop_label, date_prop_label_std, date_label, year, s) |>
+  add_count(prop_valueLabel, date_prop_label_std, sort = T) |>
+  filter(!is.na(period)) |>
+  filter(n>=10) |>
+  mutate(prop_valueLabel = fct_rev(fct_relevel(prop_valueLabel, "Honorary Secretary", "Local Secretary", "Secretary", "Academic", "Lecturer", "Lecturer (freelance)", "Lecturer (Extension)"))) |>
+  ggplot(aes(x=age, y=prop_valueLabel, colour=date_prop_label_std)) +
+  ggbeeswarm::geom_beeswarm(size=0.4,  method = "swarm", cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  scale_colour_tableau() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  facet_wrap(~period) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=1))) +
+  labs(y=NULL, x=NULL, colour=NULL, caption = "at least 10 dates")  
+```
+
+
+```{r}
+# Assistant
+# County Collector
+# Assistant Curator
+# Curator
+# Chairman
+# Director
+# Editor
+# Honorary Editor
+# Honorary Treasurer
+# Inspector
+# Academic
+# Lecturer
+# Lecturer (Extension)
+# Lecturer (freelance)
+# Teacher
+# Tutor
+# Archivist
+# Cataloguer
+# Librarian
+# Assistant Secretary
+# Honorary Secretary
+# Local Secretary
+# Secretary
+# President
+# Vice President
+
+```
+
+
+
+## Ridgeline plots
+
+These are another option for this kind of comparison of trends. They're also not dependent on colour, so it's not necessary to reduce categories quite so brutally. I've included education this time. 
+
+They show the *proportion* of dates (rather than counts) in each "bin" (5?-year-period) for each category. So categories are directly comparable regardless of size (though very small ones can be a bit misleading).
+
+I've experimented with using colour as an indication of the size of the category - the lighter the shade of blue the larger the category (but I've done it in a really hacky sort of way and would need to fix it properly).
+
+```{r}
+#  adapted from smallbills commodities
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+  add_count(subcat) |>
+ mutate(subcat = fct_rev(subcat)) |>
+  # how to use fill like a heatmap? stat(x) in one example but doesn't work here
+ ggplot(aes(x = year, y = subcat, fill=n, group=subcat)) +   ##, height=after_stat(density))) +  
+  geom_density_ridges(stat = "binline", bins = 18, scale = 0.95, draw_baseline = FALSE, alpha=0.7) +
+  # will generally have to set the `expand` option for both axes to remove unneeded padding 
+  scale_y_discrete(expand = c(0, 0)) +     
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1870, 1950, 20) ) +  
+  #scale_fill_viridis_b() +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none", 
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x=NULL, y=NULL)
+```
+
+Showing individual properties (with 50+ instances) (some light categorisation might still be useful though, I think)
+  
+```{r}
+#  adapted from smallbills commodities
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  filter(!is.na(period)) |>
+  #filter(!subcat %in% c("charitable", "no buckets")) |>
+  add_count(date_prop_label_std, subcat, sort = T) |>
+  filter(n>50) |>
+ mutate(date_prop_label_std = fct_rev(date_prop_label_std)) |>
+  # how to use fill like a heatmap? stat(x) in one example but doesn't work here
+ ggplot(aes(x = year, y = date_prop_label_std, fill=n, group=date_prop_label_std)) +   ##, height=after_stat(density))) +  
+  geom_density_ridges(stat = "binline", bins = 18, scale = 0.95, draw_baseline = FALSE, alpha=0.7) +
+  # will generally have to set the `expand` option for both axes to remove unneeded padding 
+  scale_y_discrete(expand = c(0, 0)) +     
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1870, 1950, 20) ) +   
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none", 
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x=NULL, y=NULL)
+```
+
+
+This is a variation on the same theme. The ridgeline shows a smoothed trend line, but this adds the actual distribution of dates as points, so it's a bit more like the beeswarm. Colours are just for fun this time around.
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+ mutate(subcat = fct_rev(subcat)) |>
+ ggplot(aes(x = year, y = subcat, fill=subcat, group=subcat)) +   ##, height=after_stat(density))) +  
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding 
+  scale_y_discrete(expand = c(0, 0)) +     
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1870, 1950, 20) ) +   
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none", 
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x=NULL, y=NULL)
+```
+
+
+## The Blob
+
+- I've flipped the axes for this because it makes better use of space
+- It's quite pretty but I'm not convinced it's the most effective way to visualise what you want to know 
+  - the focus of the earlier beeswarms was comparison of different groups rather than looking closely within a single blob
+  - there are so many PPA categories vs how many colours it's possible to use in one chart
+
+```{r}
+
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  #filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+  arrange(year, subcat) |>
+  ggplot(aes(year, "", colour=subcat)) +
+  ggbeeswarm::geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(y=NULL, x=NULL, colour=NULL)
+
+#ggsave("test-ppa-bees.png", width=7.3, height=4.5)
+```
+
+interactive version
+
+```{r}
+
+bn_ppa_bees <-
+bn_women_dates_ppa |>
+  filter(between(year, 1861, 1950) )  |> 
+  #filter(!is.na(period)) |>
+  filter(!subcat %in% c("charitable", "no buckets")) |>
+  arrange(year, subcat) |>
+  ggplot(aes(year, "", colour=subcat)) +
+  geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+  scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  #theme(legend.position = "bottom") +  # plotly ignores this 
+  #guides(colour = guide_legend(override.aes = list(size=2))) + # ?conflict with plotly? legend doesn't show at all.
+  labs(y=NULL, x=NULL)
+
+plotly::ggplotly(bn_ppa_bees)
+```
+
+
+

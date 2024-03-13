@@ -2,14 +2,16 @@
 title: "Women main dates summary"
 description: A summary table of main level dates for every woman in the wikibase
 author: "Sharon Howard"
+date-modified: today
+date: "2023-09-12"
 execute: 
   warning: false
   message: false
   echo: false 
-date-modified: today
 categories: 
   - summaries
   - musthave
+  - dates
 page-layout: full
 ---
 

@@ -27,6 +27,29 @@ bn_std_query <- function(sparql){
 
 
 
+## new workflow to save output of queries into CSV files which can be reused.
+## but you need to remember to delete/rename the files to force a new fetch
+## also need to be careful about naming output files to ensure you don't accidentally try to re-use a name for a different query
+## [could you get the CSV file timestamps to use in a data-last-modified field?]
+
+# function to run bn_std_query , save output to a CSV, and then read the CSV
+# for use in workflow like this:
+# x <-
+# if(file.exists(filepath))  read_csv(filepath) else  
+# bn_query_to_csv(sparql_string, filepath)
+
+bn_query_to_csv <- function(sparql, filepath) {
+  data <-
+    bn_std_query(sparql)
+  data |>
+    write_csv(filepath)
+  read_csv(file=filepath)
+}
+
+bn_fetched_data <-
+  here::here("_data", "queries")
+
+
 #mutate(across(c(a, b), ~str_extract(., "([^/]*$)") )) 
 # previous: \\bQ\\d+$
 # get an ID out of a wikibase item URL. v is often but not always person. could be eg item, place, woman, etc.
@@ -45,9 +68,27 @@ make_bn_prop_id <- function(df, v) {
 
 # use across to extract IDs from URLs for 1 or more cols, no renaming or relocating
 # across_cols can be any tidy-select kind of thing
+# generally only use this on ID cols, but sometimes qualifiers can be mixed: what if there were a / somewhere in a non URI  ??? 
+# could add http to the rgx? then you'd have to change to str_match.
 make_bn_ids <- function(data, across_cols=NULL, ...) {
   data |>
     mutate(across({{across_cols}}, ~str_extract(., "([^/]*$)")))
+}
+
+
+# construct lists of IDs for union/values query; bn_id is default ID column but can name another.
+# nb will still need to be enclosed in appropriate brackets in the sparql.
+bn_make_union <- function(data, bn_id=bn_id){
+  data |>
+    mutate(bn_bnwd = paste0("bnwd:",{{bn_id}})) |> # for VALUES
+    mutate(bn_bnwdt = paste0("bnwdt:",{{bn_id}})) |>
+    mutate(bn_bnp = paste0("bnp:",{{bn_id}})) |>
+    mutate(bn_bnps = paste0("bnps:", {{bn_id}})) |>
+    # construct the contents of the UNION (add to sparql with data$thing i think)
+    summarise(bn_bnp_union = paste(bn_bnp, collapse = " | "), 
+              bn_bnps_union = paste(bn_bnps, collapse = " | "), 
+              bn_bnwd_values = paste(bn_bnwd, collapse = " "),
+              bn_bnwdt_union = paste(bn_bnwdt, collapse = " | ") ) 
 }
 
 
@@ -134,7 +175,7 @@ bn_properties <-
               ?property schema:description ?propertyDescription . }
       } 
   
-      FILTER(LANG(?propertyLabel) = 'en-gb') 
+      FILTER(LANG(?propertyLabel) = 'en') 
     }
     order by ?propertyLabel") |>
   sparql2df(endpoint=bn_endpoint) |>
@@ -188,52 +229,6 @@ bn_women_list <-
   relocate(bn_id, personLabel) |>
   arrange( parse_number(str_remove(bn_id, "Q")))
 
-
-
-
-
-# ## Wikibase example queries (needs WikipediR)
-# ## this is not actually in use anywhere - it's easier to C&P queries as needed, but keep the code for reference.
-# bn_example_queries_fetch <- 
-#   page_content(
-#     domain = "beyond-notability.wikibase.cloud",
-#     page_name = "Project:SPARQL/examples",
-#     as_wikitext = TRUE
-#   )
-# 
-# # same but as html; easier to work with wikitext for examples queries
-# # bn_example_queries_html <- page_content(
-# #   domain = "beyond-notability.wikibase.cloud",
-# #   page_name = "Project:SPARQL/examples"
-# # )
-# 
-# 
-# bn_example_queries <-
-#   bn_example_queries_fetch$parse$wikitext$`*` |> 
-#   #write("test-wikipage.txt")
-#   enframe() |>
-#   select(-name) |>
-#   # have a feeling this may not be the most robust regex ever but we'll see
-#   unnest_regex(section, value, pattern = "(?<![A-Za-z=])==(?!=)", to_lower = F) |>
-#   separate(section, into=c("section", "queries"), sep="==\n+", extra = "merge", fill="right") |> # hmm this has started giving a missing pieces warning which it wasn't doing before...
-#   ## there are a few ==== ! but they have their own headings so I think it'll be ok to drop their ===
-#   unnest_regex(query, queries, pattern = "====?(?=[A-Za-z ])", to_lower = F) |>
-#   separate(query, into=c("title", "query"), sep="====?\n+", fill="right") |> # warning started here as well
-#   relocate(section, .after = last_col()) |>
-#   relocate(query) |>
-#   mutate(query = str_remove_all(query, "\\s*</?sparql[^>]*>\\s*")) |>
-#   # separate pre-comments from query. doesn't seem to matter for sending a query so this is purely to make it easier to look at here.
-#   # start-query terms: PREFIX SELECT #defaultView: not sure if there are any others?
-#   # BUT start-query terms could also be in pre-comments...
-#   # SO only split on the start-query terms at the beginning of the query or the beginning of a line. (a comment/comment line can't start with a term given that it has to be preceded by #
-#   # is it worth separating any post-comments as well? not sure i fancy working out that regex...
-#   separate(query, into=c("pre", "query_txt"), sep="(?=((\n|^)\\s*(PREFIX|#defaultView:|SELECT)))", extra = "merge", remove = F) |> # missing pieces warning started here as well
-#   mutate(across(c(section, title, query, pre, query_txt), str_trim))  |>
-#   # quick fix (hopefully...) for queries that only specify en-gb in SERVICE language. i think auto_language doesn't work when querying from here rather than in browser
-#   mutate(query = str_replace(query, '\\[AUTO_LANGUAGE\\], *en-gb *(?=["\'])', '[AUTO_LANGUAGE], en-gb, en'))
-# 
-# # nb: query for lines that start # *except* #defaultView
-# #filter(str_detect(query, "^\\s*#(?!defaultView)"))
 
 
 
