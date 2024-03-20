@@ -1,5 +1,6 @@
 ---
-title: "Participation in events"
+title: "PPA events"
+description: "Analysis of events participation"
 author: "Sharon Howard"
 date: "2024-03-04"
 date-modified: today
@@ -106,8 +107,8 @@ bn_organised_by_query <-
 ```{r}
 
 # path to CSV
-bn_events_csv_file <- 
-  paste(bn_fetched_data, "bn_ppa_events.csv", sep="/")
+# bn_events_csv_file <- 
+#   paste(bn_fetched_data, "bn_ppa_events.csv", sep="/")
 
 
 bn_women_events_sparql <-
@@ -135,13 +136,8 @@ WHERE {
 order by ?personLabel '
 
 
-
-# if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
-# Cmd+enter doesn't work when this is on more than 1 line...
 bn_events_fetched <-
-if(file.exists(bn_events_csv_file))  read_csv(bn_events_csv_file) else  
-  # otherwise fetch the sparql query and save to csv and then read the csv. 
-  bn_query_to_csv(bn_women_events_sparql, bn_events_csv_file)
+  bn_std_query(bn_women_events_sparql)
   
 
 # process the data a bit
@@ -239,8 +235,8 @@ bn_women_ppa_qual_inst_query <-
 
 
 ```{r}
-bn_events_time_precision_csv_file <- 
-  paste(bn_fetched_data, "bn_ppa_events_time_precision.csv", sep="/")
+# bn_events_time_precision_csv_file <- 
+#   paste(bn_fetched_data, "bn_ppa_events_time_precision.csv", sep="/")
 
 
 # this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
@@ -273,13 +269,9 @@ WHERE {
 
 
 
-
-# if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
-# Cmd+enter doesn't work when this is on more than 1 line...
 bn_events_time_precision_fetched <-
-if(file.exists(bn_events_time_precision_csv_file))  read_csv(bn_events_time_precision_csv_file) else  
-  # otherwise fetch the sparql query and save to csv and then read the csv. 
-  bn_query_to_csv(bn_women_events_time_precision_sparql, bn_events_time_precision_csv_file)
+  bn_std_query(bn_women_events_time_precision_sparql)
+
 
 bn_women_events_time_precision_query <-
   bn_events_time_precision_fetched |>

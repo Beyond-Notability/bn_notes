@@ -334,12 +334,13 @@ There are about 70 different organisations, more than half of which are represen
 ```{r}
 bn_women_served_service |>
   count(of_label) |>
-  filter(n>1 & of_label !="exhibition") |>
+  filter(n>2 & of_label !="exhibition") |>
+    mutate(of_label=str_replace_all(of_label, organisations_abbr)) |>
   mutate(of_label = fct_reorder(of_label, n)) |>
   ggplot(aes(of_label, n)) +
   geom_col() +
   coord_flip() +
-  labs(x=NULL, title="Organisations served on", y="number of service events", caption = "n>1")
+  labs(x=NULL, title="Organisations served on", y="number of service events", caption = "n>2")
 ```
 
 
@@ -363,10 +364,13 @@ bn_women_served_service |>
 #  count(serviceLabel) |>
   mutate(type = case_when(
     serviceLabel %in% c("Croft Lyons Committee", "Morris Fund Committee") ~ word(serviceLabel, end=2),  
-    serviceLabel %in% c("Joint Committee for Anthropological Training and Research") ~ "Joint",
-    serviceLabel=="Council for British Archaeology" ~ "committee",
+    serviceLabel %in% c("Joint Committee for Anthropological Training and Research") ~ "Archaeological",
+    serviceLabel=="Council for British Archaeology" ~ "Archaeological",
+    str_detect(serviceLabel, "Committee for Excavating") ~ "Excavation",
     serviceLabel %in% c("Council") ~ serviceLabel,
     str_detect(serviceLabel, "Committee$") ~ str_extract(serviceLabel, "\\w+(?= Committee)"),
+    str_detect(serviceLabel, "Ancient Metals|Monuments") ~ "Historical",
+    str_detect(serviceLabel, "Derbyshire Caves") ~ "Local",
     .default = serviceLabel
   )) |>
   count(type) |>
@@ -529,7 +533,7 @@ bn_women_served_service |>
   labs(x=NULL, y="number of service events", title="Women's service for single or multiple organisations")
 ```
 
-[Not sure this quite works.]
+[Don't think this quite works.]
 
 ```{r}
 bn_women_served_service |>
@@ -542,6 +546,7 @@ bn_women_served_service |>
   mutate(of_label = case_when(
     n_of >5 ~ of_label
   )) |>
+    mutate(of_label=str_replace_all(of_label, organisations_abbr)) |>
   ggplot(aes(y=personLabel, x=n, fill=of_label)) +
   geom_col() +
   scale_fill_ptol(na.value = "lightgrey",) +

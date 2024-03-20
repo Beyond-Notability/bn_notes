@@ -16,7 +16,7 @@ sparql2df_prefix <- function(endpoint, prefixes, data) {
 }
 
 
-# a standard query using bn_prefixes and bn_endpoint. sparql= 'query string'
+# a standard query using bn_prefixes and bn_endpoint. sparql= 'query string *without prefixes*'
 bn_std_query <- function(sparql){
   c(paste(
     bn_prefixes,
@@ -27,32 +27,9 @@ bn_std_query <- function(sparql){
 
 
 
-## new workflow to save output of queries into CSV files which can be reused.
-## but you need to remember to delete/rename the files to force a new fetch
-## also need to be careful about naming output files to ensure you don't accidentally try to re-use a name for a different query
-## [could you get the CSV file timestamps to use in a data-last-modified field?]
-
-# function to run bn_std_query , save output to a CSV, and then read the CSV
-# for use in workflow like this:
-# x <-
-# if(file.exists(filepath))  read_csv(filepath) else  
-# bn_query_to_csv(sparql_string, filepath)
-
-bn_query_to_csv <- function(sparql, filepath) {
-  data <-
-    bn_std_query(sparql)
-  data |>
-    write_csv(filepath)
-  read_csv(file=filepath)
-}
-
-bn_fetched_data <-
-  here::here("_data", "queries")
-
-
 #mutate(across(c(a, b), ~str_extract(., "([^/]*$)") )) 
 # previous: \\bQ\\d+$
-# get an ID out of a wikibase item URL. v is often but not always person. could be eg item, place, woman, etc.
+# make an ID out of a wikibase item URL. v is often but not always person. could be eg item, place, woman, etc.
 make_bn_item_id <- function(df, v) {
   df |>
     mutate(bn_id = str_extract({{v}}, "([^/]*$)")) |>
@@ -101,7 +78,7 @@ wd_endpoint <- "https://query.wikidata.org/sparql"
 
 ### as strings for glueing 
 
-## added some extra prefixes - probably won't want the ones to do with references, but will need the psv and pqv.
+## added some extra prefixes - references, psv, pqv.
 bn_prefixes <- 
   "PREFIX bnwd: <https://beyond-notability.wikibase.cloud/entity/>
 PREFIX bnwds: <https://beyond-notability.wikibase.cloud/entity/statement/>
@@ -139,8 +116,6 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 # PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 # PREFIX owl: <http://www.w3.org/2002/07/owl#>
 # PREFIX prov: <http://www.w3.org/ns/prov#>
-
-
 
 
 
@@ -228,6 +203,7 @@ bn_women_list <-
   #  mutate(bn_id = str_extract(person, "\\bQ\\d+$")) |>
   relocate(bn_id, personLabel) |>
   arrange( parse_number(str_remove(bn_id, "Q")))
+
 
 
 ## dates of birth/death. added March 2024 - increasingly using this so let's put it here.

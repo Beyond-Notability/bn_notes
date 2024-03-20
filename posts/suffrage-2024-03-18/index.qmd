@@ -1,7 +1,8 @@
 ---
 title: "Suffrage activities"
 author: "Sharon Howard"
-date: "2024-02-25"
+description: "Visualisations of suffrage activity in the BN database across time"
+date: "2024-03-20"
 date-modified: today
 categories: 
   - ppa
@@ -371,6 +372,8 @@ Beeswarms don't work well in this case because the concentration of activity in 
 
 Each vertical bar represents one date for which a suffrage activity is recorded (making no distinction between types of date). Unlike a beeswarm it won't show every single data point if there's more than one on the same date, but it's possible to make more data points visible than with chunkier shapes like dots or squares, and it will indicate more intense clusters of activity (both horizontally, for individuals, and vertically, for the group as a whole).
 
+[TODO: reorder by date of earliest activity?]
+
 ```{r}
 bn_suffrage_bars |> 
   ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper)) +
@@ -398,35 +401,39 @@ bn_suffrage_bars |>
 ```
 
 
-If only a single event needs to be plotted, a lollipop chart is also quite effective.
+If only a single event needs to be plotted, a lollipop chart is also quite effective. 
+
 
 ```{r}
 #might be useful to add year of birth so you can get a sense of "generations" (suspect later arrivals will be largely younger women?)
 # lol can't use geom_lollipop because it starts at 0 and there's no way to change it.
 bn_suffrage_bars1 |> 
-  ggplot(aes(y=personLabel, x=latest)) +
-  geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.5, colour="grey") +
-  geom_point(aes(colour=bucket)) +
+  mutate(personLabel = fct_reorder(personLabel, desc(date))) |>
+  ggplot(aes(y=personLabel, x=date)) +
+  geom_segment( aes(x=start_date, xend=latest, yend=personLabel, colour=bucket), show.legend = F, linewidth=0.5) +
+  geom_point(aes(colour=bucket), size=1.5) +
   scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
   theme(axis.ticks.y=element_blank() ) +
   #scale_color_tableau() +
   scale_colour_manual(values = bucket_colours) +
   theme(legend.position = "bottom") +
-  labs(y=NULL)
+  labs(y=NULL, x=NULL, title = "Women with only one recorded activity")
 ```
 
 And a dumbbell plot for the earliest and latest activities by each woman. There isn't very much overlap (among women with more than 1 activity) between women who were active before 1908 and those who started 1908 or later. (But is this an absence, or just absence of data?) I'm not familiar enough with the historiography to know whether this might be expected; if not, handle with caution.
 
 ```{r}
 bn_suffrage_bars |>
+    mutate(personLabel = fct_reorder(personLabel, desc(earliest))) |>
   ggplot(aes(y=personLabel)) +
-  geom_dumbbell(aes(x=earliest, xend=latest)) +
-  labs(y=NULL, x="dates")
+  geom_dumbbell(aes(x=earliest, xend=latest), size_x = 1.5, size_xend = 1.5) +
+  labs(y=NULL, x=NULL, title = "Earliest and latest activity")
 ```
 
 
-Separating out women with at least 2 actions
+Separating out women with at least 2 activities
 
+[TODO: reorder by date of earliest activity]
 
 ```{r}
 bn_suffrage_bars2 |>  
@@ -439,7 +446,7 @@ bn_suffrage_bars2 |>
   #scale_color_tableau() +
   scale_colour_manual(values = bucket_colours) +
   theme(legend.position = "bottom") +
-  labs(y=NULL, caption = "at least 2 dated actions") #, title="Women's suffrage activities c.1880-1920")
+  labs(y=NULL, x=NULL, title="Women with at least two recorded activities")
 ```
 
 
@@ -458,7 +465,7 @@ bn_suffrage |>
   mutate(bucket = fct_reorder(bucket, -n)) |> 
   ggplot(aes(x=bucket, y=n, fill=bucket)) +
   geom_col(show.legend = F) +
-  gghighlight(unhighlighted_params = list(linewidth = 1, fill = alpha("lightgrey", 0.4))) +
+  gghighlight(unhighlighted_params = list(linewidth = 1, fill = alpha("grey", 0.4))) +
   facet_wrap(~group) +
   #scale_fill_tableau()
   scale_fill_manual(values = bucket_colours)
@@ -467,7 +474,7 @@ bn_suffrage |>
 
 Additionally, on average members of the 2+ group were several years younger than the 1 group at the time of their *first* recorded suffrage activity; median age at earliest activity for 2+ is 42 and for 1 is 46.
 
-But NB that this is only true of "early" (pre-1908) starters and the numbers are small (6 early starters and 5 later starters). So this needs to be treated with caution. 
+But NB that this is only true of "early starters" (pre 1908) and the numbers are small (6 early starters and 5 later starters). So this needs to be treated with caution. 
 
 ```{r}
 # average yob - would expect them to be born earlier, more time to get going!
@@ -496,7 +503,7 @@ But NB that this is only true of "early" (pre-1908) starters and the numbers are
 #  facet_wrap(~started) +
   #geom_beeswarm() +
   scale_fill_tableau() +
-  labs(y="age at earliest activity")
+  labs(y="age at earliest activity", title = "Boxplot of age at earliest activity")
 
 
 ```
@@ -514,8 +521,11 @@ But NB that this is only true of "early" (pre-1908) starters and the numbers are
 ```
 
 
+Lollipop chart of ages at earliest activity, sorted by *date* of the earliest activity, and coloured by group (1 or 2+ activities).
+
 ```{r}
-# just do a lollipop of age of first activity coloured by group 1/2, it'll be alot easier...
+# lollipop of age of first activity coloured by group 1/2
+# sorted by date of first activity
 bn_suffrage_bars |>
   add_count(bn_id, name="n_grp") |>
   group_by(n_grp) |>
@@ -531,17 +541,17 @@ bn_suffrage_bars |>
          age_start=0) |>
   relocate(date, year, bn_dob, bn_dob_yr, earliest, latest, age_earliest, age_at) |>
   filter(date == min(date), .by=bn_id) |>
-  mutate(personLabel = fct_reorder(personLabel, age_earliest)) |>
+  mutate(personLabel = fct_reorder(personLabel, desc(earliest))) |>
   ggplot(aes(y=personLabel, x=age_at, colour=group, label=year(earliest))) +
   geom_text(show.legend = F, size=3, nudge_x = 3) +
-  geom_lollipop(horizontal = T) +
+  geom_lollipop(horizontal = T, point.size = 1.5) +
   #geom_segment( aes(x=age_start, xend=age_latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
   #geom_linerange(linewidth=0.5) +
   scale_x_continuous(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
   theme(axis.ticks.y=element_blank() ) +
   scale_color_tableau() +
   #theme(legend.position = "bottom") +
-  labs(y=NULL, x="age at earliest activity")
+  labs(y=NULL, x="age", title = "Age at earliest recorded activity")
 ```
 
 
@@ -581,33 +591,38 @@ bn_suffrage |>
   mutate(latest = max(year), earliest=min(year)) |>
   ungroup() |>
   mutate(start_year=min(year)) |>
-  mutate(org = fct_rev(org)) |>
+  mutate(org = fct_reorder(org, desc(earliest))) |>
   ggplot(aes(y=org)) +
   #geom_segment(aes(yend=org, x=start_year, xend=latest), linewidth=0.2, colour="lightgrey") +
   geom_dumbbell(aes(x=earliest, xend=latest)) +
-#  geom_point(aes(x=year)) +
-  labs(y=NULL)
+  labs(y=NULL, x=NULL, title = "Earliest and latest dates for organisations")
 ```
 
 
-```{r}
-bn_suffrage |>
-  select(bn_id, personLabel, activity, subvalLabel, sub_type, org, bucket, year, s, person, bn_dob_yr)
-```
 
 
 ## Table
 
 
 ```{r}
-bn_fsa_education_reactable <-
-  bn_fsa_education |>
-  select(-college_id, -university_id, -college, -university, -n_educated_at) |> 
-  mutate(across(c(-bn_id, -personLabel), ~replace_na(.,"-"))) |>
-  mutate(universityLabel = if_else(universityLabel==collegeLabel, NA, universityLabel))
+
+bn_suffrage_reactable <-
+bn_suffrage |>
+  arrange(personLabel, date) |>
+  mutate(description = case_when(
+    str_detect(subvalLabel, "^t\\d") & !is.na(org) ~ org,
+    is.na(org) ~ subvalLabel,
+    subvalLabel==org ~ org,
+    subvalLabel %in% c("meeting", "committee", "event") ~ paste(subvalLabel, org, sep=" of "),
+    activity %in% c("was member of") ~ org,
+    activity %in% c("held position", "served on")  ~ paste(subvalLabel, org, sep=" of ")
+  )) |>
+  select(bn_id, personLabel, bn_dob_yr, year , activity, description, person) 
+#  mutate(across(c(-bn_id, -personLabel), ~replace_na(.,"-"))) |>
+
 
 reactable(
-  bn_fsa_education_reactable |> select(-person) ,
+  bn_suffrage_reactable |> select(-person) ,
   filterable = TRUE,
   searchable = TRUE,
   bordered = TRUE,
@@ -618,18 +633,20 @@ reactable(
   defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
   columns = list(
     bn_id = colDef(name="id", maxWidth = 70),
-    personLabel =colDef(maxWidth = 300, name="name",
+    personLabel =colDef(maxWidth = 250, name="name",
       html = TRUE,
       cell = function(value, index) {
-        sprintf('<a href="%s#P94" target="_blank">%s</a>', bn_fsa_education_reactable$person[index], value)
+        sprintf('<a href="%s" target="_blank">%s</a>', bn_suffrage_reactable$person[index], value)
       })   ,
-   collegeLabel = colDef(maxWidth = 275, name="college"),
+    bn_dob_yr = colDef(maxWidth = 60, name = "birth"),
+   activity = colDef(maxWidth = 100),
     # collegeLabel = colDef(maxWidth = 250, name="college",
     #   html = TRUE,
     #   cell = function(value, index) {
     #     sprintf('<a href="%s" target="_blank">%s</a>', bn_fsa_education$college[index], value)
     #   })   ,  # TODO work out how to make this conditional
-    universityLabel = colDef(maxWidth = 275, name="university")
+  description = colDef(maxWidth = 250),
+   bucket=colDef(minWidth = 100)
     
   )
 )

@@ -1,5 +1,6 @@
 ---
 title: "PPA Buckets"
+description: "Categories for public and professional activities"
 author: "Sharon Howard"
 date: "2024-02-25"
 date-modified: today
@@ -36,34 +37,8 @@ source(here::here("_R/std_queries.R"))
 
 
 
-```{r}
-# to check what files are in the _date/queries folder...
-# list.files(bn_fetched_data)
-```
 
 ```{r}
-## new workflow to save output of queries into CSV files which can be reused.
-## but you need to remember to delete/rename the files to force a new fetch!
-## also you need to be careful about naming output files to ensure you don't accidentally try to re-use a name for a different query
-## could you get the CSV file timestamps to use in a data-last-modified field in some way?
-
-# moved funciton to std_queries.R
-# bn_query_to_csv <- function(sparql, filepath) {
-#   data <-
-#   bn_std_query(sparql)
-#   
-#   data |>
-#     write_csv(filepath)
-#   
-#   read_csv(file=filepath)
-# }
-
-## ppa buckets main statements
-
-# path to CSV
-bn_ppa_buckets_main_csv_file <- 
-  here::here("_data", "queries", "bn_ppa_buckets_main.csv")
-
 
 bn_ppa_buckets_sparql <-
   'SELECT distinct ?person ?personLabel ?ppa_label ?ppa ?bucket ?ppa_value ?ppa_valueLabel ?s
@@ -103,14 +78,9 @@ WHERE {
 order by ?personLabel ?ppa_label'
 
 
-
-# if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
-# Cmd+enter doesn't work when this is on more than 1 line...
 bn_ppa_buckets_fetched <-
-if(file.exists(bn_ppa_buckets_main_csv_file))  read_csv(bn_ppa_buckets_main_csv_file) else  
-  # otherwise fetch the sparql query and save to csv and then read the csv. 
-  bn_query_to_csv(bn_ppa_buckets_sparql, bn_ppa_buckets_main_csv_file)
-  
+  bn_std_query(bn_ppa_buckets_sparql)
+
 
 # process the data a bit
 bn_ppa_buckets_query <-
@@ -157,16 +127,9 @@ bn_women_ppa_main <-
 # 
 # order by ?personLabel'
 # 
-# # this is definitely one to reuse?
-# bn_ppa_quals_csv_file <- here::here("_data", "queries", "bn_ppa_qualifiers.csv")
 # 
-# 
-# # if the CSV file exists, read_csv; otherwise run bn_std_query to fetch sparql query and save it
-# # Cmd+enter doesn't work as usual when this is on more than 1 line...
 # bn_ppa_quals_fetched <-
-# if(file.exists(bn_ppa_quals_csv_file))  read_csv(bn_ppa_quals_csv_file) else  
-#   # otherwise fetch the sparql query and save to csv and then read the csv. 
-#   bn_query_to_csv(bn_ppa_qual_sparql, bn_ppa_quals_csv_file)
+#   bn_std_query(bn_ppa_qual_sparql)
 #   
 # 
 # # process the data a bit
