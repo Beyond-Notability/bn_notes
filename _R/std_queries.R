@@ -230,6 +230,24 @@ bn_women_list <-
   arrange( parse_number(str_remove(bn_id, "Q")))
 
 
+## dates of birth/death. added March 2024 - increasingly using this so let's put it here.
+bn_women_dob_dod_sparql <-
+  'SELECT distinct ?person ?bn_dob ?bn_dod
+WHERE {
+   ?person bnwdt:P3 bnwd:Q3 ;
+         wikibase:statements ?statements .
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
+  optional { ?person bnwdt:P15 ?bn_dod .   }
+  optional { ?person bnwdt:P26 ?bn_dob .   }
+  FILTER ( EXISTS { ?person bnwdt:P15 ?bn_dod .} || EXISTS { ?person bnwdt:P26 ?bn_dob .  } ) . #  date of birth OR date of death.
+}'
+
+bn_women_dob_dod_query <-
+  bn_std_query(bn_women_dob_dod_sparql) |>
+  make_bn_item_id(person) |>
+  mutate(across(c(bn_dob, bn_dod), ~na_if(., ""))) |>
+  select(-person) 
+
 
 
 

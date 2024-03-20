@@ -1,0 +1,636 @@
+---
+title: "Suffrage activities"
+author: "Sharon Howard"
+date: "2024-02-25"
+date-modified: today
+categories: 
+  - ppa
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+## Wikibase queries
+
+* [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section
+* [Suffrage-related activities](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Suffrage-related_activities)
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(ggbeeswarm)
+library(gghighlight)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+# colorblind for activities... but don't go over 8...
+# tableau for groups
+# manual colours for buckets: positions, events, societies; money, publishing 
+# based on tableau
+bucket_colours <-
+c(events="#1f77b4", 
+  positions="#ff7f0e", 
+  societies="#8c564b",   
+  money="#17becf", 
+  publishing="#EEcc66")
+
+
+```
+
+## Notes
+
+> Amara and I are thinking about how women's involvement in organisations tagged in the database as instances of suffrage activity maps other things they were doing, and what is going on in terms of suffrage activities we've picked up on across time. We're not 100% sure what we want to do with this as yet, but as a starter to help us, do you think it might be possible, please, to do some visualisation that pulls together all flagged suffrage activity in our database across time? (We've also realised that some unflagged suffrage activity of event types has crept into the database so will aim to fix this, though we think all suffrage groups we know of are flagged.) Please note that we have also flagged anti-suffrage activity as suffrage activity, so preserving names of distinct suffrage orgs in whatever you come up with might be helpful. 
+
+Nearly all the suffrage activities in the database are dated, though charts ignore differences in kinds of date - `positions` are usually at year level while `events` are more short term. (Though they're all point in time dates, I think, rather than start/end, so presumably none were of more than a year duration.)
+
+TODO
+
+locations? will need more complex queries (which I'll work out for the lecturing post first)
+
+```{r}
+
+bn_women_dob_dod <-
+bn_women_dob_dod_query |>
+      mutate(across(c(bn_dob, bn_dod), ~parse_date_time(., "ymdHMS"))) |>
+      mutate(across(c(bn_dob, bn_dod), year, .names = "{.col}_yr")) |>
+      group_by(bn_id) |>
+      top_n(1, row_number()) |>
+      ungroup() 
+      # mutate(bn_yob = case_when(
+      #   !is.na(y_bn_dob) ~ y_bn_dob,
+      #   is.na(y_bn_dob) ~ y_bn_dod - 80
+      # )) |>
+      # mutate(bn_yod = case_when(
+      #   !is.na(y_bn_dod) ~ y_bn_dod,
+      #   is.na(y_bn_dod) ~ y_bn_dob+80
+      # )) 
+
+
+# this is *slow* though.
+# sub_io is so you know what kind of thing sub_ is - can be event, role, organisaiton...
+
+bn_suffrage_sparql <-
+'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
+
+WHERE {  
+
+    ?person bnwdt:P3 bnwd:Q3 . #select women
+    FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+
+    ?person ?p ?s .
+  
+      ?s ?sub ?subval .
+        ?main wikibase:claim ?p.
+        ?main wikibase:statementProperty ?sub.   
+  
+  # sub_ i/o yes some do have suffrage activity. will be multi
+    optional { ?subval bnwdt:P12 ?sub_io . #
+              # maybe filter out suffrage itself
+               # filter not exists { ?subval bnwdt:P12 bnwd:Q1166 . }
+             }
+
+   {
+    # a qualifier (anywhere) has i/o suffrage activity
+       ?s bnpq:P12 bnwd:Q1166.
+     # `of`
+       optional { ?s bnpq:P78 ?of .  
+                 #optional { ?s bnpq:P2 ?location . }
+                }
+    }
+  
+     # what about a main rather than qualifier having i/o suffrage activity? i dont think there are any atm but could be.
+ # union
+ #   { # this might find extra linked i/o suffrage but im not sure it works.
+ #     ?subval bnwdt:P12 bnwd:Q1166 .
+ #     }
+  
+  union
+  
+    {
+     # does *not* have i/o suffrage activity in any qualifiers  ... 
+     filter not exists { ?s bnpq:P12 bnwd:Q1166. }
+  
+     # ... but a qualifier *does* have i/o suffrage activity. i think!
+      ?s ?pq ?qual .
+        ?qual bnwdt:P12 bnwd:Q1166 .
+          optional { ?s bnpq:P78 ?of . } # - is there anything apart from of?
+         #optional { ?qual bnwdt:P2 ?location . }
+      }
+  
+  optional { 
+    # date qualifiers. [assumes no edtf in quals. ] all seem to be p.i.t. ?
+        ?s ?dpq ?qual_date .   
+          ?qual_date wikibase:timeValue ?date .
+          ?qual_date wikibase:timePrecision ?date_prec .
+  }
+  
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+
+}
+order by ?personLabel ?mainLabel'
+
+bn_suffrage_query <-
+  bn_std_query(bn_suffrage_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(subval, of, s)) |>
+  mutate(across(c(date, of, mainLabel, subvalLabel, ofLabel, sub_ioLabel, subval), ~na_if(., ""))) |>
+  relocate(person, .after = last_col())
+
+# SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
+
+##i think you'll have to fetch locations separately
+
+
+
+
+# sub io
+# - lose suffrage activity. 
+# - atm there are no other dups. but something to watch out for if you change the query.
+# - keep bucket - both are event i think. NA is role. but that could also change, 
+# probably want timeprecision
+# hmm still got na orgs
+# organised by adds one, hardly worth the bother.
+
+bn_suffrage <-
+bn_suffrage_query |>
+  make_date_year() |>
+  relocate(year, .after = date) |>
+  filter(!sub_ioLabel %in% c("suffrage activity")) |> 
+  mutate(sub_type = case_when(
+    sub_ioLabel %in% c("event", "organisation", "role") ~ sub_ioLabel,
+    str_detect(sub_ioLabel, "organisation") ~ "organisation",
+    sub_ioLabel=="committee" ~ "organisation",
+    subvalLabel=="event" ~ subvalLabel,
+    mainLabel=="held position" ~ "role"
+  )) |>
+  mutate(org = case_when(
+    !is.na(ofLabel) ~ ofLabel,
+    sub_type=="organisation" ~ subvalLabel
+  ))   |>
+  left_join(bn_ppa_buckets |> select(ppa, bucket= label), by=c("mainLabel"="ppa")) |>
+  mutate(bucket = case_when(
+    bucket=="event participation" ~ "events",
+    is.na(bucket) & mainLabel=="gave money to" ~ "money",
+    .default = bucket
+  )) |>
+  relocate(sub_type, org, bucket, .after = ofLabel) |>
+  rename(activity=mainLabel) |>
+  left_join(bn_women_dob_dod, by="bn_id")
+
+#apparently they all have dob!
+```
+
+
+## Types of activity
+
+["money" is an invented bucket for "gave money to", which doesn't seem to be in an existing PPA bucket; only a couple of them]
+
+```{r}
+bn_suffrage |>
+  filter(!is.na(date)) |>
+  # add_count(bn_id) |>
+  # filter(n>1) |>
+  count(bucket) |>
+  #filter(bucket !="money") |>
+  mutate(bucket = fct_reorder(bucket, -n)) |>
+  ggplot(aes(x=bucket, y=n, fill=bucket)) +
+  geom_col() +
+  #facet_wrap(~bucket) +
+  #scale_fill_tableau()
+  scale_fill_manual(values = bucket_colours)
+
+```
+
+
+A beeswarm of activity types grouped by PPA buckets. [excluding the buckets with only one or two instances]
+
+- most activity (unsurprisingly!) is between 1908 and 1913 (about 2/3 of dated activities)
+- underlining the intensity of suffrage politics in that period, `events` are particularly clustered there; `positions` also peak in the same period, but they're more spread out. 
+
+
+```{r}
+# bn_suffrage |>
+#   filter(!bucket %in% c("money", "publishing")) |>
+#   filter(!is.na(year)) |>
+#   count(year)
+```
+
+
+```{r}
+bn_suffrage |>
+  filter(!bucket %in% c("money", "publishing")) |>
+  filter(!is.na(year)) |>
+  arrange(bucket, activity) |>
+  #add_count(bn_id, name="n_bn") |> filter(n_bn>1) |>
+  mutate(bucket = fct_rev(bucket)) |>
+  ggplot(aes(date, bucket, colour=activity)) +
+#  geom_quasirandom(groupOnX = FALSE) +
+  geom_beeswarm(size=1, method = "hex", cex=2) +
+  scale_colour_colorblind() +
+  labs(y=NULL)
+```
+
+
+
+## Women
+
+32 women represented here; 12 have more than one activity recorded.
+
+```{r}
+#bn_suffrage |> count(bn_id, sort=T)
+```
+
+
+
+
+```{r}
+bn_suffrage |>
+  add_count(bn_id, name="n_bn") |>
+  count(bn_id, personLabel, bucket, n_bn, sort = T) |>
+  mutate(personLabel =fct_reorder(personLabel, n_bn)) |>
+  ggplot(aes(n, personLabel, fill=bucket)) +
+  geom_col() +
+  scale_fill_manual(values = bucket_colours) +
+#  scale_fill_ptol() +
+  labs(y=NULL, x="number of actions")
+```
+
+```{r}
+# Tried beeswarms for timelines, but they don't work well because activity is very concentrated in a short period of time and the rows are close together. 
+# bn_suffrage |>
+#   #count(bn_id, personLabel, year) |>
+#   filter(!is.na(year)) |>
+#   add_count(bn_id, name="n_bn") |> #filter(n_bn>1) |>
+#   mutate(personLabel = fct_rev(personLabel)) |>
+#   ggplot(aes(year, personLabel, colour=bucket)) +
+#   geom_beeswarm(size=1.5, cex = 1.8, corral = "gutter", corral.width = 0.9) +
+#   scale_colour_ptol() +
+#   labs(y=NULL)
+```
+
+```{r}
+## TIL  cur_group_id() to give an number ID to each group in a grouped DF, hallelujah!
+# df |>
+#   group_by(group) |>
+#     mutate(id = cur_group_id()) |>
+#   ungroup()
+```
+
+
+
+
+
+```{r}
+bn_suffrage_ages <-
+bn_suffrage |>
+  filter(!is.na(date)) |>
+  mutate(grp_id = cur_group_id(), .by = bn_id) |>
+  add_count(bn_id, name="n_grp") |>
+  mutate(group = case_when(
+    n_grp==1 ~ "1",
+    n_grp>1 ~ "2+"
+  ))  |>
+  mutate(age = year-bn_dob_yr) |>
+  mutate(earliest = min(year), .by = bn_id) |>
+  mutate(started = case_when(
+    earliest < 1908 ~ "early",
+    .default = "late"
+  )) |>
+  mutate(age_earliest = earliest-bn_dob_yr)
+
+## easier?    mutate(earliest = min(date), latest=max(date), .by = bn_id) |>
+# all (dated)
+bn_suffrage_bars <-
+bn_suffrage |>
+  filter(!is.na(date)) |>
+  # first and last dates overall, for limits
+  mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
+  arrange(desc(personLabel)) |>
+  group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
+    mutate(group_id = cur_group_id()) |>
+    mutate(earliest = min(date), latest=max(date)) |>
+  ungroup() |>
+  mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
+  mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
+  mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+
+# 1 (dated) action
+bn_suffrage_bars1 <-
+bn_suffrage |>
+  filter(!is.na(date)) |>
+  add_count(bn_id) |>
+  filter(n==1) |>
+  # first and last dates overall, for limits
+  mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
+  arrange(desc(personLabel)) |>
+  group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
+    mutate(group_id = cur_group_id()) |>
+    mutate(earliest = min(date), latest=max(date)) |>
+  ungroup() |>
+  mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
+  mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
+  mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+
+# at least 2 dated actions
+bn_suffrage_bars2 <-
+bn_suffrage |>
+  filter(!is.na(date)) |>
+  add_count(bn_id) |>
+  filter(n>1) |>
+  # first and last dates overall, for limits
+  mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
+  arrange(desc(personLabel)) |>
+  group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
+    mutate(group_id = cur_group_id()) |>
+    mutate(earliest = min(date), latest=max(date)) |>
+  ungroup() |>
+  mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
+  mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
+  mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+```
+
+```{r}
+# customise tick marks
+  #theme(axis.ticks.y=element_blank() ) + # hide them altogether
+  #axis.ticks.y = element_line(linewidth = 0.2, color="lightgrey") , 
+  #axis.ticks.length.y = unit(.1, "cm") 
+```
+
+Beeswarms don't work well in this case because the concentration of activity in a small number of years makes it impossible to avoid them overlapping too much to make any sense. Instead I've tried out "barcode" charts to chart timelines. 
+
+Each vertical bar represents one date for which a suffrage activity is recorded (making no distinction between types of date). Unlike a beeswarm it won't show every single data point if there's more than one on the same date, but it's possible to make more data points visible than with chunkier shapes like dots or squares, and it will indicate more intense clusters of activity (both horizontally, for individuals, and vertically, for the group as a whole).
+
+```{r}
+bn_suffrage_bars |> 
+  ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper)) +
+  geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
+  geom_linerange(linewidth=0.5) +
+  scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
+  theme(axis.ticks.y=element_blank() ) +
+  #scale_color_colorblind() +
+  #theme(legend.position = "bottom") +
+  labs(y=NULL)
+```
+
+
+
+```{r}
+# bn_suffrage_bars |> 
+#   ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper)) +
+#   geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
+#   geom_linerange(linewidth=0.5) + # but why can't i put aes in here...?
+#   scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
+#   #scale_color_colorblind() +
+#   theme(axis.ticks.y=element_blank() ) +
+#   #theme(legend.position = "bottom") +
+#   labs(y=NULL)
+```
+
+
+If only a single event needs to be plotted, a lollipop chart is also quite effective.
+
+```{r}
+#might be useful to add year of birth so you can get a sense of "generations" (suspect later arrivals will be largely younger women?)
+# lol can't use geom_lollipop because it starts at 0 and there's no way to change it.
+bn_suffrage_bars1 |> 
+  ggplot(aes(y=personLabel, x=latest)) +
+  geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.5, colour="grey") +
+  geom_point(aes(colour=bucket)) +
+  scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
+  theme(axis.ticks.y=element_blank() ) +
+  #scale_color_tableau() +
+  scale_colour_manual(values = bucket_colours) +
+  theme(legend.position = "bottom") +
+  labs(y=NULL)
+```
+
+And a dumbbell plot for the earliest and latest activities by each woman. There isn't very much overlap (among women with more than 1 activity) between women who were active before 1908 and those who started 1908 or later. (But is this an absence, or just absence of data?) I'm not familiar enough with the historiography to know whether this might be expected; if not, handle with caution.
+
+```{r}
+bn_suffrage_bars |>
+  ggplot(aes(y=personLabel)) +
+  geom_dumbbell(aes(x=earliest, xend=latest)) +
+  labs(y=NULL, x="dates")
+```
+
+
+Separating out women with at least 2 actions
+
+
+```{r}
+bn_suffrage_bars2 |>  
+  ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper, colour=bucket)) +
+  geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
+  geom_linerange(linewidth=0.5) +
+  scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
+  theme(axis.ticks.y=element_blank() ) +
+  #geom_point(aes(x=bn_dob), colour="black", show.legend = F, shape="asterisk") +
+  #scale_color_tableau() +
+  scale_colour_manual(values = bucket_colours) +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, caption = "at least 2 dated actions") #, title="Women's suffrage activities c.1880-1920")
+```
+
+
+There is a noticeable difference in activity types between the women with 1 activity and those with 2+. Going back to the earlier chart of PPA bucket counts, this version separates out the two groups but also shows the totals in light grey in the background - `positions` and `societies` are both quite evenly split between group 1 and group 2, but the 2+ women are much more involved in `events` (= mainly `spoke at`). 
+
+```{r}
+bn_suffrage |>
+  filter(!is.na(date)) |>
+  add_count(bn_id, name="n_grp") |>
+  mutate(group = case_when(
+    n_grp==1 ~ "1",
+    n_grp>1 ~ "2+"
+  )) |> 
+  filter(bucket !="money", bucket !="publishing") |>
+  count(group, bucket) |>
+  mutate(bucket = fct_reorder(bucket, -n)) |> 
+  ggplot(aes(x=bucket, y=n, fill=bucket)) +
+  geom_col(show.legend = F) +
+  gghighlight(unhighlighted_params = list(linewidth = 1, fill = alpha("lightgrey", 0.4))) +
+  facet_wrap(~group) +
+  #scale_fill_tableau()
+  scale_fill_manual(values = bucket_colours)
+
+```
+
+Additionally, on average members of the 2+ group were several years younger than the 1 group at the time of their *first* recorded suffrage activity; median age at earliest activity for 2+ is 42 and for 1 is 46.
+
+But NB that this is only true of "early" (pre-1908) starters and the numbers are small (6 early starters and 5 later starters). So this needs to be treated with caution. 
+
+```{r}
+# average yob - would expect them to be born earlier, more time to get going!
+# bn_suffrage |>
+#   filter(!is.na(date)) |>
+#   add_count(bn_id, name="n_grp") |>
+#   mutate(group = case_when(
+#     n_grp==1 ~ "1",
+#     n_grp>1 ~ "2"
+#   )) |>
+#   group_by(group) |>
+#   summarise(mn_yob = mean(bn_dob_yr), med_yob= median(bn_dob_yr)) |>
+#   ungroup()
+```
+
+
+```{r}
+ bn_suffrage_ages |>
+  filter(date == min(date), .by=bn_id) |> #count(group, started)
+  # group_by(group) |>
+  # summarise(#mn_e = mean(earliest), med_e=median(earliest),
+  #           mean_age_earliest= mean(age_earliest), median_age_earliest= median(age_earliest)) |>
+  # ungroup()
+  ggplot(aes(x=group, y=age_earliest, group=group, fill=group)) +
+  geom_boxplot(varwidth = T, show.legend = F) +
+#  facet_wrap(~started) +
+  #geom_beeswarm() +
+  scale_fill_tableau() +
+  labs(y="age at earliest activity")
+
+
+```
+
+
+```{r}
+# bn_suffrage_ages |>
+#   filter(date == min(date), .by=bn_id) |> #count(group, started)
+#   ggplot(aes(x=group, y=age_earliest, group=group, fill=group)) +
+#   geom_boxplot(varwidth = T, show.legend = F) +
+#   facet_wrap(~started) +
+#   #geom_beeswarm() +
+#   scale_fill_ptol() +
+#   labs(y="age at earliest activity")
+```
+
+
+```{r}
+# just do a lollipop of age of first activity coloured by group 1/2, it'll be alot easier...
+bn_suffrage_bars |>
+  add_count(bn_id, name="n_grp") |>
+  group_by(n_grp) |>
+  mutate(grp_id = cur_group_id()) |>
+  ungroup() |>
+  mutate(group = case_when(
+    n_grp==1 ~ "1",
+    n_grp>1 ~ "2+"
+  ))  |>
+  mutate(age_earliest = year(earliest)-bn_dob_yr, 
+         age_latest=year(latest)-bn_dob_yr, 
+         age_at = year-bn_dob_yr, 
+         age_start=0) |>
+  relocate(date, year, bn_dob, bn_dob_yr, earliest, latest, age_earliest, age_at) |>
+  filter(date == min(date), .by=bn_id) |>
+  mutate(personLabel = fct_reorder(personLabel, age_earliest)) |>
+  ggplot(aes(y=personLabel, x=age_at, colour=group, label=year(earliest))) +
+  geom_text(show.legend = F, size=3, nudge_x = 3) +
+  geom_lollipop(horizontal = T) +
+  #geom_segment( aes(x=age_start, xend=age_latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
+  #geom_linerange(linewidth=0.5) +
+  scale_x_continuous(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
+  theme(axis.ticks.y=element_blank() ) +
+  scale_color_tableau() +
+  #theme(legend.position = "bottom") +
+  labs(y=NULL, x="age at earliest activity")
+```
+
+
+
+## Organisations and types of activity
+
+18 distinct organisations (not all activities are associated with a named organisation).
+
+[label partly cut off in legend = "was member of"]
+
+```{r}
+bn_suffrage |>
+  add_count(org, name="n_org") |>
+  count(org, activity, n_org) |>
+  filter(!is.na(org)) |>
+  #mutate(org = if_else(is.na(org), "nk", org)) |>
+  mutate(org = fct_reorder(org, n_org)) |>
+  ggplot(aes(org, n, fill=activity)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_colorblind() +
+  scale_y_continuous(labels = number_format(accuracy = 1)) +
+  theme(legend.position = "bottom") +
+  labs(x=NULL, y="count")
+```
+
+
+There's even less overlap between pre-1908 and 1908- organisations than for the women themselves. (It looks as though local and regional organisations are only present in the earlier period.)
+
+```{r}
+bn_suffrage |> 
+  add_count(org, name="n_org") |>
+  count(org, year, n_org) |>
+  filter(!is.na(org) & !is.na(year)) |>
+  group_by(org) |>
+  mutate(label = cur_group_id()) |>
+  mutate(latest = max(year), earliest=min(year)) |>
+  ungroup() |>
+  mutate(start_year=min(year)) |>
+  mutate(org = fct_rev(org)) |>
+  ggplot(aes(y=org)) +
+  #geom_segment(aes(yend=org, x=start_year, xend=latest), linewidth=0.2, colour="lightgrey") +
+  geom_dumbbell(aes(x=earliest, xend=latest)) +
+#  geom_point(aes(x=year)) +
+  labs(y=NULL)
+```
+
+
+```{r}
+bn_suffrage |>
+  select(bn_id, personLabel, activity, subvalLabel, sub_type, org, bucket, year, s, person, bn_dob_yr)
+```
+
+
+## Table
+
+
+```{r}
+bn_fsa_education_reactable <-
+  bn_fsa_education |>
+  select(-college_id, -university_id, -college, -university, -n_educated_at) |> 
+  mutate(across(c(-bn_id, -personLabel), ~replace_na(.,"-"))) |>
+  mutate(universityLabel = if_else(universityLabel==collegeLabel, NA, universityLabel))
+
+reactable(
+  bn_fsa_education_reactable |> select(-person) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 130,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    personLabel =colDef(maxWidth = 300, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s#P94" target="_blank">%s</a>', bn_fsa_education_reactable$person[index], value)
+      })   ,
+   collegeLabel = colDef(maxWidth = 275, name="college"),
+    # collegeLabel = colDef(maxWidth = 250, name="college",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     sprintf('<a href="%s" target="_blank">%s</a>', bn_fsa_education$college[index], value)
+    #   })   ,  # TODO work out how to make this conditional
+    universityLabel = colDef(maxWidth = 275, name="university")
+    
+  )
+)
+```
