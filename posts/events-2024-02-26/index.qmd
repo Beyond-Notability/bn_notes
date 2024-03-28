@@ -62,19 +62,22 @@ bn_women_dob_query <-
 
 
 
-# organised by P109: union query for linked event pages or in quals, excluding human organisers. atm all are items.
+# organised by (P109): union query for linked event pages or in quals, excluding human organisers. atm all are items.
+# slightly trimmed version to speed up query as you don't need claim . don't even really need ?person.
 
 bn_organised_by_sparql <-
-'SELECT distinct ?person ?organised_by ?organised_byLabel ?prop ?ev ?evLabel ?s
+'SELECT distinct 
+?s ?organised_by ?organised_byLabel 
+#?person ?prop ?ev 
 
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 .
   ?person ( bnp:P71 | bnp:P24 | bnp:P72 | bnp:P23 | bnp:P13 | bnp:P120 | bnp:P113 ) ?s .
     ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ev .  
    
-  ?person ?p ?s .
-      ?prop wikibase:claim ?p;      
-         wikibase:statementProperty ?ps.  
+  # ?person ?p ?s .
+  #     ?prop wikibase:claim ?p;      
+  #        wikibase:statementProperty ?ps.  
 
   # organised by  
   {
@@ -93,12 +96,13 @@ WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }'
 
+
 bn_organised_by_query <-
   bn_std_query(bn_organised_by_sparql) |>
-  make_bn_item_id(person) |>
-  make_bn_ids(c(ev, prop, organised_by, s)) |>
-  select(-person) |>
-  rename(ppa=prop)
+  #make_bn_item_id(person) |>
+  make_bn_ids(c(organised_by, s)) ## |>
+#  select(-person) |>
+ # rename(ppa=prop)
 ```
 
 
@@ -121,11 +125,11 @@ WHERE {
     ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ppa .  
    
   ?person ?p ?s .
-      ?prop wikibase:claim ?p;      
-         wikibase:statementProperty ?ps.      
+      ?prop wikibase:claim ?p.      
           
   # qualifiers
    optional { 
+     ?s ( bnpq:P78|bnpq:P66 | bnpq:P2	 ) ?qual_value . # limit to the qualifiers youre actually using
      ?s ?qual_p ?qual_value .   
      ?qual_prop wikibase:qualifier ?qual_p . 
     }
@@ -197,6 +201,7 @@ bn_women_events_query |>
 # get instance of for qualifiers
 # i think it's better to get them separately esp as there are multis etc
 # problems adapting the query for events only... just get all for ppa for now and get moving
+# it's not that slow; maybe come back to it
 # but i think you may need to work it out so you can narrow down? for now do a semi join afterwards
 
 bn_women_ppa_qual_inst_sparql <-
@@ -240,28 +245,32 @@ bn_women_ppa_qual_inst_query <-
 
 
 # this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
+# fetching date_prop makes the query a *lot* slower, so get R to turn the prop IDs into labels instead.
 
 bn_women_events_time_precision_sparql <-
-'SELECT distinct ?person ?prop ?ppa  ?date ?date_precision ?date_prop ?date_propLabel ?pqv  ?s
+'SELECT distinct ?person ?date ?date_precision ?pq ?pqv  ?s  ?ppa  
+#?prop ?date_prop ?date_propLabel 
 
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 .
   ?person ( bnp:P71 | bnp:P24 | bnp:P72 | bnp:P23 | bnp:P13 | bnp:P120 | bnp:P113 ) ?s .
     ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ppa .  
    
-  ?person ?p ?s .
-      ?prop wikibase:claim ?p;
-         wikibase:statementProperty ?ps.      
+  # dont need any of this
+  # ?person ?p ?s .
+  #     ?prop wikibase:claim ?p;
+  #        wikibase:statementProperty ?ps.      
 
   # qualifier timevalue and precision.
       ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 ) ?pqv.
+      ?s ?pq ?pqv .
           ?pqv wikibase:timeValue ?date .  
           ?pqv wikibase:timePrecision ?date_precision .
      
-  # check number of results but this seems to work 
-        ?s ?pq ?date .   
-          ?date_prop wikibase:qualifier ?pq .
-          ?date_prop wikibase:propertyType wikibase:Time.  
+  # this really slows down the query, just for the sake of the property labels. ?
+  #      ?s ?pq ?date .   
+  #        ?date_prop wikibase:qualifier ?pq .
+  #        ?date_prop wikibase:propertyType wikibase:Time.  
   
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }
@@ -276,16 +285,24 @@ bn_events_time_precision_fetched <-
 bn_women_events_time_precision_query <-
   bn_events_time_precision_fetched |>
   make_bn_item_id(person) |>
-  make_bn_ids(c(prop, ppa, date_prop, pqv, s)) |>
-  #make_date_year() |> # um.
+  make_bn_ids(c(ppa, pq, pqv, s)) |>
+  #make_bn_ids(c(prop, ppa, date_prop, pqv, s)) |>
+  make_date_year() |>
+  mutate(date_propLabel = case_when(
+    pq=="P1" ~ "point in time",
+    pq=="P27" ~ "start time",
+    pq=="P28" ~ "end time"
+  )) |>
+  rename(date_prop=pq) |>
   select(-person)
 
 # read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
 #bn_std_query(bn_women_events_time_precision_sparql) # not converted
 #read_csv(bn_events_timeprecision_csv_file) # converted
+```
 
 
-
+```{r}
 bn_women_events_dates <-
   bn_women_events_time_precision_query |>
   # you need to keep the date as well as the precision when you pivot, to join. c() in values_from
@@ -514,224 +531,6 @@ bn_women_events_of_dates_types_all |>
 
 
 
-```{r}
-## deprecating...
-# ## new versions
-# bn_women_events_of_dates_types_all <-
-# bn_women_events_of_dates |>
-#   # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
-#   left_join(
-#     bn_women_ppa_qual_inst_query |>
-#       filter(qual_instanceLabel %in% c("meeting", "conference", "exhibition")) |>
-#       distinct(qual, qual_instance, qual_instanceLabel) |>
-#       rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
-#   ) |>
-#   # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
-#   # left_join(
-#   #   bn_women_ppa_qual_inst_query |>
-#   #     filter(!qual_instanceLabel %in% c("meeting", "conference", "exhibition", "event", "bucket", "locality", "venue")) |>
-#   #     distinct(qual, qual_instance, qual_instanceLabel) |>
-#   #     rename(instance2_id=qual_instance, instance2=qual_instanceLabel), by=c("event_id"="qual")
-#   # )  |>
-#   # add directly available locations
-#   left_join(
-#     bn_women_events_qualifiers |>
-#       filter(qual_label=="location") |>
-#       group_by(s) |>
-#       top_n(1, row_number()) |>
-#       ungroup() |>
-#       select(s, qual_location=qual_valueLabel, qual_location_value=qual_value)
-#   , by="s") |>
-#   
-#   # consolidate ppa_label item/text. currently only for delegate
-#   mutate(ppa_type = case_when(
-#     str_detect(ppa_label, "was delegate") ~ "was delegate at",
-#     .default = ppa_label
-#   )) |>
-#   relocate(ppa_type, .after = ppa)  |>
-#   
-#   # make event type. adjusted to do more as you dropped second i/o join. tweak for F.S.
-#   mutate(event_type = case_when(
-#     event %in% c("meeting", "exhibition", "conference") ~ event,
-#     event_id=="Q292" & is.na(of_value) ~ "meeting",  # folklore society not specified as meetings, but they almost certainly are
-#     #event_id=="Q682" ~ "conference", # Annual Meeting as conference? - to work this has to go before instance
-#     instance %in% c("meeting", "exhibition", "conference") ~ instance,
-#     event %in% c("committee", "museum") ~ "other",
-#     str_detect(event, "Meeting|Congress of the Congress of Archaeological Societies") ~ "meeting",
-#     str_detect(event, "Conference|Congress") | str_detect(of_value, "Conference|Congress") ~ "conference",
-#     #str_detect(instance2, "society|organisation|museum|institution|library") ~ "other",
-#     str_detect(of_value, "Society|Museum|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") | str_detect(event, "Society|Museum|Museo|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") ~ "other",
-#     .default = "misc"
-#   )) |>
-#   
-#     mutate(event_org = case_when(
-#     !is.na(of_value) ~ of_value,
-#     event_id=="Q292" & is.na(of_value) ~ event,
-#     event_type=="other" ~ event,
-#     str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Royal Archaeological Institute", 
-#     str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Society of Antiquaries of London",
-#     str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Congress of Archaeological Societies",
-#     str_detect(event, "Royal Academy") ~ "Royal Academy",
-#     str_detect(event, "Society of Lady Artists") ~ "Society of Women Artists", 
-#     str_detect(event, "Folklore Society") ~ "The Folklore Society",
-#     # i think use event name for conferences/exhibitions without an of. but not generic
-#     event_type %in% c("conference", "exhibition", "misc")  & !event %in% c("meeting", "exhibition", "event", "petition", "conference")  ~ event
-#   )) |>
-# 
-#   # need an org id as well as org name.
-#   mutate(org_id = case_when(
-#     !is.na(of_id) ~ of_id,
-#     event_id=="Q292" & is.na(of_value) ~ event_id,
-#     # need these IDs 
-#     str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Q35", 
-#     str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Q8",
-#     str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Q186", 
-#     str_detect(event, "Royal Academy") ~ "Royal_Academy",
-#     str_detect(event, "Society of Lady Artists") ~ "Q1891",
-#     str_detect(event, "Folklore Society") ~ "Q292",
-#     !is.na(event_org) ~ event_id,
-#     # conferences etc without an of - use event_id. but not if generic
-#     event_type %in% c("conference", "exhibition", "misc") & !event %in% c("meeting", "exhibition", "event", "petition", "conference") ~ event_id
-#   )) |>
-#   
-#   # event title. still probably wip. this is now not going to exactly match grouping of instance id, i think.
-#   mutate(event_title = case_when(
-#     # for FS
-#     event_id=="Q292" & is.na(of_value) ~ paste("meeting,", event),
-#     #  use year if other info is lacking. either should match instance id without a problem 
-#     event %in% c("exhibition", "meeting", "event", "conference") & is.na(of_value) & !is.na(year) ~ paste0(event, " (", year, ")"),
-#     is.na(of_value) ~ event,
-#     event=="event" ~ of_value,
-#     .default = paste(event, of_value, sep=", ")
-#   )) |>
-#   # some abbreviations
-#   mutate(event_title = str_replace_all(event_title, sal_rai_cas_abbr))  |>
-# 
-#   # grouping date for distinct events according to type of event
-#   # do i need to check this again after adjusting event_type? 
-#   mutate(event_instance_date = case_when(
-#     is.na(date) ~ NA,
-#     event_id=="Q682" ~ paste0(year, "-01-01"),
-#     event_type %in% c("misc", "meeting", "other") ~ as.character(date), # should i make this month?
-#     event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
-#   ))  |>
-#   
-# # NB: there is no event_of_id now; event_org_id instead.
-#   # id columns for convenience
-#   # mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
-#   # mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
-#   mutate(event_instance_id = paste(event_instance_date, org_id, event_type, sep="_"))  |>
-#   # hmm, this may not quite work. might need a bit of extra work for CAS etc. 
-#   mutate(event_org_id = paste(org_id, event_type, sep="_")) |>
-#   relocate(event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, .after = ppa_type) 
-#   
-# bn_women_events_of_dates_types <-
-# bn_women_events_of_dates_types_all |>
-#   # losing ppa_label, but keep ppa in case you need any joins. just bear in mind slight difference.
-#   distinct(bn_id, personLabel, ppa_type, ppa, event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, dob, yob)
-# 
-# # unique event instances based on the workings
-# # but this is probably not quite right because it includes too much stuff incl title in group by
-# bn_women_event_instances <-
-# bn_women_events_of_dates_types_all |>
-#   group_by(event_instance_id, event_org_id, event_title, event_type, event_org, event, of_value, event_id, of_id, event_instance_date, year) |>
-#   # get all unique dates listed for the event instance, in chronological order
-#   arrange(date, .by_group = T) |>
-#   summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
-#   ungroup() 
-```
-
-
-
-
-
-```{r}
-## original
-# bn_women_events_of_dates_types <-
-# bn_women_events_of_dates |>
-#   # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
-#   left_join(
-#     bn_women_ppa_qual_inst_query |>
-#       filter(qual_instanceLabel %in% c("meeting", "conference", "exhibition")) |>
-#       distinct(qual, qual_instance, qual_instanceLabel) |>
-#       rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
-#   ) |>
-#   # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
-#   # add directly available locations
-#   left_join(
-#     bn_women_events_qualifiers |>
-#       filter(qual_label=="location") |>
-#       group_by(s) |>
-#       top_n(1, row_number()) |>
-#       ungroup() |>
-#       select(s, qual_location=qual_valueLabel, qual_location_value=qual_value)
-#   , by="s") |>
-#   # make event type. adjusted to do more as you dropped second i/o join
-#   mutate(event_type = case_when(
-#     event %in% c("meeting", "exhibition", "conference") ~ event,
-#     instance %in% c("meeting", "exhibition", "conference") ~ instance,
-#     event %in% c("committee", "museum") ~ "other",
-#     str_detect(event, "Meeting|Congress of the Congress of Archaeological Societies") ~ "meeting",
-#     str_detect(event, "Conference|Congress") | str_detect(of_value, "Conference|Congress") ~ "conference",
-#     #str_detect(instance2, "society|organisation|museum|institution|library") ~ "other",
-#     str_detect(of_value, "Society|Museum|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") | str_detect(event, "Society|Museum|Museo|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") ~ "other",
-#     .default = "misc"
-#   )) |>
-#   # consolidate ppa_label item/text. currently only delegate
-#   mutate(ppa_type = case_when(
-#     str_detect(ppa_label, "was delegate") ~ "was delegate at",
-#     .default = ppa_label
-#   )) |>
-#   relocate(ppa_type, event_type, .after = ppa)  |>
-#   # grouping date for distinct events according to type of event... workings/rules further down this doc.
-#   # do i need to check this again after adjusting event_type? i think it's ok. only a handful changed and even fewer made a difference to the group date. only change to general rules other=ymd. 
-#   mutate(event_instance_date = case_when(
-#     is.na(date) ~ NA,
-#     event_id=="Q682" ~ paste0(year, "-01-01"),
-#     event_type %in% c("misc", "meeting", "other") ~ as.character(date),
-#     event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
-#   ))  |>
-#   # and id columns for convenience
-#   mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
-#   mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
-#   # to ignore the free text of/event IDs but keep NA of. drops about 11 rows.
-#   #filter(str_detect(event_of_id, "Q\\d.*_(Q|NA)")) |>
-#   # event title... wip.
-#   mutate(event_title = case_when(
-#     # if there's a location and no other specific info, use it. hmm but how to ensure instance id matches. 
-#     # you could use year (or even instance date). either should match instance id without a problem
-#     #!is.na(qual_location) & event %in% c("exhibition", "meeting", "event") & is.na(of_value) ~ paste0(event, " (", qual_location, ")"),
-#     # fix flipping Gomme
-#     event %in% c("exhibition", "meeting", "event", "conference") & is.na(of_value) & !is.na(year) ~ paste0(event, " (", year, ")"),
-#     is.na(of_value) ~ event,
-#     event=="event" ~ of_value,
-#     event_type=="meeting" ~ paste0(event, " of ", of_value),
-#     .default = paste(event, of_value, sep=", ")
-#   )) |>
-#   mutate(event_title = str_replace_all(event_title, sal_rai_cas_abbr)) |>
-#   mutate(event_org = case_when(
-#     !is.na(of_value) ~ of_value,
-#     event_type=="other" ~ event,
-#     str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Royal Archaeological Institute", 
-#     str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Society of Antiquaries of London",
-#     str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Congress of Archaeological Societies",
-#     str_detect(event, "Royal Academy") ~ "Royal Academy",
-#     str_detect(event, "Society of Lady Artists") ~ "Society of Lady Artists",
-#   )) 
-# 
-# 
-# # this is still a bit WIP, disambiguation may still be improvable
-# # unique event instances based on the workings.  
-# bn_women_event_instances <-
-# bn_women_events_of_dates_types |>
-#   group_by(event_instance_id, event_of_id, event, event_type, of_value, event_id, of_id, event_instance_date, event_title, event_org, year) |>
-#   # get all unique dates listed for the event instance, in chronological order
-#   arrange(date, .by_group = T) |>
-#   summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
-#   ungroup() 
-
-```
-
 
 
 
@@ -923,6 +722,7 @@ bn_women_events_of_dates_types |>
   mutate(event_title = fct_reorder(event_title, n_bn)) |>
   ggplot(aes(x=n, y=event_title)) +
   geom_col() +
+  scale_x_continuous(labels = number_format(accuracy = 1)) +
   labs(y=NULL, x="event attendances", title="Organisations other")
 ```
 

@@ -226,6 +226,23 @@ bn_women_dob_dod_query <-
 
 
 
+bn_women_dob_dod <-
+  bn_women_dob_dod_query |>
+  mutate(across(c(bn_dob, bn_dod), ~parse_date_time(., "ymdHMS"))) |>
+  mutate(across(c(bn_dob, bn_dod), year, .names = "{.col}_yr")) |>
+  group_by(bn_id) |>
+  top_n(1, row_number()) |>
+  ungroup() 
+# to add +/- 80 years for missing dob/dod
+# mutate(bn_yob = case_when(
+#   !is.na(y_bn_dob) ~ y_bn_dob,
+#   is.na(y_bn_dob) ~ y_bn_dod - 80
+# )) |>
+# mutate(bn_yod = case_when(
+#   !is.na(y_bn_dod) ~ y_bn_dod,
+#   is.na(y_bn_dod) ~ y_bn_dob+80
+# )) 
+
 
 ### c() for glitter
 

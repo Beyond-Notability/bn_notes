@@ -60,28 +60,34 @@ locations? will need more complex queries (which I'll work out for the lecturing
 
 ```{r}
 
-bn_women_dob_dod <-
-bn_women_dob_dod_query |>
-      mutate(across(c(bn_dob, bn_dod), ~parse_date_time(., "ymdHMS"))) |>
-      mutate(across(c(bn_dob, bn_dod), year, .names = "{.col}_yr")) |>
-      group_by(bn_id) |>
-      top_n(1, row_number()) |>
-      ungroup() 
-      # mutate(bn_yob = case_when(
-      #   !is.na(y_bn_dob) ~ y_bn_dob,
-      #   is.na(y_bn_dob) ~ y_bn_dod - 80
-      # )) |>
-      # mutate(bn_yod = case_when(
-      #   !is.na(y_bn_dod) ~ y_bn_dod,
-      #   is.na(y_bn_dod) ~ y_bn_dob+80
-      # )) 
 
 
-# this is *slow* though.
 # sub_io is so you know what kind of thing sub_ is - can be event, role, organisaiton...
 
-bn_suffrage_sparql <-
-'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
+# SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
+
+##i think you'll have to fetch locations separately
+
+
+
+
+# sub io
+# - lose suffrage activity. 
+# - atm there are no other dups. but something to watch out for if you change the query.
+# - keep bucket - both are event i think. NA is role. but that could also change, 
+# probably want timeprecision
+# hmm still got na orgs
+# organised by adds one, hardly worth the bother.
+
+
+#apparently they all have dob!
+
+
+# updated hopefully much faster query
+
+bn_suffrage_sparql <- 
+  
+  'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
 
 WHERE {  
 
@@ -100,16 +106,13 @@ WHERE {
                # filter not exists { ?subval bnwdt:P12 bnwd:Q1166 . }
              }
 
+  # union
    {
     # a qualifier (anywhere) has i/o suffrage activity
        ?s bnpq:P12 bnwd:Q1166.
-     # `of`
-       optional { ?s bnpq:P78 ?of .  
-                 #optional { ?s bnpq:P2 ?location . }
-                }
     }
   
-     # what about a main rather than qualifier having i/o suffrage activity? i dont think there are any atm but could be.
+# what about a main rather than qualifier having i/o suffrage activity? i dont think there are any atm but could be.
  # union
  #   { # this might find extra linked i/o suffrage but im not sure it works.
  #     ?subval bnwdt:P12 bnwd:Q1166 .
@@ -118,15 +121,16 @@ WHERE {
   union
   
     {
-     # does *not* have i/o suffrage activity in any qualifiers  ... 
-     filter not exists { ?s bnpq:P12 bnwd:Q1166. }
+     # does *not* have i/o suffrage activity in any qualifiers  ... this slows things right down again and makes no difference to results.
+     #filter not exists { ?s bnpq:P12 bnwd:Q1166. }
   
      # ... but a qualifier *does* have i/o suffrage activity. i think!
       ?s ?pq ?qual .
         ?qual bnwdt:P12 bnwd:Q1166 .
-          optional { ?s bnpq:P78 ?of . } # - is there anything apart from of?
-         #optional { ?qual bnwdt:P2 ?location . }
-      }
+      
+      } # /union
+  
+  optional { ?s bnpq:P78 ?of. }  # outside the union seems speedier
   
   optional { 
     # date qualifiers. [assumes no edtf in quals. ] all seem to be p.i.t. ?
@@ -148,20 +152,7 @@ bn_suffrage_query <-
   mutate(across(c(date, of, mainLabel, subvalLabel, ofLabel, sub_ioLabel, subval), ~na_if(., ""))) |>
   relocate(person, .after = last_col())
 
-# SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
 
-##i think you'll have to fetch locations separately
-
-
-
-
-# sub io
-# - lose suffrage activity. 
-# - atm there are no other dups. but something to watch out for if you change the query.
-# - keep bucket - both are event i think. NA is role. but that could also change, 
-# probably want timeprecision
-# hmm still got na orgs
-# organised by adds one, hardly worth the bother.
 
 bn_suffrage <-
 bn_suffrage_query |>
@@ -188,9 +179,11 @@ bn_suffrage_query |>
   relocate(sub_type, org, bucket, .after = ofLabel) |>
   rename(activity=mainLabel) |>
   left_join(bn_women_dob_dod, by="bn_id")
-
-#apparently they all have dob!
 ```
+
+
+
+
 
 
 ## Types of activity
@@ -212,6 +205,8 @@ bn_suffrage |>
   scale_fill_manual(values = bucket_colours)
 
 ```
+
+
 
 
 A beeswarm of activity types grouped by PPA buckets. [excluding the buckets with only one or two instances]
@@ -251,8 +246,6 @@ bn_suffrage |>
 ```{r}
 #bn_suffrage |> count(bn_id, sort=T)
 ```
-
-
 
 
 ```{r}
@@ -303,62 +296,76 @@ bn_suffrage |>
     n_grp>1 ~ "2+"
   ))  |>
   mutate(age = year-bn_dob_yr) |>
-  mutate(earliest = min(year), .by = bn_id) |>
+  mutate(earliest = min(year), latest=max(year), .by = bn_id) |>
   mutate(started = case_when(
     earliest < 1908 ~ "early",
     .default = "late"
   )) |>
-  mutate(age_earliest = earliest-bn_dob_yr)
+  # first and last dates overall, for limits if doing by date
+  mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
+  # age info
+  mutate(age_earliest = earliest-bn_dob_yr, 
+         age_latest=latest-bn_dob_yr, 
+         age_at = year-bn_dob_yr, 
+         age_start=0) |>
+  relocate(date, year, bn_dob, bn_dob_yr, earliest, latest, age_earliest, age_latest, age_at) 
 
-## easier?    mutate(earliest = min(date), latest=max(date), .by = bn_id) |>
-# all (dated)
-bn_suffrage_bars <-
+
+## much simpler to use geom_point instead of geom_linerange
+  # do fct_ reordering (and filtering etc) as needed
+
+# this uses dates instead of years for earliest/latest
+bn_suffrage_barcode <-
 bn_suffrage |>
   filter(!is.na(date)) |>
   # first and last dates overall, for limits
   mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
-  arrange(desc(personLabel)) |>
-  group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
-    mutate(group_id = cur_group_id()) |>
-    mutate(earliest = min(date), latest=max(date)) |>
-  ungroup() |>
-  mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
-  mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
-  mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+  group_by(personLabel) |> 
+  mutate(earliest = min(date), latest=max(date)) |>
+  ungroup()
+```
 
-# 1 (dated) action
-bn_suffrage_bars1 <-
-bn_suffrage |>
-  filter(!is.na(date)) |>
-  add_count(bn_id) |>
-  filter(n==1) |>
-  # first and last dates overall, for limits
-  mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
-  arrange(desc(personLabel)) |>
-  group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
-    mutate(group_id = cur_group_id()) |>
-    mutate(earliest = min(date), latest=max(date)) |>
-  ungroup() |>
-  mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
-  mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
-  mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
 
-# at least 2 dated actions
-bn_suffrage_bars2 <-
-bn_suffrage |>
-  filter(!is.na(date)) |>
-  add_count(bn_id) |>
-  filter(n>1) |>
-  # first and last dates overall, for limits
-  mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
-  arrange(desc(personLabel)) |>
-  group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
-    mutate(group_id = cur_group_id()) |>
-    mutate(earliest = min(date), latest=max(date)) |>
-  ungroup() |>
-  mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
-  mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
-  mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+```{r deprecated-bars-for-linerange}
+# ## easier?    mutate(earliest = min(date), latest=max(date), .by = bn_id) |>
+# # all (dated)
+#   mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
+#   mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
+#   mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+# 
+# # 1 (dated) action
+# bn_suffrage_bars1 <-
+# bn_suffrage |>
+#   filter(!is.na(date)) |>
+#   add_count(bn_id) |>
+#   filter(n==1) |>
+#   # first and last dates overall, for limits
+#   mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
+#   arrange(desc(personLabel)) |>
+#   group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
+#     mutate(group_id = cur_group_id()) |>
+#     mutate(earliest = min(date), latest=max(date)) |>
+#   ungroup() |>
+#   mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
+#   mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
+#   mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
+# 
+# # at least 2 dated actions
+# bn_suffrage_bars2 <-
+# bn_suffrage |>
+#   filter(!is.na(date)) |>
+#   add_count(bn_id) |>
+#   filter(n>1) |>
+#   # first and last dates overall, for limits
+#   mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
+#   arrange(desc(personLabel)) |>
+#   group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
+#     mutate(group_id = cur_group_id()) |>
+#     mutate(earliest = min(date), latest=max(date)) |>
+#   ungroup() |>
+#   mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
+#   mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
+#   mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
 ```
 
 ```{r}
@@ -372,13 +379,15 @@ Beeswarms don't work well in this case because the concentration of activity in 
 
 Each vertical bar represents one date for which a suffrage activity is recorded (making no distinction between types of date). Unlike a beeswarm it won't show every single data point if there's more than one on the same date, but it's possible to make more data points visible than with chunkier shapes like dots or squares, and it will indicate more intense clusters of activity (both horizontally, for individuals, and vertically, for the group as a whole).
 
-[TODO: reorder by date of earliest activity?]
+- order by date of earliest activity
 
 ```{r}
-bn_suffrage_bars |> 
-  ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper)) +
+bn_suffrage_barcode |> 
+  mutate(personLabel=fct_rev(fct_reorder(personLabel, earliest))) |>
+  ggplot(aes(y=personLabel, x=date)) +
   geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
-  geom_linerange(linewidth=0.5) +
+  #geom_linerange(linewidth=0.5) +
+    geom_point(shape = 124, size = 2.5, colour="black") +
   scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
   theme(axis.ticks.y=element_blank() ) +
   #scale_color_colorblind() +
@@ -386,19 +395,37 @@ bn_suffrage_bars |>
   labs(y=NULL)
 ```
 
+- order by date of birth
 
+```{r}
+bn_suffrage_barcode |> 
+  mutate(personLabel=fct_rev(fct_reorder(personLabel, bn_dob))) |>
+  ggplot(aes(y=personLabel, x=date)) +
+  geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
+  #geom_linerange(linewidth=0.5) +
+    geom_point(shape = 124, size = 2.5, colour="black") +
+  scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
+  theme(axis.ticks.y=element_blank() ) +
+  #scale_color_colorblind() +
+  #theme(legend.position = "bottom") +
+  labs(y=NULL)
+```
 
 ```{r}
 # bn_suffrage_bars |> 
 #   ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper)) +
 #   geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
-#   geom_linerange(linewidth=0.5) + # but why can't i put aes in here...?
+#   geom_linerange(linewidth=0.5) +
 #   scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
-#   #scale_color_colorblind() +
 #   theme(axis.ticks.y=element_blank() ) +
+#   #scale_color_colorblind() +
 #   #theme(legend.position = "bottom") +
 #   labs(y=NULL)
 ```
+
+
+
+
 
 
 If only a single event needs to be plotted, a lollipop chart is also quite effective. 
@@ -407,7 +434,9 @@ If only a single event needs to be plotted, a lollipop chart is also quite effec
 ```{r}
 #might be useful to add year of birth so you can get a sense of "generations" (suspect later arrivals will be largely younger women?)
 # lol can't use geom_lollipop because it starts at 0 and there's no way to change it.
-bn_suffrage_bars1 |> 
+bn_suffrage_barcode |> 
+  add_count(bn_id) |>
+  filter(n==1) |>
   mutate(personLabel = fct_reorder(personLabel, desc(date))) |>
   ggplot(aes(y=personLabel, x=date)) +
   geom_segment( aes(x=start_date, xend=latest, yend=personLabel, colour=bucket), show.legend = F, linewidth=0.5) +
@@ -423,7 +452,7 @@ bn_suffrage_bars1 |>
 And a dumbbell plot for the earliest and latest activities by each woman. There isn't very much overlap (among women with more than 1 activity) between women who were active before 1908 and those who started 1908 or later. (But is this an absence, or just absence of data?) I'm not familiar enough with the historiography to know whether this might be expected; if not, handle with caution.
 
 ```{r}
-bn_suffrage_bars |>
+bn_suffrage_barcode |>
     mutate(personLabel = fct_reorder(personLabel, desc(earliest))) |>
   ggplot(aes(y=personLabel)) +
   geom_dumbbell(aes(x=earliest, xend=latest), size_x = 1.5, size_xend = 1.5) +
@@ -433,17 +462,19 @@ bn_suffrage_bars |>
 
 Separating out women with at least 2 activities
 
-[TODO: reorder by date of earliest activity]
+- ordered by date of earliest activity
 
 ```{r}
-bn_suffrage_bars2 |>  
-  ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper, colour=bucket)) +
+bn_suffrage_barcode |>  
+  add_count(bn_id) |> filter(n>1) |>
+  mutate(personLabel = fct_rev(fct_reorder(personLabel, earliest))) |>
+  ggplot(aes(y=personLabel, x=date, colour=bucket)) +
   geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
-  geom_linerange(linewidth=0.5) +
+ # geom_linerange(linewidth=0.5) +
+  geom_point(shape = 124, size = 4) +
   scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
   theme(axis.ticks.y=element_blank() ) +
   #geom_point(aes(x=bn_dob), colour="black", show.legend = F, shape="asterisk") +
-  #scale_color_tableau() +
   scale_colour_manual(values = bucket_colours) +
   theme(legend.position = "bottom") +
   labs(y=NULL, x=NULL, title="Women with at least two recorded activities")
@@ -526,23 +557,10 @@ Lollipop chart of ages at earliest activity, sorted by *date* of the earliest ac
 ```{r}
 # lollipop of age of first activity coloured by group 1/2
 # sorted by date of first activity
-bn_suffrage_bars |>
-  add_count(bn_id, name="n_grp") |>
-  group_by(n_grp) |>
-  mutate(grp_id = cur_group_id()) |>
-  ungroup() |>
-  mutate(group = case_when(
-    n_grp==1 ~ "1",
-    n_grp>1 ~ "2+"
-  ))  |>
-  mutate(age_earliest = year(earliest)-bn_dob_yr, 
-         age_latest=year(latest)-bn_dob_yr, 
-         age_at = year-bn_dob_yr, 
-         age_start=0) |>
-  relocate(date, year, bn_dob, bn_dob_yr, earliest, latest, age_earliest, age_at) |>
+bn_suffrage_ages |>
   filter(date == min(date), .by=bn_id) |>
   mutate(personLabel = fct_reorder(personLabel, desc(earliest))) |>
-  ggplot(aes(y=personLabel, x=age_at, colour=group, label=year(earliest))) +
+  ggplot(aes(y=personLabel, x=age_at, colour=group, label=earliest)) +
   geom_text(show.legend = F, size=3, nudge_x = 3) +
   geom_lollipop(horizontal = T, point.size = 1.5) +
   #geom_segment( aes(x=age_start, xend=age_latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
