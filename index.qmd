@@ -27,7 +27,7 @@ execute:
   echo: false 
 ---
 
-The site does not contain live wikibase data but will be quite frequently updated. (Doing the updates is straightforward so let me know if you want to see an updated version of a page at any time.) 
+The site does not contain live wikibase data but will be quite frequently updated. (Doing the updates is straightforward but as the number of pages grows it takes longer to run a full update, so it'll probably happen less often. Let me know if you want to see an updated version of a page at any time.) 
 
 ```{r}
 # will need to check this actually works...
