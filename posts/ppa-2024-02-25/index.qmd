@@ -18,6 +18,10 @@ The buckets are not part of the wikibase, but as the number is quite small they 
 
 * [PPA buckets](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#PPA_Buckets_for_Women)
 
+```{r}
+# this needs a Table 
+```
+
 
 ```{r libraries-etc}
 # shared libraries, functions etc ####
@@ -250,6 +254,7 @@ all_the_colours <-
 ## Notes
 
 The purpose of the buckets is to group PPAs together in reasonably coherent (and not too unbalanced) categories to facilitate various kinds of analysis from comparative overviews to digging into the detail of specific categories.
+
 
 ```{r}
 bn_ppa_buckets_query |>

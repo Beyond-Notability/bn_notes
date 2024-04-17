@@ -14,7 +14,7 @@ website:
         href: notes/index.qmd        
     right:
       - icon: github
-        href: https://github.com
+        href: https://github.com/Beyond-Notability/bn_notes
         aria-label: Github
 
 format:

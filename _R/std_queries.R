@@ -53,6 +53,8 @@ make_bn_ids <- function(data, across_cols=NULL, ...) {
 }
 
 
+## making union/values queries (usually for subquerying something already run)
+
 # construct lists of IDs for union/values query; bn_id is default ID column but can name another.
 # nb will still need to be enclosed in appropriate brackets in the sparql.
 bn_make_union <- function(data, bn_id=bn_id){
@@ -62,11 +64,43 @@ bn_make_union <- function(data, bn_id=bn_id){
     mutate(bn_bnp = paste0("bnp:",{{bn_id}})) |>
     mutate(bn_bnps = paste0("bnps:", {{bn_id}})) |>
     # construct the contents of the UNION (add to sparql with data$thing i think)
-    summarise(bn_bnp_union = paste(bn_bnp, collapse = " | "), 
-              bn_bnps_union = paste(bn_bnps, collapse = " | "), 
-              bn_bnwd_values = paste(bn_bnwd, collapse = " "),
-              bn_bnwdt_union = paste(bn_bnwdt, collapse = " | ") ) 
+    # these need to be unique!
+    summarise(bn_bnp_union = paste(unique(bn_bnp), collapse = " | "), 
+              bn_bnps_union = paste(unique(bn_bnps), collapse = " | "), 
+              bn_bnwd_values = paste(unique(bn_bnwd), collapse = " "),
+              bn_bnwdt_union = paste(unique(bn_bnwdt), collapse = " | ") ) 
 }
+
+
+## building query string for VALUES query, if it's not already saved as a thing.
+## can't just paste in a sparql string because {} have to be escaped, but need glue {} for the values.
+## spql = the VALUES sparql query string from WQS; need to insert "glue_values" placeholder  
+## replaces single { or } with {{ or }} 
+## inserts desired values name in single {} (default = bn_bnwd_values for function above)
+## could potentially add more replacements...
+
+glue_values_sparql <- function(spql, values="bn_bnwd_values"){
+  str_replace_all(
+    spql,
+    c(
+      "\\{"= "\\{\\{", 
+      "\\}"="\\}\\}", 
+      "glue_values"=paste0("\\{", values, "\\}") 
+    )
+  )
+}
+
+## example
+# glue_values_sparql(
+#   'SELECT ?person ?marriedname ?married
+# WHERE {  
+#   VALUES ?person { glue_values }
+#   OPTIONAL {?person bnwdt:P141 ?marriedname .} 
+#   optional {?person (bnwdt:P130 | bnwdt:P132)  ?married . }
+#   FILTER ( EXISTS { ?person bnwdt:P141 ?marriedname .} || EXISTS { ?person (bnwdt:P130 | bnwdt:P132 ) ?married .  } ) .
+# }
+# ORDER BY ?person' 
+# )
 
 
 ## endpoint URLs ####
@@ -122,7 +156,7 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 
 # std triples, filters etc 
 # haven't really used these much as the workflow has turned out, but keep for reference
-# DON'T use double braces here, only needed directly within a glue statement
+# DON'T use double braces here, only needed directly within a glue statement. R U SURE?
 
 bn_triple_woman <- "?person bnwdt:P3 bnwd:Q3 . " # get women
 
@@ -187,49 +221,74 @@ bn_properties_musthave <-
 
 ## The Women
 ## how to use the glue statements...
+## switched to usual format to include statements. keep this for reference though.
 
-bn_women_list <-
-  c(
-    glue(bn_prefixes,
-         "select distinct ?person ?personLabel 
-        where {{
-         {bn_triple_woman}
-         {bn_filter_project}
-         {wb_service_label}
-        }}") 
-  ) |>
-  sparql2df(endpoint=bn_endpoint) |>
-  make_bn_item_id(person) |>
-  #  mutate(bn_id = str_extract(person, "\\bQ\\d+$")) |>
-  relocate(bn_id, personLabel) |>
-  arrange( parse_number(str_remove(bn_id, "Q")))
+# bn_women_list <-
+#   c(
+#     glue(bn_prefixes,
+#          "select distinct ?person ?personLabel 
+#         where {{
+#          {bn_triple_woman}
+#          {bn_filter_project}
+#          {wb_service_label}
+#         }}") 
+#   ) |>
+#   sparql2df(endpoint=bn_endpoint) |>
+#   make_bn_item_id(person) |>
+#   #  mutate(bn_id = str_extract(person, "\\bQ\\d+$")) |>
+#   relocate(bn_id, personLabel) |>
+#   arrange( parse_number(str_remove(bn_id, "Q")))
 
 
-
-## dates of birth/death. added March 2024 - increasingly using this so let's put it here.
-bn_women_dob_dod_sparql <-
-  'SELECT distinct ?person ?bn_dob ?bn_dod
+# update April 2024 to include statements and dob/dod
+bn_women_list_sparql <-
+  'SELECT distinct ?person ?personLabel ?statements ?dob ?dod
 WHERE {
    ?person bnwdt:P3 bnwd:Q3 ;
          wikibase:statements ?statements .
-  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
-  optional { ?person bnwdt:P15 ?bn_dod .   }
-  optional { ?person bnwdt:P26 ?bn_dob .   }
-  FILTER ( EXISTS { ?person bnwdt:P15 ?bn_dod .} || EXISTS { ?person bnwdt:P26 ?bn_dob .  } ) . #  date of birth OR date of death.
+   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
+
+      optional { ?person bnwdt:P15 ?dod .   }
+      optional { ?person bnwdt:P26 ?dob .   }
+
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }'
 
-bn_women_dob_dod_query <-
-  bn_std_query(bn_women_dob_dod_sparql) |>
+# minimal processing to use as is or for dob/dod
+bn_women_list <-
+  bn_std_query(bn_women_list_sparql) |>
   make_bn_item_id(person) |>
-  mutate(across(c(bn_dob, bn_dod), ~na_if(., ""))) |>
-  select(-person) 
+  relocate(bn_id, personLabel) |>
+  mutate(across(c(dob, dod), ~na_if(., ""))) |>
+  arrange(parse_number(str_remove(bn_id, "Q")))
 
 
+# ## dates of birth/death. added March 2024 - increasingly using this so let's put it here.
+# bn_women_dob_dod_sparql <-
+#   'SELECT distinct ?person ?bn_dob ?bn_dod
+# WHERE {
+#    ?person bnwdt:P3 bnwd:Q3 .
+#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
+#   optional { ?person bnwdt:P15 ?bn_dod .   }
+#   optional { ?person bnwdt:P26 ?bn_dob .   }
+#   FILTER ( EXISTS { ?person bnwdt:P15 ?bn_dod .} || EXISTS { ?person bnwdt:P26 ?bn_dob .  } ) . #  date of birth OR date of death.
+# }'
+# 
+# 
+# bn_women_dob_dod_query <-
+#   bn_std_query(bn_women_dob_dod_sparql) |>
+#   make_bn_item_id(person) |>
+#   mutate(across(c(bn_dob, bn_dod), ~na_if(., ""))) |>
+#   select(-person) 
 
 bn_women_dob_dod <-
-  bn_women_dob_dod_query |>
-  mutate(across(c(bn_dob, bn_dod), ~parse_date_time(., "ymdHMS"))) |>
+  bn_women_list |>
+  filter(!is.na(dob) | !is.na(dod)) |>
+  #bn_women_dob_dod_query |>
+  mutate(across(c(dob, dod), ~parse_date_time(., "ymdHMS"), .names = "bn_{.col}")) |>
   mutate(across(c(bn_dob, bn_dod), year, .names = "{.col}_yr")) |>
+  select(-dob, -dod) |>
+  # only one row per person please
   group_by(bn_id) |>
   top_n(1, row_number()) |>
   ungroup() 

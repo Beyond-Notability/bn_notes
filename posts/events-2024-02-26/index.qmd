@@ -11,6 +11,10 @@ execute:
   message: false
   echo: false 
 ---
+```{r}
+# this needs a Table?
+```
+
 
 ## Wikibase queries
 
@@ -569,11 +573,13 @@ bn_ppa_buckets |>
 
 (a bit nerdy, sorry)
 
-There are basically two different kinds of event in the data: recurring events (eg society monthly meetings or AGMs) and one-off events. Recurring events are a bit more complicated to handle when counting things. So, for recurring events, "event" will refer to any/all instances of (eg) "meeting of the Folklore Society" (Q31 / Q292), "Royal Archaeological Institute Meeting" (Q29), and so on. 
+There are basically two different kinds of event in the data: recurring events (eg society monthly meetings or AGMs) and one-off events. Recurring events are a bit more complicated to handle when counting things. 
 
-An "event instance" refers to a *single occurrence* of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903). For counting one-off events "event" and "event instance" are the same thing.
+So, for recurring events, "event" will refer to any/all instances of (eg) "meeting of the Folklore Society" (Q31 / Q292), "Royal Archaeological Institute Meeting" (Q29), and so on. 
 
-An "event attendance" refers to one woman participating at one event instance. Sometimes the same event instance appears more than once on a woman's page under different PPAs; unless the emphasis is on the specific activity rather than the event, I'll reduce them to one for counting purposes.
+Meanwhile, an "event instance" refers to a *single occurrence* of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903), or a one-off event. For counting one-off events "event" and "event instance" are the same thing.
+
+Finally, an "event attendance" refers to one woman participating in one event instance. Sometimes the same event instance appears more than once on a woman's page under different PPAs; unless the emphasis is on the specific activity rather than the event, I'll reduce them to one for counting purposes.
 
 Identifying what is a single instance of a recurring event is not always perfectly simple, especially given the different kinds of event present in the database. At present it's based on three elements:
 

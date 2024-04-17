@@ -18,6 +18,10 @@ execute:
 * [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section
 * [PPA buckets](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#PPA_Buckets_for_Women)
 
+```{r}
+# this doesn't have a Table
+```
+
 
 ```{r libraries-etc}
 # shared libraries, functions etc ####
@@ -265,12 +269,11 @@ bn_women_dates_categories_birth |>
 
 
 
-## Beeswarms
+## Notes
+
 
 >Can you make a bee swarm-type diagram that plots the frequency of PPAs across all the women in the dataset, across the entire project period? So with years ascending up the y axis, and all the women considered one big blotchy group (am sure that's the technical term). What we want to get is an overview of whether certain kinds of PPA were more dominant at various periods of the overall period covered by the project, e.g. women suddenly started doing more excavation or whatnot in the 1910s, whereas before that there was almost no excavation activity associated with women. Project data on PPAs still very incomplete for post-1920s period, at least until CAS Earthworks and Blue Paper data is fully added, but even if we could begin to get a sense for the 1870 - 1920 period this would be very helpful to us. 
 
-
-Notes:
 
 - Updated to use the PPA buckets
 - I've moved the Big Blob versions to the bottom of the page since there was a clear preference for the separated approach!
@@ -293,6 +296,27 @@ Notes:
 #   labs(y=NULL, x=NULL, colour=NULL)
 
 ```
+
+## Overview
+
+The PPA buckets ([see also](./bn_notes/posts/ppa-2024-02-25/)).
+
+```{r}
+# most compact approach? try a table with bucket in LH column and categories horizontally in RH ?
+bn_ppa_buckets |>
+  filter(!label %in% c("no buckets")) |>
+  group_by(label) |>
+  arrange(str_to_lower(ppa), .by_group = T) |>
+  summarise(ppa = paste(ppa, collapse = " ~ ") ) |>
+  ungroup() |>
+  rename(bucket=label, activity=ppa) |>
+  kable() |>
+  kable_styling()
+```
+
+
+
+## Beeswarms
 
 ### dates
 
@@ -659,26 +683,68 @@ bn_women_dates_ppa |>
 #ggsave("test-ppa-bees.png", width=7.3, height=4.5)
 ```
 
-interactive version
 
 ```{r}
+##interactive version. this is rubbish. quietly drp it.
 
-bn_ppa_bees <-
-bn_women_dates_ppa |>
-  filter(between(year, 1861, 1950) )  |> 
-  #filter(!is.na(period)) |>
-  filter(!subcat %in% c("charitable", "no buckets")) |>
-  arrange(year, subcat) |>
-  ggplot(aes(year, "", colour=subcat)) +
-  geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
-  scale_colour_ptol() +
-  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
-  #theme(legend.position = "bottom") +  # plotly ignores this 
-  #guides(colour = guide_legend(override.aes = list(size=2))) + # ?conflict with plotly? legend doesn't show at all.
-  labs(y=NULL, x=NULL)
-
-plotly::ggplotly(bn_ppa_bees)
+# bn_ppa_bees <-
+# bn_women_dates_ppa |>
+#   filter(between(year, 1861, 1950) )  |> 
+#   #filter(!is.na(period)) |>
+#   filter(!subcat %in% c("charitable", "no buckets")) |>
+#   arrange(year, subcat) |>
+#   ggplot(aes(year, "", colour=subcat)) +
+#   geom_beeswarm(size=0.5,  method = "swarm", cex = 1.2) +  #, corral = "wrap", corral.width = 0.9, cex=0.8
+#   scale_colour_ptol() +
+#   #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+#   #theme(legend.position = "bottom") +  # plotly ignores this 
+#   #guides(colour = guide_legend(override.aes = list(size=2))) + # ?conflict with plotly? legend doesn't show at all.
+#   labs(y=NULL, x=NULL)
+# 
+# plotly::ggplotly(bn_ppa_bees)
 ```
 
 
+## Table
+
+
+```{r}
+bn_women_dates_reactable <-
+bn_women_dates_ppa |>
+  select(bn_id, personLabel, ppa_bucket, date_prop_label, prop_valueLabel, year, date_prop, person) |>
+  arrange(bn_id, year, ppa_bucket, date_prop)
+```
+
+```{r}
+
+reactable(
+  bn_women_dates_reactable |> select(-person, -date_prop) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 130,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 70),
+    personLabel =colDef(maxWidth = 200, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s" target="_blank">%s</a>', bn_women_dates_reactable$person[index], value)
+      })   ,
+    ppa_bucket = colDef(maxWidth = 140, name = "PPA bucket"),
+    date_prop_label = colDef(maxWidth = 160, name="activity"),
+    prop_valueLabel = colDef(maxWidth = 180, name="what/where"),
+    # collegeLabel = colDef(maxWidth = 250, name="college",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     sprintf('<a href="%s" target="_blank">%s</a>', bn_fsa_education$college[index], value)
+    #   })   ,  # TODO work out how to make this conditional
+   year=colDef(minWidth = 90)
+    
+  )
+)
+```
 
