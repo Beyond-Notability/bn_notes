@@ -41,11 +41,9 @@ library(leaflet)
  #    autoHideNavigation = getOption("DT.autoHideNavigation", NULL),
  #    selection = c("multiple", "single", "none"), extensions = list(),
  #    plugins = NULL, editable = FALSE)
-
 #styling options https://datatables.net/manual/styling/classes
 
 #library(crosstalk)
-
 
 # standard query strings and queries ####
 
@@ -158,7 +156,7 @@ bn_booth_map |>
 
 
 
-```{r}
+```{r stuff-not-working-grrr}
 #filter_select is working but selection in map isn't.
 
 # bscols(widths = c(12,12,12),

@@ -101,100 +101,6 @@ bn_women_work_activities_new_query |>
 
 
 
-
-```{r get-queries-deprecate}
-# bn_examples_work_v1 <-
-# bn_example_queries |>
-#   filter(!str_detect(query, "defaultView:"), section=="Work") |>
-#   rowid_to_column() |>
-#   # get first word of section, currently unique on 1st word, but a slightly iffy assumption; it'll do for now.
-#   mutate(dfname = str_to_lower(word(section, sep=" "))) |>
-#   relocate(dfname) |>
-#   # make section IDs for DF names
-#   mutate(dfname = paste0("bn_", word(dfname, sep = " "), rowid ))
-# 
-# ## map2 for the sparql query
-# bn_examples_work_dfs <-
-#   map2(bn_endpoint, bn_examples_work_v1$query, sparql2df)
-# 
-# ## TIL names() this is all you need to do to name each of the dfs using the dfname col.
-# names(bn_examples_work_dfs) <- bn_examples_work_v1$dfname
-# 
-# # make the dfs individual dataframes
-# # TIL list2env() puts elements of a list into the global environment (though not regarded as good practice??)
-# # if you rerun the chunk, I think it just replaces them with the new versions cf. attach. 
-# # you need to be sure the names aren't already being used!
-# # list2env(bn_examples_work_dfs, envir = .GlobalEnv)
-# 
-# # was this really a good idea, trying to get the queries by number? you've already inserted a new one in the original sequence.
-# # not to mention reorganising sections and stuff.
-# # alternatives? get Work then look for title is not 100% safe but safer i think
-# # you only need one query for this now anyway... so you might as well just paste it in.
-# # check how the new table looks against the original first though
-# 
-# 
-# # if you use attach you need to detach immediately afterwards when you've done what you want
-# # if this doesn't work, go back to list2env
-# 
-# 
-# 
-# attach(bn_examples_work_dfs)
-# 
-# bn_women_positions_held <-
-# bn_work1 |>
-#   mutate(bn_id = str_extract(person, "\\b[Q]\\d+$")) |>
-#   semi_join(bn_women_list, by="bn_id") |>
-#   # clean up any _:t dates. make sure you use .  !!!!
-#   mutate(across(c(date, startdate, enddate),
-#                 ~ case_when(
-#                   str_detect(date, "_:t") ~ "",
-#                   .default = .
-#                 )
-#                 )) |>
-#   # consolidated single date: if date is empty, use startdate
-#   mutate(date1 = case_when(
-#     date !="" ~ date,
-#     .default = startdate
-#   )) |>
-#   mutate(across(c(date, date1, startdate, enddate), ~parse_date_time(., "ymdHMS"), .names = "{.col}_n")) |>
-#   mutate(across(c(date_n, date1_n, startdate_n, enddate_n), ~year(.), .names = "year_{.col}")) |>
-#   mutate(position_id = str_extract(position, "\\b[Q]\\d+$")) |>
-#   relocate(bn_id, personLabel, ends_with("_n")) |>
-#   arrange( parse_number(str_remove(bn_id, "Q")), date1_n)
-# # 
-# # 
-# bn_women_employed_as <-
-# bn_work2 |>
-#   mutate(bn_id = str_extract(person, "\\b[Q]\\d+$")) |>
-#   semi_join(bn_women_list, by="bn_id") |>
-#   # clean up any _:t dates
-#   mutate(across(c(date, startdate, enddate),
-#                 ~ case_when(
-#                   str_detect(date, "_:t") ~ "",
-#                   .default = .
-#                 )
-#                 )) |>
-#   # consolidated single date: if date is empty, use startdate
-#   mutate(date1 = case_when(
-#     date !="" ~ date,
-#     .default = startdate
-#   )) |>
-#   mutate(across(c(date, date1, startdate, enddate), ~parse_date_time(., "ymdHMS"), .names = "{.col}_n")) |>
-#   mutate(across(c(date_n, date1_n, startdate_n, enddate_n), ~year(.), .names = "year_{.col}")) |>
-#   mutate(position_id = str_extract(position, "\\b[Q]\\d+$")) |>
-#   relocate(bn_id, personLabel, ends_with("_n")) |>
-#   arrange( parse_number(str_remove(bn_id, "Q")), date1_n)
-# 
-# detach(bn_examples_work_dfs)
-# # 
-# bn_women_employed_positions <-
-# bind_rows(
-#   bn_women_employed_as |> mutate(type="employed as"),
-#   bn_women_positions_held |> mutate(type="position held")
-# ) |>
-#   arrange( parse_number(str_remove(bn_id, "Q")), date1_n, type)
-```
-
 ## Wikibase query
 
 [Work](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Work) - [Women's work activities with employers and dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_and_their_work_activities,_with_employers/organisations_and_dates)
@@ -226,15 +132,6 @@ bn_women_work_activities |>
 
 
 
-```{r}
-# bn_women_employed_positions |>
-#   count(year_date1_n, type) |>
-#   filter(!is.na(year_date1_n)) |>
-#   ggplot(aes(year_date1_n, n)) +
-#   geom_col() +
-#   facet_wrap(~type, scales = "free_y") +
-#   labs(title="Jobs: position held and employed as, by year", y="count of jobs", x="year")
-```
 
 Percentage of posts that are `employed as` (with trend line)
 
@@ -307,46 +204,7 @@ bn_women_work_activities |>
 
 
 
-```{r}
-# bn_women_employed_positions |>
-#   mutate(position_label = case_when(
-#     str_detect(positionLabel, "^t\\d+") ~ "na",
-#     positionLabel=="job title unrecorded" ~ "na",
-#     .default = str_to_lower(positionLabel)
-#   ))  |>
-#   mutate(position_label = str_trim(str_remove(position_label, "^(assistant|honorary) +"))) |>
-#   count(position_label, type) |>
-#   mutate(t = sum(n), .by = position_label) |>
-#   filter(position_label !="na", t>1) |>
-#   mutate(position_label = fct_reorder(position_label, t)) |>
-#   ggplot() +
-#   geom_col(aes(x=position_label, y=n, fill=type)) +
-#   coord_flip() +
-#   scale_fill_tableau() +
-#   labs(x=NULL, y=NULL, title="Job descriptions, ordered by frequency", fill="type", caption = "count>1")
-```
 
-
-
-
-
-```{r}
-# bn_women_work_activities_new_query |>
-#   # make <unknown value> NA - strings start with _:t
-#   mutate(date = if_else(str_detect(date, "^_:t"), NA, date))|>
-#   mutate(date = parse_date_time(date, "ymdHMS")) |>
-#   mutate(year = year(date)) |>
-#   mutate(s_id = str_remove(s, "https://beyond-notability.wikibase.cloud/entity/statement/"))  |>
-#   # drop employer/org/of for now, a few dups and not needed for this. 
-#   distinct(bn_id, personLabel, work_label, positionLabel, date_label, date, year, s_id, work, person, position) |>
-# 
-#   # keep NAs for now but drop end time
-#   filter(date_label !="end time" | is.na(date_label))  |>
-#   mutate(employed_position = case_when(
-#     work_label=="employed as" ~ work_label,
-#     str_detect(work_label, "held position") ~ "held position"
-#   ))
-```
 
 
 ## Individual women
@@ -368,18 +226,6 @@ bn_women_work_activities |>
 
 
 
-```{r}
-# bn_women_employed_positions |>
-#   count(personLabel, type)  |>
-#   mutate(t = sum(n), .by = personLabel) |>
-#   mutate(personLabel = fct_reorder(personLabel, t)) |>
-#   filter(t>3) |>
-#   ggplot() +
-#   geom_col(aes(x=personLabel, y=n, fill=type)) +
-#   coord_flip() +
-#   scale_fill_tableau() +
-#   labs(x=NULL, y=NULL, title="Individual women's job counts, ordered by frequency", fill="type", caption = "count>3")
-```
 
 
 ## Table

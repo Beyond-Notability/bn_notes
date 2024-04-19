@@ -61,8 +61,6 @@ make_named_colours <- function(df, grpname, grpcols){
 source(here::here("_R/dates.R"))
 
 
-
-
 bn_women_dates_death <-
 bn_women_dates |>
   filter(date_prop %in% c("P15")) |>
@@ -137,30 +135,6 @@ bn_women_dates_categories |>
     # category=="education" ~ category,
     category=="family" ~ category,
     
-    # ppa work; for this incl excavations
-    #str_detect(date_prop_label, "held position|employed as|contributed to|applicant to") ~ "work",
-    #date_prop %in% c("P36", "P37") ~ "work", #excavations, long labels cba to write them out
-    
-    # other ppa 
-    #date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
-    
-  #   #str_detect(date_prop_label, "attended|performed at|travelled overseas|was delegate") ~ "activity?", # 41
-  #   #str_detect(date_prop_label, "gave money|loaner to|was donor|donor to") ~ "resources",   # 99
-
-     # this ends up being big....
-    #date_prop_label %in% c("was member of", "was fellow of") ~ "societies",
-    #date_prop %in% c("P16", "P7", "P155", "P49") ~ "societies",
-    
-    #date_prop_label %in% c("served on", "organiser of", "fundraiser for") ~ "service",
-    #str_detect(date_prop_label, "Member of Committee") ~ "service",
-  #   #date_prop=="P38" ~ "service", # committee for archaeological fieldwork. excavations
-    
-    #date_prop %in% c("P101") ~ "publishing",  
-    
-    # everything else with instance of ppa
-    #category=="ppa" ~ "other ppa",
-    
-    #.default = "other" leave anything else NA - there are some now. but i think not filter them out yet?
   ))  |>
   
   # group_label instead of group
@@ -211,83 +185,9 @@ bn_women_dates_birth_death |>
     between(year_birth, 1855, 1877) ~ "1854-1876",
     between(year_birth, 1878, 1924) ~ "1877-1924"
   )) 
-# original period groups
-  # mutate(period = case_when(
-  #   between(year_birth, 1825, 1858) ~ "1825-1858",
-  #   between(year_birth, 1855, 1881) ~ "1859-1881",
-  #   between(year_birth, 1881, 1924) ~ "1882-1924"
-  # ))
-```
-
-
-
-
-
-```{r dates-categories-deprecated}
-# original version of categories
-# bn_women_dates_categories <-
-# bn_women_dates_birth_death |> 
-#   left_join(
-#   bn_instance_of_query |> 
-#   filter(str_detect(bn_id, "P") & !instance %in% c( "Q2903", "Q2904", "Q415", "Q2137", "Q2319", "Q2947", "Q89"))  |> select(bn_id, instance_label), by=c("date_prop"="bn_id")
-# ) |>
-#   count(date_prop_label, date_prop, instance_label) |>  #, sort = T) |>
-#   # remove minor variations in name labels: free text v item, EDTF v PIT
-#   # but don't forget can't use std_ col for joins back to original...
-#   mutate(date_prop_label_std = str_trim(str_remove(date_prop_label, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
-#   # shorten a few very long labels (but keep distinct)...
-#   mutate(date_prop_label_std = case_when(
-#     date_prop=="P36" ~ "excavation director",
-#     date_prop=="P37" ~ "excavation worker",
-#     .default = date_prop_label_std
-#   )) |>
-#   # consolidation into categories
-#   mutate(category = case_when(
-#     date_prop_label %in% c("resided at") ~ date_prop_label,
-#     date_prop_label %in% c("date of birth", "date of death") ~ "birth/death",
-#     # family and marriage
-#     str_detect(date_prop_label, "was married in|had child in|was widowed") ~ "family" ,
-#     # education
-#     date_prop_label %in% c("educated at", "academic degree") ~ "education",  # leave out "student of" unless you see more of them
-#     # ppa: work
-#     date_prop_label_std %in% c("held position", "employed as", "contributed to", "applicant to") ~ "work",
-#     date_prop %in% c("P36", "P37") ~ "work", #excavations, long labels cba to write them out
-#     # other ppa - aim for around 6 categories?
-#     date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
-#     date_prop_label %in% c("was member of", "was fellow of") ~ "societies",
-#     date_prop %in% c("P16", "P7", "P155") ~ "societies",
-#     date_prop_label %in% c("served on", "organiser of") ~ "service",
-#     str_detect(date_prop_label, "Member of Committee") ~ "service",
-#     date_prop %in% c("P101") ~ "publication", # might be more to go in here
-#     # everything else with instance of ppa
-#     instance_label=="public and professional activity" ~ "other ppa",
-#     # add any bits and pieces that are other ppa but lack instance of
-#     #date_prop_label %in% c(.....) ~ "other ppa",
-#     # other bits and pieces can go in ng
-#     .default = "other"
-#   ))  |>
-#   mutate(group = case_when(
-#     date_prop_label %in% c("date of birth", "date of death") ~ "ng",
-#     date_prop_label %in% c("resided at") ~ "ng",
-#     category=="other" ~ "ng",
-#     
-#     category=="education" ~ "1 education",
-#     
-#     category=="family" ~ "2 family",
-#     
-#     category=="work" ~ "3 ppa:work",
-#     
-#     # separate props for group 4
-#     category %in% c("spoke at", "exhibited at", "corresponded with") ~ "4 ppa:other",
-#     # categorised for group 4
-#     category %in% c("societies", "service", "publication", "other ppa") ~ "4 ppa:other",
-#     
-#     #.default = "ng" # leave this so you can check for rogue NAs
-#   )) |>
-#   distinct(date_prop, date_prop_label_std, category, group, date_prop_label)
-
 
 ```
+
 
 
 
@@ -479,35 +379,6 @@ Legend notes:
 
 
 
-
-
-```{r original-deprecated-bees}
-# bn_women_dates_birth_death |>
-#   filter(between(year_birth, 1825, 1914)) |>
-#   filter(date_prop_label != "date of birth") |>
-#   mutate(age = year-year_birth) |>
-#   mutate(period = case_when(
-#     between(year_birth, 1825, 1854) ~ "1825-1854",
-#     between(year_birth, 1855, 1879) ~ "1855-1879",
-#     between(year_birth, 1880, 1914) ~ "1880-1914"
-#   )) |>
-#   filter(date_prop_label !="date of birth") |>
-#   #mutate(period = fct_rev(period)) |>
-#   ggplot(aes(period, age, colour=date_prop_label)) +
-#   geom_beeswarm(size=1, show.legend = F) +
-# #  geom_quasirandom(orientation = "y") +
-#   #scale_color_ptol() +
-#   scale_colour_manual(values = make_palette) +
-#   #theme(legend.position = "bottom", aspect.ratio = 5/4) +
-#   labs(y=NULL, x="birth period")
-
-
-# coloured_props |>
-#   kable() |>
-#   kable_styling() |>
-#   column_spec(1, color = "white" , background = pal8_light
-#               )
-```
 
 
 

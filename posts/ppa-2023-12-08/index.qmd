@@ -40,91 +40,8 @@ source(here::here("_R/std_queries.R"))
 ```
 
 
-```{r}
-## PPA buckets and sorted properties match? almost...
-## travelled overseas for and educated at are in sorted-Personal details rather than PPA.
-## no buckets = sorted-PPA except editor which = sorted-Works
-# bn_sorted_properties |> 
-#   left_join(
-#     bn_ppa_buckets |> rename(bucket=label), by=c("bn_prop_id"="ppa_id")
-#   ) |>
-#   mutate(category = case_when(
-#     !is.na(bucket) ~ "PPA",
-#     #bn_prop_id %in% c("P94") ~ "education",   # don't understand why i included student of "P95"... now that educated at is in PPA you need a different filter to group it with academic degree anyway.
-#     bn_prop_id %in% c("P59", "P26", "P15", "P29") ~ "personal", # not sure why I had some IDs in here: "P142", "P143", "P134", HISCO/ALBS/90s 
-#     section == "Family" ~ "family",
-#     #section %in% c("Other Resources", "Land-Proprietor Activity") ~ "other". don't need this, just leave them out
-#   )) |>
-#  relocate(category, bucket, section, label)
-```
 
 
-
-```{r}
-# to check there's nothing in buckets that isn't in sorted properties...
-# bn_ppa_buckets |>
-#   anti_join(bn_sorted_properties, by=c("ppa_id"="bn_prop_id"))
-```
-
-
-```{r deprecation-oh-dear}
-# original terrible query that was getting loads of dups
-# fetch both simple date value and timevalue and then need to dedup by filtering
-# bn_women_dates_qual_sparql <-
-#   'SELECT distinct ?person ?personLabel ?prop_label ?prop_valueLabel ?date_qual_label  ?date_qual ?date_qual_precision ?date_qual_simple ?prop_value ?prop ?s
-# 
-# WHERE {
-#      #VALUES (?person) {(bnwd:Q106) (bnwd:Q1675)}  # for testing 
-#     ?person bnwdt:P3 bnwd:Q3 . # women
-#     FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
-#   
-#     # get stuff about ?person   
-#     ?person ?p ?s .   
-#   
-#       # the claim for ?p .  do i need psv as well as ps?
-#       ?prop wikibase:claim ?p;      
-#          wikibase:statementProperty ?ps;     
-#          wikibase:statementValue ?psv.
-#       ?prop rdfs:label ?prop_label. filter(lang(?prop_label)="en") .  # spoke at etc
-#  
-#   # the direct value (usually item) for the property, things like annual meeting, girton college. .
-#         ?s ?ps ?prop_value.
-#      
-#   # get date qualifiers. [assumes no edtf in quals. ]
-#         ?s ?pq ?date_qual_simple .  # this causes dups but need to get the label
-#           ?qual_prop wikibase:qualifier ?pq .
-#           ?qual_prop wikibase:propertyType wikibase:Time. 
-#           ?qual_prop rdfs:label ?date_qual_label . filter(lang(?date_qual_label)="en") . 
-# 
-#   # qualifier timevalue and precision. requires the bnpqv: prefix; i dont know how to do it without specifying them. 
-#   # pit/start/end/earliest/latest - anything else?
-#       ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 | bnpqv:P51 | bnpqv:P53 ) ?pqv.
-#           ?pqv wikibase:timeValue ?date_qual .  
-#           ?pqv wikibase:timePrecision ?date_qual_precision .
-#       
-#  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en, en-gb". } 
-#   
-# } # /where
-# 
-# ORDER BY ?personLabel ?s ?prop_label'
-# 
-# 
-# 
-# # still slooow. 
-# # since the query is slow and you might want to be able to check the unfiltered version, do this in two steps...
-# bn_women_dates_qual_query_unfiltered <-
-#   bn_std_query(bn_women_dates_qual_sparql) |>
-#   make_bn_item_id(person) |> 
-#   make_bn_ids(c(prop, prop_value, s)) |>
-#   relocate(person, .after = last_col())
-# 
-# ## **fudge to get rid of bad dups** 
-# ## it is possible to do this filter inside the query so i might update if i don't find a better way to do it.
-# bn_women_dates_qual_query <-
-#   bn_women_dates_qual_query_unfiltered |>
-#   filter(date_qual==date_qual_simple) |>
-#   select(-date_qual_simple)
-```
 
 
 
@@ -174,91 +91,10 @@ bn_women_dates_categories_birth |>
     .default = ppa_bucket
   )) 
 
-## earlier version
-  # # ppa specific subcat
-  # # use _std label? no b/c only doing str_detect for work.
-  # mutate(subcat = case_when(
-  #   # work
-  #   str_detect(date_prop_label, "held position|employed as|contributed to|applicant to") ~ "work",
-  #   
-  #   category=="excavations" ~ category,
-  #   #date_prop %in% c("P36", "P37") ~ "excavations", #excavations, long labels cba to write them out
-  #   
-  #   # other ppa 
-  #   date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
-  #   
-  #   # this ends up being big.
-  #   date_prop_label %in% c("was member of", "was fellow of") ~ "membership",
-  #   date_prop %in% c("P16", "P7", "P155", "P49") ~ "elections",
-  #   
-  #   date_prop_label %in% c("served on", "organiser of", "fundraiser for") ~ "service",
-  #   #date_prop=="P38" ~ "service", # committee for archaeological fieldwork. excavations
-  #   
-  #   date_prop %in% c("P101") ~ "publishing", # works published in
-  #   date_prop %in% c("P111", "P87", "P115") ~ "resources", # loaner/gave money/donor
-  #   #str_detect(date_prop_label, "attended|performed at|travelled overseas|was delegate") ~ "activity?", # 41
-  #   #str_detect(date_prop_label, "gave money|loaner to|was donor|donor to") ~ "resources",   # 99
-  #   .default = "other"
-  # ))
+
 ```
 
 
-```{r}
-## try this for education as well... but need to adjust to get 8 again...
-## what was this for exactly? omit for now, since educated at is now in ppas.
-# bn_women_dates_ppa_education <-
-# bn_women_dates_categories |>
-#   filter(category %in% c("ppa", "excavations", "education")) |>
-#   # ppa specific subcat
-#   # use _std label? no b/c only doing str_detect for work.
-#   mutate(subcat = case_when(
-#     # work
-#     str_detect(date_prop_label, "held position|employed as|contributed to|applicant to") ~ "work",
-#     
-#     category=="excavations" ~ category,
-#     category=="education" ~ category,
-#     #date_prop %in% c("P36", "P37") ~ "excavations", #excavations, long labels cba to write them out
-#     
-#     # other ppa 
-#     date_prop_label %in% c("spoke at", "exhibited at", "corresponded with") ~ date_prop_label,
-#     
-#     # this ends up being big.
-#     date_prop_label %in% c("was member of", "was fellow of") ~ "membership",
-#     date_prop %in% c("P16", "P7", "P155", "P49") ~ "elections",
-#     
-#     date_prop_label %in% c("served on", "organiser of", "fundraiser for") ~ "service",
-#     #date_prop=="P38" ~ "service", # committee for archaeological fieldwork. excavations
-#     
-#     date_prop %in% c("P101") ~ "publishing", # works published in
-#     date_prop %in% c("P111", "P87", "P115") ~ "resources", # loaner/gave money/donor
-#     #str_detect(date_prop_label, "attended|performed at|travelled overseas|was delegate") ~ "activity?", # 41
-#     #str_detect(date_prop_label, "gave money|loaner to|was donor|donor to") ~ "resources",   # 99
-#     .default = "other"
-#     
-#   )) 
-
-
-
-
-
-
-# women with ppa dates who have a DOB
-# add DOBs and calc age
-# no reason to limit this to both dob and dod for this
-
-# bn_women_dates_ppa_education_dob <-
-# bn_women_dates_ppa_education |>
-#   inner_join(
-#     bn_women_dates_birth |>
-#       select(bn_id, date_birth=date, year_birth=year), by="bn_id"
-#   ) |>
-#   mutate(age = year - year_birth) |>
-#   mutate(period = case_when(
-#     between(year_birth, 1825, 1858) ~ "1825-1858",
-#     between(year_birth, 1855, 1881) ~ "1859-1881",
-#     between(year_birth, 1881, 1924) ~ "1882-1924"
-#   ))
-```
 
 
 ```{r}
@@ -414,6 +250,19 @@ bn_women_dates_ppa |>
   theme(axis.text.x = element_blank()) +
   labs(y=NULL, x=NULL, colour=NULL)
 ```
+
+```{r}
+# bn_women_dates_ppa |> 
+#   filter(between(year, 1861, 1950) & !is.na(age))  |> 
+#   filter(!is.na(period)) |>
+#   filter(!subcat %in% c("charitable", "no buckets")) |>
+#   distinct(bn_id, period) |>
+#   count(period)
+# 1815-1853	152			
+# 1854-1876	148			
+# 1877-1924	136
+```
+
 
 
 
@@ -685,7 +534,7 @@ bn_women_dates_ppa |>
 
 
 ```{r}
-##interactive version. this is rubbish. quietly drp it.
+##interactive version. this is rubbish. 
 
 # bn_ppa_bees <-
 # bn_women_dates_ppa |>

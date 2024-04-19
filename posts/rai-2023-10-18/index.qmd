@@ -102,38 +102,6 @@ bn_women_rai_query <-
 ```
 
 
-```{r deprecated-members-confusion}
-# handle member of separately... this is the same thing as elected lol.
-# bn_women_rai_member_wide <-
-# bn_women_rai_query |> 
-#   filter(prop %in% c("P67"))  |>  # 263  # rg q57
-#   filter(!qual_prop_label %in% c("specific reference information (free text)", "stated in")) |>
-#   # fix dup dates. this works... but it feels a bit brittle
-#   filter( (pq_value !="1916-01-01T00:00:00Z" | !bn_id =="Q225") | is.na(pq_value)) |>
-#   filter( (pq_value !="1927-01-01T00:00:00Z" | !bn_id=="Q57" ) |is.na(pq_value)) |>
-#   pivot_wider(id_cols = c(s, bn_id, personLabel, rai, prop, propLabel), names_from = qual_prop_label, values_from = pq_value) |>
-#   clean_names("snake") |>
-#   select(-na) |>
-#   mutate(start_time = if_else( str_detect(start_time, "_:t"), NA, start_time )) |>
-#   mutate(across(c("point_in_time", "start_time", "end_time", "latest_date"), ~parse_date_time(., "ymdHMS")))  |>
-#   mutate(start_year = year(start_time)) |>   
-#   # which have record of successful election, with year of election. may may need to check this doesn't cause dups, fine atm.
-#   left_join(
-#     bn_women_rai_elected_query |>
-#       distinct(bn_id, year, date) |>
-#       filter(bn_id !="Q2365") |> # woman with two elections and membership dates
-#       rename(elected_year=year, elected_date=date) |>
-#       mutate(is_frai="y"), by="bn_id"
-#   )  |>
-#   mutate(is_frai = if_else(!is.na(is_frai), "FRAI", "not FRAI")) 
-
-# small numbers
-# applicant to 3
-# was fellow of 2 - this has qualifiers...
-# loaner to 3
-# 
-# was member of 263 - this has start and end dates... mostly. 37 don't. [but all NA pq_value are member of.] is it different from fellow of or what? there are 199 in elected query
-```
 
 ```{r}
 bn_women_rai_members_elections <-
@@ -200,10 +168,7 @@ bn_women_rai_members_elections |>
   filter(!is.na(use))  # 19 don't have start/elected year. one or two have no dates at all? |> filter(is.na(year))
 ```
 
-```{r}
-# bn_women_rai_member_wide |>
-#   filter(is.na(year) | is.na(date))
-```
+
 
 
 ```{r}

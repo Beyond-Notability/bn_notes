@@ -131,31 +131,6 @@ bn_fsa_educated_query |>
 
 
 
-## how many of the women ahve a birth date?
-## could just incorporate this into the sparql query... though you need to handle multis
-
-# bn_women_dobs <-
-#   c(
-#     glue(bn_prefixes,
-#         "select distinct ?person ?dateOfBirth
-#         where {{
-#          {bn_triple_woman}
-#         {bn_filter_project}
-#          ?person bnwdt:P26  ?dateOfBirth.
-#          {wb_service_label}
-#         }}") 
-#   ) |>
-#   sparql2df(endpoint=bn_endpoint) |>
-#   make_bn_item_id(person) |>
-#   mutate(date_of_birth = parse_date_time(dateOfBirth, "ymdHMS")) |>
-#   mutate(year_of_birth = year(date_of_birth)) |>
-#   relocate(bn_id, date_of_birth, year_of_birth)
-
-
-# a few women with >1 dob, but they're just different precision levels, so distinct year will be fine
-#bn_women_dobs |>
-#  add_count(bn_id) |> filter(n>1)
-
 
 ```
 
@@ -212,6 +187,7 @@ bn_fsa_higher_education |>
 
 
 ```{r}
+# TODO not checked these colours.
 #ptol_qual_light_8 <- c(  '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#BBCC33', '#AAAA00', '#DDDDDD' )
 plotly_treemap <-
    plotly::plot_ly(

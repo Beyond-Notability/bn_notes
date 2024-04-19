@@ -183,27 +183,7 @@ bn_women_datable_main_summary |>
 ```
 
 
-```{r}
-# bn_women_datable_query |>
-#   filter(prop_type %in% c("Edtf", "Time")) |>
-#   count(qdate, sort=T) |> 
-#   # record unknown value in date cols
-#   mutate(qdate_unk = if_else(str_detect(qdate, "^_:t.*$"), "y", NA)) |>
-#   # but for mdate what about the blanks that you think are uv? case_when to handle either.
-#   mutate(mdate_unk = case_when(
-#     prop_type %in% c("Edtf", "Time") & str_detect(mdate, "^_:t.*$") ~ "y", 
-#     prop_type %in% c("Edtf", "Time") & mdate=="" ~ "y",
-#     .default = NA)) |>
-#   #count(mdate_unk, sort = T)
-#   # remove unknown value. at some point need to highlight these but it can wait
-#  # mutate(across(c(qdate, mdate), ~str_remove(., "^_:t.*$"))) |>
-#   # make "" NA
-#   mutate(across(c(qdate_label, mdate, qdate), ~na_if(., ""))) |>
-#   mutate(across(c(qdate,mdate), ~parse_date_time(., "ymdHMS"))) |>
-#       mutate(myear = year(mdate), qyear=year(qdate))
 
-
-```
 
 
 

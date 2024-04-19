@@ -538,18 +538,6 @@ bn_women_events_of_dates_types_all |>
 
 
 
-```{r}
-## grouping
-# since your brain is very small and pathetic
-# 1. distinct event *instances* per woman ("attendances")
-# excluding different activities:  distinct(bn_id, personLabel, event_title,  event_type, event_org, event_org_id, org_id, year, event_instance_date, event_instance_id)
-# including different activities: distinct(bn_id, personLabel, ppa_type, event_title,  event_type, event_org, event_org_id, org_id, year, event_instance_date, event_instance_id) 
-# - can add year to the above but not date.
-# 2. distinct *events* per woman . this is not working right at the moment anyway.
-# excluding different activities: distinct(bn_id, event_title, event, of_value, event_of_id)
-# including different activites: distinct(bn_id, ppa_type, event_title, event, of_value, event_of_id)
-```
-
 
 
 ## Notes
@@ -1213,50 +1201,6 @@ bn_women_events_of_dates_types |>
 
 
 
-
-
-```{r}
-## Event attendance in life courses?
-# problem with interpretation. women *might* be attending events younger later in the period, but it might just be an artefact of data collection.
-# bn_women_events_of_dates_types |>
-#   # distinct event instances without activity types
-#   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, yob) |>
-#   mutate(birth = case_when(
-#     yob <= 1850 ~ "born 1850 or earlier",
-#     between(yob, 1851, 1880) ~ "born 1851-1880",
-#     yob >1880 ~ "born 1881 or after",
-#     #.default = "year of birth unknown"
-#   )) |>
-#   filter(!is.na(birth)) |>
-#   filter(!is.na(year)) |>
-# #   filter(!is.na(yob)) |>
-# #   # b. 1840 = 30 in 1870 and probably d. c. 1920. b. 1880 = 30 in 1910 and 70 in 1950.
-# #   # filter(between(yob, 1840, 1879)) |>
-#   group_by(bn_id, personLabel, yob, birth) |>
-#   summarise(n=n(), earliest=min(year), latest=max(year), .groups = "drop_last") |>
-#   ungroup() |>
-# #   #count(yob<1860) # 1830-89 not quite as even as all, but not far off...
-#    filter(n>2) |>
-# #   # hang on a minute, what are you actually plotting here?
-#    mutate(age_first = earliest-yob, age_last = latest-yob) |>
-# #   #count(age_first<40)
-# #   mutate(decade_birth = yob - (yob %% 10)) |>
-# #   mutate(birth_group = if_else(yob<1860, "a", "b")) |>
-# #   filter(between(decade_birth, 1840, 1890)) |>
-# #   # if you take out the ends maybe it works? first is getting younger, and that shouldn't be because of data.
-# #   # but you need a better way to show it!
-# #   filter(between(age_first, 30, 50)) |> 
-# #   count(age_first, birth_group, decade_birth) |>
-# #   #count(age_first) |>
-#    ggplot(aes(age_first)) +
-#    geom_histogram(binwidth = 1) +
-#    facet_wrap(~birth) +
-#    scale_colour_ptol()
-
-# pretty even split around birth year 1860 so let's make two groups
-# ok but what about early and late birth decades not being fully represented in teh data? ie if someone was born in 1910s she was only 30-40 at cut off date for project, or born in 1810s were between 30 and 40 at earliest dated event.  
-# try dropping any b < 1830 and > 1889 ?
-```
 
 
 ```{r}

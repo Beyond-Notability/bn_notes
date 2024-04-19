@@ -102,50 +102,6 @@ bn_women_ppa_main <-
 
 
 
-```{r}
-## ppa qualifiers
-## shouldn't need to include buckets stuff in sparql
-## not currently needed for this post, so commented out.
-
-
-# bn_ppa_qual_sparql <-
-# 'SELECT distinct ?person ?qual_value ?qual_prop ?qual_propLabel ?qual_valueLabel ?s
-# 
-# WHERE {  
-#   ?person bnwdt:P3 bnwd:Q3 .
-#   ?person ?p ?s .  
-#  
-#       ?ppa wikibase:claim ?p;      
-#          wikibase:statementProperty ?ps.      
-#   
-#       ?ppa bnwdt:P12 bnwd:Q151 . # i/o ppa      
-#    
-#   # get any qualifiers
-#      ?s ?qual_p ?qual_value .   
-#      ?qual_prop wikibase:qualifier ?qual_p;
-#            wikibase:propertyType ?qual_prop_type .
-#      
-# 
-#   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
-# }
-# 
-# order by ?personLabel'
-# 
-# 
-# bn_ppa_quals_fetched <-
-#   bn_std_query(bn_ppa_qual_sparql)
-#   
-# 
-# # process the data a bit
-# bn_women_ppa_qual_query <-
-#   bn_ppa_quals_fetched |>
-#   make_bn_item_id(person) |>
-#   make_bn_ids(c(s, qual_value, qual_prop)) |>
-#   select(-person)
-
-```
-
-
 
 
 ```{r}

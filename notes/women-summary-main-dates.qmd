@@ -143,20 +143,6 @@ bn_main_dates_summary |>
   summarise(repeated_year = paste(date_type_short, collapse = " | ")) |>
   ungroup()
 
-# keep this for now in case it's useful for the TODO
-# women with married PIT and EDTF. "pit+edtf" = both
-# bn_married_pit_edtf <-
-# bn_main_dates_query |>
-#   filter(date_prop_id %in% c("P132", "P130")) |>
-#   mutate(married_pit_edtf = case_when(
-#     date_prop_id=="P130" ~ "pit",
-#     date_prop_id=="P132" ~ "edtf"
-#   )) |>
-#   distinct(bn_id, married_pit_edtf) |>
-#   group_by(bn_id) |>
-#   arrange(married_pit_edtf, .by_group = T) |>
-#   summarise(married_pit_edtf = paste(married_pit_edtf, collapse = "+")) |>
-#   ungroup()
 
 ## add dates summary to women
 ## you may want to be able to do something with the data in long format, so do wider in a separate step.

@@ -624,7 +624,7 @@ bind_rows(bn_lecturers_dates, bn_spoke_at) |>
 
 ```{r}
 
-# # JEH steady job. a couple of others. but how to incorporate?
+# # steady job.  ?
 # # separate geoms may be better, but how do you do shape labels if you don't do something like colour= to make a legend
 # bn_lecturers_dates |> 
 #   mutate(earliest = min(year1), .by = bn_id) |>

@@ -75,8 +75,6 @@ bn_std_query(bn_educated_sparql) |>
 # quite a lot don't have an end date :-/ 51
 # what is the usual sort of duration from the start date where both exist?
 
-##will the statement id help avoid dup problems with pivot wider? yes, doh.
-
 ## a few people had more than 1 point in time date for the same statement, which i think was the source of problem with pivot wider
 ## this should be getting fixed... one has been changed to start/end dates and hopefully the others will be turned into separate stmts.
 
@@ -108,8 +106,6 @@ bn_std_query(bn_educated_sparql) |>
 # # make a unique row id for the y axis as some women might appear more than once. might as well order by time
 #   arrange(start_time, end_time) |>
 #   mutate(name_y = paste(row_number(),name))
-
-
 
 
 # # for when you need the two colours, force text to be black or dark grey and add the scale to the bits you do separately
@@ -506,19 +502,7 @@ bn_academic_degree |> #count(degreeLabel)
   labs(x=NULL, fill="category", title="Degrees awarded, by institution", y="count")
 ```
 
-```{r}
-# bn_academic_degree |>
-#   #count(degree_label, ma_type) |>
-#   mutate(degree_cat = case_when(
-#     ma_type=="unknown" ~ "uncertain ma",
-#     ma_type=="Oxbridge" ~ "undergraduate",
-#     str_detect(degree_label, "iploma|Lady Literate") ~ "diploma", # LLA seems to be conventionally characterised as a diploma
-#     str_detect(degree_label, "ertificate|icence") ~ "other", 
-#     str_detect(degree_label, "octor") ~ "doctorate",
-#     str_detect(degree_label, "achelor") ~ "undergraduate",
-#     degree_label=="master's degree" ~ "master's"
-#   )) |> count(degree_cat)
-```
+
 
 
 

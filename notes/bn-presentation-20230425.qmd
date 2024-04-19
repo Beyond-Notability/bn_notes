@@ -79,7 +79,7 @@ bn_fellows_lists |>
 
 
 # nb that the imputed number for men in 1920 looks slightly questionable, but it'll do for now.
-  # across() works with na.spline but if i can't work out how to do round at the same time there's not much point...
+
   # mutate(pf = zoo::na.approx(pf)) # error must be size 32 or 1, not 30 - i think because the last 2 rows are NA (it works if you filter them out)
   # but na.spline works. slight diffs from na.approx - investigate that later!
 
@@ -87,8 +87,6 @@ bn_fellows_lists |>
 ## based on example query "People whose elections were proposed to SAL or RAI, including who proposed, seconded, or signed (excluding 'general knowledge' signatures) their proposal for election, seperated by type, and including the date the proposals were made" [adaptation includes added db IDs for proposers] 
 proposed_tsv <-
   read_tsv(here::here("_data/bn-sample-query-20230414.tsv"))
-
-# hmm current query gets quite a few more results than above...
 
 ## based on example query "People whose election to SAL was proposed and the person who proposed them, with - where known - date of proposal, gender of proposed FSA and proposer, and if elected" 
 ## something about the query is not quite right: dups proposers where there was more than one election attempt. so use this one just for prop gender and outcome. come back for a closer look if time but don't seem to be any other issues
@@ -300,87 +298,6 @@ bn_signer_summary |>
   )
 
 ```
-
-
-
-```{r include=FALSE}
-# summary of the fellow, date, proposer, number of signers, and outcome. [so nb there are 2 rows for the women who tried twice.]
-# proposed_summary <-
-#   proposed_sal |>
-#   distinct(person, personLabel, date, proposed, proposedLabel) |>
-#   # add count to check for women who tried twice
-#   add_count(person, name="n_elections") |>
-#   # add proposer gender
-#   left_join(proposed_sal2 |> distinct(proposer, proposerGender), by=c("proposed"="proposer")) |>
-#   # add outcome
-#   inner_join(proposed_sal2 |> 
-#                distinct(FSA, date, elected), by=c("person"="FSA", "date"))  |>
-#   # fix missing outcome: assume success, for now
-#   mutate(elected = if_else(is.na(elected), "successful", elected))  |>
-#   # add count of signers
-#   left_join(proposed_sal |> 
-#               count(person, date, name="n_signer"), by=c("person", "date")) |>
-#   # add count of signers by gender. _n is NA (mostly indecipherable). checked they match n_signer.
-#   left_join(proposed_sal |>
-#               count(person, date, signgender) |>
-#               pivot_wider(names_from = signgender, values_from = n, values_fill = 0) |>
-#               rename(sign_m=man, sign_f=woman, sign_n=`NA`), by=c("person", "date")) |>
-#   # add fellows yearly numbers from list with imputed missing values
-#   mutate(year = year(date)) |>
-#   #inner_join(bn_fellows_lists |> select(year, women_imp, total_imp, p_women_imp, yr), by="year") |>
-#   relocate(year, n_elections, .after = date) |>
-#   # add unique row id in case it's needed
-#   rowid_to_column()
-
-
-# summary of proposers and signers (without dates so should be unique, but be careful joining to proposed_summary!)
-# proposer_summary <-
-# proposed_summary |>
-#   count(proposed, proposedLabel, proposerGender, name="n_proposal") 
-# 
-# signer_summary <-
-# proposed_sal |>
-#   count(signatorypersonal, signatorypersonalLabel, signgender, name="n_sign") 
-
-# 
-# ## proposers
-# proposers_dates_summary <-
-# proposer_summary |>
-#   # filter female proposers
-#   filter(proposerGender=="woman") |>
-#   select(person=proposed, name=proposedLabel, n_proposal) |>
-#   # get proposer's own election data - make sure it's when they were elected
-#   inner_join(proposed_summary |> filter(elected=="successful") |>
-#                select(person, election_date=date, election_year=year, proposer=proposed, proposerGender), by=c("person")) |>
-#   arrange(election_date) |>
-#   inner_join(
-#     proposed_summary |>
-#       group_by(proposed) |>
-#       summarise( earliest_proposal = min(date), earliest_year = min(year), latest_proposal=max(date)) |>
-#       ungroup(), by=c("person"="proposed")
-#   )
-# 
-# ## signers
-# signers_dates_summary <-
-# signer_summary |>
-#   filter(signgender=="woman") |>
-#   select(person=signatorypersonal, name=signatorypersonalLabel, n_sign) |>
-#   # get signer's election data
-#   inner_join(proposed_summary |> filter(elected=="successful") |>
-#                select(person, election_date=date, election_year=year, proposer=proposed, proposerGender), by=c("person")) |>
-#   arrange(election_date) |>
-#   inner_join(
-#     # *not* the summary data this time
-#     proposed_sign_gender |>
-# #    proposed_summary |>
-#       group_by(SALsignatorypersonal) |>
-#       summarise(earliest_sign = min(date), earliest_year = min(year(date)), latest_sign=max(date)) |>
-#       ungroup(), by=c("person"="SALsignatorypersonal")
-#   )
-# ptol vibrant: orange '#EE7733', cyan '#33BBEE', grey '#BBBBBB'
-
-```
-
 
 
 

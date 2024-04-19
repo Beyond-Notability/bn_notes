@@ -229,7 +229,7 @@ group by ?person ")) |>
 
 bn_women_vitals <-
 bn_women_list |>
-  left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
+  #left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
   left_join(bn_women_dobs |> 
               #add_count(bn_id, name="n_dob") |>
               group_by(bn_id) |>

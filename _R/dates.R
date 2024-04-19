@@ -271,21 +271,3 @@ bn_women_dates_categories <-
     .default = date_prop_label_std
   )) 
 
-  ## original code for adding categories before PPA buckets were decided
-  # left_join(bn_sorted_properties |> select(bn_prop_id, section), by=c("date_prop"="bn_prop_id")) |>
-  # #count(section, date_prop_label, date_prop) |>
-  # # slightly revised categories
-  # mutate(category = case_when(
-  #   # specific adjustments...
-  #   date_prop %in% c("P148") ~ "ppa", # travelled overseas for  (in personal details)
-  #   date_prop %in% c("P59", "P94", "P95") ~ "education",   # (in personal details?)
-  #   date_prop %in% c("P142", "P143", "P134", "P26", "P15", "P29") ~ "personal", # a mix: IDs, personal. HISCO, dob, dod , resided. 
-  #   ## P134 ALBS and P143 also paternal occupation not currently in dates but might be in the future
-  #   # no change to categorisation but shorter labels
-  #   section %in% c("Public and Professional Activities") ~ "ppa",
-  #   section == "Family" ~ "family",
-  #   section == "Excavations and Expeditions" ~ "excavations", 
-  #   # none of the above. could add IDs
-  #   section %in% c("Other Resources", "Land-Proprietor Activity") ~ "other"
-  #   # don't make a default, so any new sections/names changed will be NA and easier to spot.
-  # )) |>

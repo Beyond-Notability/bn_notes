@@ -561,7 +561,7 @@ bn_women_served_service |>
 As with college attendance, it might be interesting to see where women might have been working together (bearing in mind the caveats about dates and that the date ranges take no account of gaps in service).
 
 ```{r}
-# so the new range with latest time etc definitely an improvement. still don't know why there's a difference in numbers but never mind.
+# so the new range with latest time etc definitely an improvement. still don't know why there's a difference in numbers.
 
 # you have to work out earliest/latest per of_std, not overall.
 # need to get the four date types, pivot longer again then group by person and org.

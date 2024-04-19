@@ -21,9 +21,6 @@ Updates
 - added point in time/latest date dates
 - added colleges which (following the addition of new data) have now reached the six student threshold
 - improved display
-
-TODO
-
 - UCL "cohorts" by subject/teacher
 
 
@@ -88,43 +85,6 @@ order by ?personLabel ?collegeLabel ?date
 
 
 
-# bn_educated_ucl_sparql <- 
-#   'SELECT DISTINCT ?person ?personLabel ?qual ?qual_p_label ?qualLabel ?s
-# 
-# WHERE {  
-#   ?person bnwdt:P3 bnwd:Q3 . #select women
-#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
-#   
-#   # note: academic degree is P59. possible extra info?
-#   ?person bnp:P94 ?s .  # educated at
-#     ?s bnps:P94 bnwd:Q542 .
-#    
-#   # qualifiers 
-#     optional {
-#     ?s ?pq ?qual .       
-#       ?qual_prop wikibase:qualifier ?pq;
-#               rdfs:label ?qual_p_label . filter(lang(?qual_p_label)="en") . 
-#       } # /dates
-#      
-#   
-#   SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
-# }
-# order by ?personLabel '
-
-# bn_educated_ucl_query <-
-#   bn_std_query(bn_educated_ucl_sparql) |>
-#   make_bn_item_id(person) |>
-#   make_bn_ids(s) |>
-#   relocate(person, .after = last_col())
-# 
-# # 38 no date/uv
-# # initially let's just go with people who have at least a start date... 178
-# # quite a lot don't have an end date :-/ 51
-# # what is the usual sort of duration from the start date where both exist?
-# 
-# ##will the statement id help avoid dup problems with pivot wider? yes, doh.
-# ## a few people had more than 1 point in time date for the same statement, which i think was the source of problem with pivot wider
-# ## this should be getting fixed... one has been changed to start/end dates and hopefully the others will be turned into separate stmts.
 
  
 bn_educated_start_end <-
@@ -424,24 +384,7 @@ bn_ucl_teacher_dumbbell <- function(f){
 # fig.height changes size on page. but there's a limit on width, so you can only go so far.
 ```
 
-```{r}
-# so pit and latest seem distinct from start/end times - not an issue of duplication afaics.
-# do bind rows?
-# bn_educated_query |>
-#   relocate(date, date_label) |>
-#   filter(!is.na(date)) |> ## & !date_label %in% c("end time", "start time")) |>
-#   add_count(bn_id, college) |>
-#   arrange(bn_id) 
-#  filter(n>1)
 
-# # you need two columns to match start_time_n and end_time_n, just that they're both the same. i think. don't want pivot at all
-# bn_educated_query |>
-#   distinct(bn_id, personLabel, college, collegeLabel, year, date_label, s) |>
-#   filter(date_label %in% c("latest date", "point in time")) |>
-#   mutate(end_time_n=year) |>
-#   rename(date_type=date_label, start_time_n=year)
-
-```
 
 
 ```{r}
@@ -449,7 +392,6 @@ bn_ucl_teacher_dumbbell <- function(f){
 # difficult to work with subject + student of because of structure of data
 # are there more subject than student of?
 # i *think* this is the only source of duplication though...
-
 
 ```
 
@@ -564,7 +506,7 @@ bn_college_dumbbell("Q542") +
 
 ```{r warning=FALSE}
 #ugh, idk which are estim and actual...
-# what the bollox is happening to women with more than 1 row and why is it ignoring the fct_reorder?
+# what is happening to women with more than 1 row and why is it ignoring the fct_reorder?
 # bn_educated_start_end |>
 #   filter(college=="Q1162") |>
 #   bn_college_dumbbell() +  # original version

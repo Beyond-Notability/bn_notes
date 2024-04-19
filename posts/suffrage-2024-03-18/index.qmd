@@ -178,7 +178,7 @@ bn_suffrage_query |>
   )) |>
   relocate(sub_type, org, bucket, .after = ofLabel) |>
   rename(activity=mainLabel) |>
-  left_join(bn_women_dob_dod, by="bn_id")
+  left_join(bn_women_dob_dod |> select(-person, -personLabel), by="bn_id")
 ```
 
 
@@ -326,48 +326,6 @@ bn_suffrage |>
 ```
 
 
-```{r deprecated-bars-for-linerange}
-# ## easier?    mutate(earliest = min(date), latest=max(date), .by = bn_id) |>
-# # all (dated)
-#   mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
-#   mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
-#   mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
-# 
-# # 1 (dated) action
-# bn_suffrage_bars1 <-
-# bn_suffrage |>
-#   filter(!is.na(date)) |>
-#   add_count(bn_id) |>
-#   filter(n==1) |>
-#   # first and last dates overall, for limits
-#   mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
-#   arrange(desc(personLabel)) |>
-#   group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
-#     mutate(group_id = cur_group_id()) |>
-#     mutate(earliest = min(date), latest=max(date)) |>
-#   ungroup() |>
-#   mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
-#   mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
-#   mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
-# 
-# # at least 2 dated actions
-# bn_suffrage_bars2 <-
-# bn_suffrage |>
-#   filter(!is.na(date)) |>
-#   add_count(bn_id) |>
-#   filter(n>1) |>
-#   # first and last dates overall, for limits
-#   mutate(start_date = min(date)- years(1), end_date = max(date) + years(1))  |>
-#   arrange(desc(personLabel)) |>
-#   group_by(desc(personLabel)) |> # have to use desc() here if you used desc in arrange. so if you use neither? doesn't work.
-#     mutate(group_id = cur_group_id()) |>
-#     mutate(earliest = min(date), latest=max(date)) |>
-#   ungroup() |>
-#   mutate(lower = group_id-0.4) |> # make first lower 0.6 etc
-#   mutate(upper = lower+0.8 ) |> # make first upper 1.4 then next will be 1.6 etc
-#   mutate(personLabel = fct_rev(personLabel))  # can only use this if done arrange(desc)
-```
-
 ```{r}
 # customise tick marks
   #theme(axis.ticks.y=element_blank() ) + # hide them altogether
@@ -411,17 +369,7 @@ bn_suffrage_barcode |>
   labs(y=NULL)
 ```
 
-```{r}
-# bn_suffrage_bars |> 
-#   ggplot(aes(y=personLabel, x=date, ymin=lower, ymax=upper)) +
-#   geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
-#   geom_linerange(linewidth=0.5) +
-#   scale_x_datetime(expand = expansion(mult = c(0, .01))) + # remove/reduce gap.
-#   theme(axis.ticks.y=element_blank() ) +
-#   #scale_color_colorblind() +
-#   #theme(legend.position = "bottom") +
-#   labs(y=NULL)
-```
+
 
 
 

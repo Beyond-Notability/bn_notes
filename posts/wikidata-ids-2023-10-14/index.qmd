@@ -86,7 +86,7 @@ bn_wikidata_ids_query |>
   ggplot(aes(id_label, count)) +
   geom_col() +
   coord_flip() +
-  labs(x=NULL, title = "Top thirty external IDs")
+  labs(x=NULL, y=NULL, title = "Top thirty external IDs")
 ```
 
 ## Comparison of stats for key IDs with BN equivalents
