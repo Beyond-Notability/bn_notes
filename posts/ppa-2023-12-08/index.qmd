@@ -20,6 +20,7 @@ execute:
 
 ```{r}
 # this doesn't have a Table
+# find out what's happened to date_prop_label. (was only used in reactable i think, but still)
 ```
 
 
@@ -38,8 +39,6 @@ library(ggridges)
 source(here::here("_R/std_queries.R"))
 
 ```
-
-
 
 
 
@@ -93,6 +92,7 @@ bn_women_dates_categories_birth |>
 
 
 ```
+
 
 
 
@@ -354,7 +354,8 @@ This only shows job titles with at least 10 dates. (I've included employed as fo
 ```{r}
 bn_women_dates_ppa |>
   filter(str_detect(date_prop_label_std, "held position|employed as") & !str_detect(prop_valueLabel, "job title unrecorded|^t\\d")) |>
-  select(bn_id, personLabel, prop_valueLabel, date_prop_label, date_prop_label_std, date_label, year, s) |>
+  select(bn_id, personLabel, prop_valueLabel, #date_prop_label, 
+         date_prop_label_std, date_label, year, s) |>
   add_count(prop_valueLabel, date_prop_label_std, sort = T) |>
   filter(n>=10) |>
   mutate(prop_valueLabel = fct_rev(fct_relevel(prop_valueLabel, "Honorary Secretary", "Local Secretary", "Secretary", "Academic", "Lecturer", "Lecturer (freelance)", "Lecturer (Extension)"))) |>
@@ -377,7 +378,8 @@ And by age, in birth groups.
 ```{r}
 bn_women_dates_ppa |>
   filter(str_detect(date_prop_label_std, "held position|employed as") & !str_detect(prop_valueLabel, "job title unrecorded|^t\\d")) |>
-  select(bn_id, personLabel, age, period, prop_valueLabel, date_prop_label, date_prop_label_std, date_label, year, s) |>
+  select(bn_id, personLabel, age, period, prop_valueLabel, #date_prop_label, 
+         date_prop_label_std, date_label, year, s) |>
   add_count(prop_valueLabel, date_prop_label_std, sort = T) |>
   filter(!is.na(period)) |>
   filter(n>=10) |>
@@ -558,9 +560,10 @@ bn_women_dates_ppa |>
 
 
 ```{r}
+# what's happened to date_prop_label ??
 bn_women_dates_reactable <-
 bn_women_dates_ppa |>
-  select(bn_id, personLabel, ppa_bucket, date_prop_label, prop_valueLabel, year, date_prop, person) |>
+  select(bn_id, personLabel, ppa_bucket, date_prop_label_std, prop_valueLabel, year, date_prop, person) |>
   arrange(bn_id, year, ppa_bucket, date_prop)
 ```
 
@@ -584,7 +587,7 @@ reactable(
         sprintf('<a href="%s" target="_blank">%s</a>', bn_women_dates_reactable$person[index], value)
       })   ,
     ppa_bucket = colDef(maxWidth = 140, name = "PPA bucket"),
-    date_prop_label = colDef(maxWidth = 160, name="activity"),
+    date_prop_label_std = colDef(maxWidth = 160, name="activity"),
     prop_valueLabel = colDef(maxWidth = 180, name="what/where"),
     # collegeLabel = colDef(maxWidth = 250, name="college",
     #   html = TRUE,

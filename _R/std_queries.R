@@ -63,33 +63,63 @@ bn_make_union <- function(data, bn_id=bn_id){
     mutate(bn_bnwdt = paste0("bnwdt:",{{bn_id}})) |>
     mutate(bn_bnp = paste0("bnp:",{{bn_id}})) |>
     mutate(bn_bnps = paste0("bnps:", {{bn_id}})) |>
-    # construct the contents of the UNION (add to sparql with data$thing i think)
+    mutate(wd = paste0("wd:", {{bn_id}})) |> # this one for a wikidata query
+    # construct the contents of the UNION (add to sparql with data$thing or pull)
     # these need to be unique!
     summarise(bn_bnp_union = paste(unique(bn_bnp), collapse = " | "), 
               bn_bnps_union = paste(unique(bn_bnps), collapse = " | "), 
               bn_bnwd_values = paste(unique(bn_bnwd), collapse = " "),
+              wd_values = paste(unique(wd), collapse = " "),
               bn_bnwdt_union = paste(unique(bn_bnwdt), collapse = " | ") ) 
 }
 
 
-## building query string for VALUES query, if it's not already saved as a thing.
-## can't just paste in a sparql string because {} have to be escaped, but need glue {} for the values.
-## spql = the VALUES sparql query string from WQS; need to insert "glue_values" placeholder  
-## replaces single { or } with {{ or }} 
-## inserts desired values name in single {} (default = bn_bnwd_values for function above)
-## could potentially add more replacements...
 
-glue_values_sparql <- function(spql, values="bn_bnwd_values"){
-  str_replace_all(
-    spql,
-    c(
-      "\\{"= "\\{\\{", 
-      "\\}"="\\}\\}", 
-      "glue_values"=paste0("\\{", values, "\\}") 
-    )
-  )
+## building query string for VALUES (or shorthand union) query, if it's not already saved as a thing.
+## improved! RTFM and discovered .open and .close. options for glue
+## now replaces the mutate(q=...) and pull stuff entirely.
+## spql = the VALUES sparql query string from WQS; need to insert "glue_values" placeholder  
+## default values = bn_bnwd_values for use with bn_make_union, but could be any list of Ps or Qs to go into a sparql.
+## also a ptential template for more complex replacements... 
+mutate_glue_sparql <- function(data, spql, values=bn_bnwd_values){
+  data |>
+    mutate(s = glue(
+      spql,
+      .open = "<<", .close = ">>"
+    )) |>
+    pull(s)
 }
 
+## example
+# example_spql <- 
+#   'select distinct ?item ?itemLabel ?location ?locationLabel ?wd
+#     where {
+#       values ?item { <<bn_bnwd_values>> }
+#       ?item bnwdt:P2 ?location .
+#       optional {?location bnwdt:P117 ?wd .}
+#     SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+#     }'
+# bn_example_sparql <-
+# bn_work_loc_query |>
+#   filter(!is.na(location)) |>
+#   bn_make_union(location) |>
+#   mutate_glue_sparql(example_spql)
+# bn_example_query <- bn_std_query(bn_example_sparql)
+
+
+## deprecate but keep code for now 
+## can't just paste in a sparql string because {} have to be escaped, but need glue {} for the values.
+## replaces single { or } with {{ or }} 
+# glue_values_sparql <- function(spql, values="bn_bnwd_values"){
+#   str_replace_all(
+#     spql,
+#     c(
+#       "\\{"= "\\{\\{", 
+#       "\\}"="\\}\\}", 
+#       "glue_values"=paste0("\\{", values, "\\}") 
+#     )
+#   )
+# }
 ## example
 # glue_values_sparql(
 #   'SELECT ?person ?marriedname ?married

@@ -4,76 +4,90 @@
 
 ## fetch all dates for women from wikibase ####
 
-## main dates PIT and EDTF
+## main dates PIT 
 
-bn_women_dates_main_sparql <-
-  'SELECT distinct ?person ?personLabel ?date_prop_label ?date_pit ?date_pit_precision   ?date_edtf  ?date_prop  ?s
-
-WHERE {
- 
- { # PIT 
-   
+bn_women_dates_main_pit_sparql <-
+  'SELECT distinct ?person ?personLabel ?date_propLabel ?date_pit ?date_pit_precision  ?date_prop  ?s
+  WHERE {
    ?person bnwdt:P3 bnwd:Q3 . #select women
    FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
-      
    ?person ?p ?s .   
-      ?date_prop wikibase:claim ?p;     	 
-         wikibase:statementValue ?psv .  
-      ?date_prop wikibase:propertyType wikibase:Time . # for PIT only. 
-      ?date_prop rdfs:label ?date_prop_label. filter(lang(?date_prop_label)="en-gb") . 
+      ?date_prop wikibase:claim ?p .  
+      ?date_prop wikibase:propertyType wikibase:Time . # for PIT only.  
    
   # get dates detail via ?s and psv
       ?s ?psv ?wdv .
         ?wdv wikibase:timeValue ?date_pit ;
            wikibase:timePrecision ?date_pit_precision .
 
-   }
-  
-  union
-  
-  { # EDTF
-  
-    ?person bnwdt:P3 bnwd:Q3 . 
-       FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
-     
-       ## can do this union first but makes no difference to results except possibly a bit slower.
-       #?person ( bnp:P131 | bnp:P132 | bnp:P133  ) ?s .
-       #   ?s ( bnps:P131 | bnps:P132 | bnps:P133  ) ?date_edtf .
-
-       ?person ?p ?s . # so you can get the statement id and date prop label
-           ?claim wikibase:claim ?p;       
-                 rdfs:label ?date_prop_label. filter(lang(?date_prop_label)="en") .        
-
-           ?s ?date_prop ?date_edtf . # cant name this date again. 
-               
-    ## filter for edtf dates
-    ## docs: https://github.com/ProfessionalWiki/WikibaseEdtf
-    ## cant see any way other than a filter to get the edtf value.
-    FILTER ( datatype(?date_edtf) = xsd:edtf  ) .
-   }
-  
  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en". } 
   
 } # /where
-
-ORDER BY ?person ?date_value ?date_edtf
-'
+ORDER BY ?person ?date_pit'
 
 
-bn_women_dates_main_query <-
-  bn_std_query(bn_women_dates_main_sparql) |>
+bn_women_dates_main_pit_query <-
+  bn_std_query(bn_women_dates_main_pit_sparql) |>
   make_bn_item_id(person)  |>
   make_bn_ids(c(s, date_prop)) |>
-  mutate(across(c(date_prop_label, date_pit, date_edtf), ~na_if(., ""))) |>
+  #mutate(across(c(date_propLabel, date_pit), ~na_if(., ""))) |>
   #make_date_year() |> # leave this to the next stage.
-  relocate(person, .after = last_col())
+  relocate(person, .after = last_col()) 
+
+## updated with separate main EDTF query
+## will need adjusting if any new EDTF date properties are added
+
+bn_women_dates_main_edtf_sparql <-
+  'SELECT distinct ?person ?personLabel ?date_edtf  ?date_prop ?s
+   WHERE {
+ 
+    ?person bnwdt:P3 bnwd:Q3 . 
+    FILTER NOT EXISTS { ?person bnwdt:P4 bnwd:Q12 . } 
+
+    ?person ( bnp:P131 | bnp:P132 | bnp:P133  ) ?s .
+         ?s ( bnps:P131 | bnps:P132 | bnps:P133 ) ?date_edtf .
+  
+         ?s ?date_prop ?date_edtf .   
+
+    ## filter for edtf dates
+    ## docs: https://github.com/ProfessionalWiki/WikibaseEdtf
+    ## cant see any way other than a filter to get the edtf value.
+      FILTER ( datatype(?date_edtf) = xsd:edtf  ) .
+  
+ SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en". } 
+
+} # /where
+
+ORDER BY ?person ?date_edtf'
+
+bn_women_dates_main_edtf_query <-
+  bn_std_query(bn_women_dates_main_edtf_sparql) |>
+  make_bn_item_id(person)  |>
+  make_bn_ids(c(s, date_prop)) |>
+  # make date labels here
+  mutate(date_propLabel = case_when(
+    date_prop=="P131" ~ "had child in",
+    date_prop=="P132" ~ "was married in (EDTF value)",
+    date_prop=="P133" ~ "was widowed in"
+  )) |>
+  relocate(s, person, .after = last_col())
 
 
+## need to check whether you've used bn_women_dates_main_query anywhere else
+## renamed date_prop_label to *Label. 
 
-# updated with much improved query. original is in ppa-2023-12-08 qmd for reference.
+##put pit and edtf together... should be identical to original version...
+bn_women_dates_main_query <- 
+  bind_rows(
+    bn_women_dates_main_pit_query,
+    bn_women_dates_main_edtf_query
+  )
+
+
+# updated with improved query. but fairly slow! original is in ppa-2023-12-08 qmd for reference.
 
 bn_women_dates_qual_sparql <-
-  'SELECT distinct ?person ?personLabel ?prop_label ?prop_valueLabel ?date_qual  ?date_qual_precision ?qual_date_prop ?qual_date_propLabel ?prop_value ?prop ?s
+  'SELECT distinct ?person ?personLabel ?propLabel ?prop_valueLabel ?date_qual  ?date_qual_precision ?qual_date_prop ?qual_date_propLabel ?prop_value ?prop ?s
 
 WHERE {
     ?person bnwdt:P3 bnwd:Q3 . # women
@@ -84,21 +98,17 @@ WHERE {
   
       # the claim for ?p .  do i need psv as well as ps?
       ?prop wikibase:claim ?p;      
-         wikibase:statementProperty ?ps;     
-         wikibase:statementValue ?psv.
-      ?prop rdfs:label ?prop_label. filter(lang(?prop_label)="en") .  # spoke at etc
+         wikibase:statementProperty ?ps.
  
   # the direct value (usually item) for the property, things like annual meeting, girton college. .
         ?s ?ps ?prop_value.
      
-
   # qualifier timevalue and precision. 
-  # pit/start/end/earliest/latest  (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 | bnpqv:P51 | bnpqv:P53 )
+  # pit/start/end/earliest/latest 
       ?s ?pqvp ?pqv.
           ?pqv wikibase:timeValue ?date_qual .  
           ?pqv wikibase:timePrecision ?date_qual_precision .
           
-        
   # works without dups. use *Label for the prop label.
         ?s ?pq ?date_qual .   
           ?qual_date_prop wikibase:qualifier ?pq .
@@ -179,7 +189,7 @@ bn_women_dates_main <-
     !is.na(date_edtf) ~ "edtf"
   )) |>
   mutate(date_level = "main") |>
-  relocate(date, year, date_precision, date_certainty, date_label, date_level, .after = date_prop_label) |>
+  relocate(date, year, date_precision, date_certainty, date_label, date_level, .after = date_propLabel) |>
   relocate(date_pit:date_edtf, .after = person)
 
 
@@ -213,14 +223,14 @@ bn_women_dates_qual <-
 
 
 
-
+# why is date_prop for main dates going missing here? because you used the : and moved things isn't it? NEVER USE :
 bn_women_dates <-
   bind_rows(
-    bn_women_dates_main |> select(-date_pit:-date_edtf_parsed) ,
-    bn_women_dates_qual |> select(-date_qual, -date_qual_precision) |>
-      rename(date_prop=prop, date_prop_label= prop_label)
+    bn_women_dates_main |> select(-date_pit,-date_pit_parsed,-date_edtf,-date_edtf_parsed) ,
+    bn_women_dates_qual |> select(-date_qual, -date_qual_precision, -date_string) |> # drop date_string because dates_main doesn't have it...
+      rename(date_prop=prop, date_propLabel= propLabel)
   )  |>
-  relocate(prop_valueLabel, .after = date_prop_label) |>
+  relocate(prop_valueLabel, .after = date_propLabel) |>
   relocate(prop_value, .after = date_prop) |>
   arrange(bn_id)
 
@@ -257,7 +267,7 @@ bn_women_dates_categories <-
   # for display labels only; don't use in processing
   # remove minor variations in name labels: free text v item, EDTF v PIT
   # don't forget can't use std_ col for joins back to original...
-  mutate(date_prop_label_std = str_trim(str_remove(date_prop_label, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
+  mutate(date_prop_label_std = str_trim(str_remove(date_propLabel, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
   # shorten a few very long labels...
   mutate(date_prop_label_std = case_when(
     date_prop=="P36" ~ "excavation director",

@@ -1,0 +1,520 @@
+---
+title: "A Map of Lecturing"
+author: "Sharon Howard"
+description: "Margaret Murray gets about."
+date: "2024-04-30"
+date-modified: today
+categories: 
+  - place
+  - work
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(leaflet)
+
+
+#library(DT)
+# https://rstudio.github.io/DT/
+ # datatable(data, options = list(), class = "display",
+ #    callback = JS("return table;"), rownames, colnames, container,
+ #    caption = NULL, filter = c("none", "bottom", "top"), escape = TRUE,
+ #    style = "auto", width = NULL, height = NULL, elementId = NULL,
+ #    fillContainer = getOption("DT.fillContainer", NULL),
+ #    autoHideNavigation = getOption("DT.autoHideNavigation", NULL),
+ #    selection = c("multiple", "single", "none"), extensions = list(),
+ #    plugins = NULL, editable = FALSE)
+#styling options https://datatables.net/manual/styling/classes
+
+# reactable works with crosstalk? not sure. might have to use DT. 
+# do it without first, then see if you can get it working to filter things.
+# should be working atb example somewhere
+library(crosstalk)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+# for all the geo. will be in WQS format
+source(here::here("_R/locatable.R"))
+```
+
+
+
+
+```{r}
+
+##query without date property labels.
+
+bn_lecturers_sparql <- 
+'SELECT distinct ?person ?personLabel ?workLabel  ?positionLabel 
+?organisedLabel ?ofLabel ?locationLabel
+?date ?date_precision ?pq
+?position ?of  ?work ?organised ?location
+?s
+
+WHERE {
+    
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  
+  # work activities: held position / held position (free text) /  employed as
+  #?person ( bnp:P17|bnp:P48|bnp:P105 ) ?s .  
+  
+  ?person ?work_p ?s . # for activity type label
+    ?work wikibase:claim ?work_p .  
+
+    ?s ?bnps ?position .  
+    # freelance and extension lecturing (q701 and q3021)
+    { ?s ?bnps bnwd:Q701  . } union { ?s ?bnps bnwd:Q3021 .  }
+  
+    # employer / organised by / of (incl free text). 
+    # dont appear to be any employer for this subset
+    #OPTIONAL { ?s bnpq:P18 ?employer .}  
+    OPTIONAL { ?s bnpq:P109 ?organised .}
+    OPTIONAL { ?s ( bnpq:P78 | bnpq:P66 ) ?of .}
+ 
+    optional { ?s bnpq:P2 ?location . } # include locations but may cause multis?
+    
+  # dates - get precision here because some are almost certainly yyyy
+    optional {
+      ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28  ) ?pqv.
+      ?s ?pq ?pqv . # just gets the uri but doesnt seem to cause dups
+         ?pqv wikibase:timeValue ?date .  
+         ?pqv wikibase:timePrecision ?date_precision .
+      
+      # doesnt seem to make much difference to time here, but does change number of results
+      #?s ?pq ?date .   
+      #    ?date_prop wikibase:qualifier ?pq .
+      #    ?date_prop wikibase:propertyType wikibase:Time.  
+      
+      } # /dates
+   
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  
+} # /where
+
+ORDER BY ?person
+'
+
+bn_lecturers_query <-
+  bn_std_query(bn_lecturers_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(pq, position, of, work, organised, location, s)) |>
+  mutate(across(c(organisedLabel, ofLabel, of, organised, pq, locationLabel, location), ~na_if(., ""))) |>
+  make_date_year() |>
+  # add the date property labels
+  mutate(date_propLabel = case_when(
+    pq=="P1" ~ "point in time",
+    pq=="P27" ~ "start time",
+    pq=="P28" ~ "end time"
+  )) |>
+  rename(date_prop=pq)  |>
+  relocate(person, .after = last_col())
+
+
+bn_lecturers_dates <-
+## adjusting to add location... which is getting
+## and don't drop undated. will get extra date *_NA cols 
+bn_lecturers_query |>
+  #filter(!is.na(date)) |> 
+  select(bn_id, personLabel, date, date_propLabel, year, date_precision, positionLabel, organisedLabel, ofLabel, locationLabel, organised, of, position, work, location, s) |>
+  #select(bn_id, personLabel, date, date_propLabel, year, date_precision, positionLabel, organisedLabel, ofLabel, organised, of, position, work, s) |>
+  # group by / top n to discard any extras before pivot
+  #top_n -1 for the first of multi rows. arrange by date to ensure this is the earliest.
+  group_by(s, date_propLabel) |>
+  arrange(date, .by_group = T) |>
+  top_n(-1, row_number()) |>
+  ungroup() |>
+  pivot_wider(names_from = date_propLabel, values_from = c(date, date_precision, year)) |>
+  # don't forget this will rename *all* the camelCase columsn...
+  clean_names("snake") |>
+  # r prefixes all the pivoted cols 
+  rename_with(~str_remove(., "^date_"), starts_with("date_")) |>
+  mutate(start_date = if_else(!is.na(point_in_time), point_in_time, start_time)) |>
+  mutate(year1 = if_else(!is.na(year_point_in_time), year_point_in_time, year_start_time)) |>
+  make_decade(year1) |>
+  relocate(end_time, .after = start_time) |>
+  relocate(year_end_time, .after = year_start_time) |>
+  mutate(end_date = case_when(
+    !is.na(end_time) ~ end_time,
+    !is.na(point_in_time) ~ point_in_time,
+    !is.na(start_time) ~ start_time
+  )) |>
+  mutate(precision = case_when(
+    precision_end_time>precision_start_time ~ precision_end_time,
+    !is.na(precision_start_time) ~ precision_start_time,
+    !is.na(precision_point_in_time) ~ precision_point_in_time
+  )) |>
+  # consolidate of/organised by; "none recorded" for NA if extension.
+  mutate(organisation = case_when(
+    !is.na(of_label) ~ of_label,
+    !is.na(organised_label) ~ organised_label,
+    #position=="Q701" ~ "none (freelance)",
+    .default = "no organisation info"
+  )) |>
+  relocate(organisation, .after = of) |>
+  mutate(is_mm = if_else(bn_id=="Q569", "MM", "other")) |>
+  arrange(person_label,  start_date) |> 
+  left_join(bn_women_dob_dod, by="bn_id") |>
+  relocate(s, .after = last_col()) 
+
+# at least some of this should be functionifiable 
+
+# occasional multis so you need a unique ID; if it's based on s it's easy to turn it back into the original
+bn_work_loc_id <-
+  bn_lecturers_dates |>
+  group_by(s) |>
+  mutate(s_id = paste(s, row_number(), sep = ".")) |>
+  ungroup() |>
+  # prioritise variable to use for linked p2 (excluding location which is done separately)
+  # aim to prioritise in the order most likely to have geo (of seems patchier than emp/org?)
+  mutate(link_p2_id =case_when(
+    #!is.na(location) ~ location,
+    #!is.na(employer) ~ employer,
+    !is.na(organised) ~ organised,
+    !is.na(of) ~ of
+  )) |>
+  mutate(link_p2_type = case_when(
+    #!is.na(location) ~ "location",
+    #!is.na(employer) ~ "employer",
+    !is.na(organised) ~ "organised",
+    !is.na(of) ~ "of"
+    # location as well as NA will be NA....
+  ))
+```
+
+
+```{r}
+# todo maybe; but for now use original method
+# multi locs?
+# when you include date type, only a few; 
+# eugenie bm/chelsea/whitechapel you already know. but for once, location before org is a problem.
+# hadn't noticed the MM before; 2 org centres. both in Kent so not losing a lot if you drop one... but should probably work out how to keep both for this.
+# EB has no org/loc so unlikely to be locatable anyway.
+
+# bn_lecturers_query |>
+#   add_count(s, locationLabel, location, date_propLabel) |>
+#   filter(n>1)
+```
+
+
+
+```{r}
+# several undated do have location so worth keeping.
+# bn_lecturers_query |>
+#   filter(is.na(date))  
+
+
+
+# haven't done this. don't think i'll need it here.
+  # mutate(across(c(organisedLabel, ofLabel, locationLabel, employerLabel, of, organised, location, employer), ~na_if(., ""))) |>
+  # # t82684 (Label), _:t82684
+  # mutate(across(c(organised, of, location, employer), ~if_else(str_detect(., "^_:t\\d"), NA, .))) |>
+  # mutate(across(c(organisedLabel, ofLabel, locationLabel, employerLabel), ~if_else(str_detect(., "^t\\d"), NA, .))) |>
+  # relocate(person, .after = last_col())
+
+
+```
+
+
+```{r}
+## spql-sparqls for linked p2/p33
+
+## may need to add more top_n if you get any dups
+
+# # linked locations P2
+bn_work_p2_loc_sparql <-
+  bn_work_loc_id |>
+  filter(!is.na(location)) |>
+  bn_make_union(location) |>
+  mutate_glue_sparql(bn_linked_p2_spql)
+
+bn_work_p2_loc_query <-
+  bn_std_query(bn_work_p2_loc_sparql) |>
+  make_bn_ids(c(location, item)) |>
+  mutate(across(c(wd), ~na_if(., ""))) |>
+  inner_join(geo_bn_wd_locality |> distinct(item, wd, p2_linked_loc_bn_geo= bn_geo, p2_linked_loc_wd_geo= wd_geo), by=c("location"="item", "wd"))
+
+
+## p33  only do this for location. 
+bn_work_p33_loc_sparql <-
+  bn_work_loc_id |>
+  filter(!is.na(location)) |>
+  bn_make_union(location) |>
+  mutate_glue_sparql(bn_linked_p33_spql)
+
+bn_work_p33_loc_query <-
+  bn_std_query(bn_work_p33_loc_sparql) |>
+  make_bn_ids(c(admin, item)) |>
+  mutate(across(c(wd), ~na_if(., "")))  |>
+  inner_join(geo_bn_wd_locality |> distinct(item, wd, p33_linked_loc_bn_geo= bn_geo, p33_linked_loc_wd_geo= wd_geo), by=c("admin"="item", "wd")) |>
+  # drop any dup
+  group_by(item) |>
+  top_n(1, row_number()) |>
+  ungroup()
+
+
+# consolidated non-location
+
+bn_work_p2_c_sparql <-
+  bn_work_loc_id |>
+  filter(!is.na(link_p2_id)) |>
+  bn_make_union(link_p2_id) |>
+  mutate_glue_sparql(bn_linked_p2_spql)
+
+# 686 ids in here originally and it didn't blink
+bn_work_p2_c_query <-
+  bn_std_query(bn_work_p2_c_sparql) |>
+  make_bn_ids(c(location, item)) |>
+  mutate(across(c(wd), ~na_if(., "")))  |>
+  inner_join(geo_bn_wd_locality |> distinct(item, wd, p2_linked_c_bn_geo= bn_geo, p2_linked_c_wd_geo= wd_geo), by=c("location"="item", "wd")) |>
+  group_by(item) |>
+  top_n(1, row_number()) |>
+  ungroup()
+
+
+
+
+# join all the geos to the work df
+# this *only* adds geos, not place names or io
+bn_work_loc_geo <-
+bn_work_loc_id |>
+  # # direct to geo_bn_wd_locality
+  # left_join(geo_bn_wd_locality |> select(item, loc_bn_geo=bn_geo, loc_wd_geo=wd_geo), by=c("location"="item")) |>
+  # left_join(geo_bn_wd_locality |> select(item, c_bn_geo=bn_geo, c_wd_geo=wd_geo), by=c("link_p2_id"="item"))  |>
+  # # if you did separate cols...
+  # #left_join(bn_work_loc_geos |> mutate(has_direct_geo="y"), by="s_id") |>
+  # # linked
+  # left_join(bn_work_p2_loc_query |> select(item, p2_linked_loc_bn_geo, p2_linked_loc_wd_geo), by=c("location"="item")) |>
+  # left_join(bn_work_p33_loc_query |> select(item, p33_linked_loc_bn_geo, p33_linked_loc_wd_geo), by=c("location"="item")) |>
+  # # this needs to join on the link_p2_id you dummy
+  # left_join(bn_work_p2_c_query |> select(item, p2_linked_c_bn_geo, p2_linked_c_wd_geo), by=c("link_p2_id"="item"))  |>
+  
+## try again adding a bit more info....
+  # direct to geo_bn_wd_locality. loc_io / c_io should tell you if it's a locality
+  left_join(geo_bn_wd_locality |> select(item, loc_bn_geo=bn_geo, loc_wd_geo=wd_geo, loc_io=ioLabel), by=c("location"="item")) |>
+  left_join(geo_bn_wd_locality |> select(item, c_bn_geo=bn_geo, c_wd_geo=wd_geo, c_io=ioLabel), by=c("link_p2_id"="item"))  |>
+  # if you did separate cols...
+  #left_join(bn_work_loc_geos |> mutate(has_direct_geo="y"), by="s_id") |>
+  # linked. include location Q and label
+  left_join(bn_work_p2_loc_query |> select(item, p2_linked_loc_bn_geo, p2_linked_loc_wd_geo, p2_linked_loc_id=location, p2_linked_loc_label=locationLabel), by=c("location"="item")) |>
+  # don't add admin Q and label yet. probably not using any of these anyway.
+  left_join(bn_work_p33_loc_query |> select(item, p33_linked_loc_bn_geo, p33_linked_loc_wd_geo), by=c("location"="item")) |>
+  # this needs to join on the link_p2_id you dummy
+  left_join(bn_work_p2_c_query |> select(item, p2_linked_c_bn_geo, p2_linked_c_wd_geo, p2_linked_c_loc_id=location, p2_linked_c_loc_label=locationLabel), by=c("link_p2_id"="item"))  |>
+
+  mutate(use_geo = case_when(
+    !is.na(loc_wd_geo) ~ loc_wd_geo,
+    !is.na(loc_bn_geo) ~ loc_bn_geo,
+    !is.na(c_wd_geo) ~ c_wd_geo,
+    !is.na(c_bn_geo) ~ c_bn_geo,
+    !is.na(p2_linked_loc_wd_geo) ~ p2_linked_loc_wd_geo,
+    !is.na(p2_linked_loc_bn_geo) ~ p2_linked_loc_bn_geo,
+    !is.na(p2_linked_c_wd_geo) ~ p2_linked_c_wd_geo,
+    !is.na(p2_linked_c_bn_geo) ~ p2_linked_c_bn_geo
+  )) |>
+  mutate(geo_used = case_when(
+    !is.na(loc_wd_geo) ~ "loc_wd_geo",
+    !is.na(loc_bn_geo) ~ "loc_bn_geo",
+    !is.na(c_wd_geo) ~ "c_wd_geo",
+    !is.na(c_bn_geo) ~ "c_bn_geo",
+    !is.na(p2_linked_loc_wd_geo) ~ "p2_linked_loc_wd_geo",
+    !is.na(p2_linked_loc_bn_geo) ~ "p2_linked_loc_bn_geo",
+    !is.na(p2_linked_c_wd_geo) ~ "p2_linked_c_wd_geo",
+    !is.na(p2_linked_c_bn_geo) ~ "p2_linked_c_bn_geo"
+  )) |>
+# as usual cna't remember which is which... got it wrong...
+  mutate(long = parse_number(str_remove(use_geo, "Point"))) |>
+  mutate(lat = parse_number(word(use_geo, -1))) 
+  # or this works, about the same amount of code
+  # if you get rid of the end ) you can convert straight to num.
+  #mutate(use_geo= str_remove(use_geo, "\\)")) |>
+  #separate(use_geo, into = c("a", "lat", "long"), sep="\\(| +", convert = T) 
+
+## need to test that this scales up from the subset in the map
+  #   mutate(locality = case_when(
+  #   loc_io=="locality"|c_io=="locality" ~ location_label,
+  #   !is.na(p2_linked_loc_id) ~ p2_linked_loc_label,
+  #   !is.na(p2_linked_c_loc_id) ~ p2_linked_c_loc_label,
+  #   .default = ""
+  # )) 
+# # one NA left is Women's Institute, how does it have geo? might be hq and not v meaningful. 
+
+```
+
+
+
+
+
+
+```{r}
+# does organisation match geo? only 2 from of and link_p2_type matches.
+# only 16 without geo; all but one freelance which will need to be borne in mind. mostly no org. 
+# errrm where has NA statements come from... it's all Miss Lowenthal, only 9. most >20
+# 26 women. 19 have >30 stmts.  14 >40. 6 50+ but not necessarily closely related to number of positions?!
+# only 5 women have 10+ positions. this might be a good size group to compare with mm.
+
+#so how to add locationlabel to this? trouble is you need id for use_geo right... which you might have some trouble getting back to.
+bn_work_loc_geo_map1 <-
+bn_work_loc_geo |>
+  filter(!is.na(geo_used)) |> 
+  #add_count(bn_id) |> filter(n>=10) |>
+    mutate(locality = case_when(
+    loc_io=="locality"|c_io=="locality" ~ location_label,
+    !is.na(p2_linked_loc_id) ~ p2_linked_loc_label,
+    !is.na(p2_linked_c_loc_id) ~ p2_linked_c_loc_label,
+    .default = ""
+  )) |>
+  select(bn_id, person_label, position_label, organisation, locality, start_date, year1, precision, is_mm, statements, lat, long, use_geo, geo_used, link_p2_id, link_p2_type, s_id, person)  |>
+  mutate(label = paste(person_label, organisation, locality, year1, sep="<br>")) 
+## |> filter(statements>=50) |> count(bn_id)
+
+#let's make this uk only...
+bn_work_loc_geo_map1_table <-
+bn_work_loc_geo_map1 |>
+  select(bn_id, person_label, position_label, organisation, locality, year1, start_date, label, is_mm, lat, long, person, s_id) |>
+  filter(!locality %in% c("Rome", "Paris"))
+
+
+
+
+# Create a palette that maps factor levels to colors
+pal <- colorFactor(c("navy", "brown"), domain = c("MM", "other"))
+
+
+
+## for crosstalk. 
+#shared_map1 <- SharedData$new(bn_work_loc_geo_map1_table)
+```
+
+
+
+
+
+```{r}
+# bscols(
+#   widths = c(12,12,12),
+#    #device = "lg", # forces single column except on bigger screens... but really want always single column?
+#    
+#    leaflet(
+#       shared_map1, # don't get the select area thing without this.
+#       width = "100%") |>
+#       addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+#   # problem of multi people at same address...
+#   # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
+#   # looks like clusteroptions doesn't play nicely with crosstalk
+#      addCircleMarkers(
+#        data=shared_map1,
+#        lat = ~lat, lng=~long, 
+#        color = ~pal(is_mm),
+#        stroke = FALSE, # darker border
+#        fillOpacity = 0.5,
+#        #options = markerOptions(riseOnHover = TRUE) , # what does this do?
+#        #clusterOptions = markerClusterOptions(freezeAtZoom = 18), # known issue that cluster doesn't work with crosstalk
+# 
+#        popup = ~label
+#        )
+#   ,
+# 
+#   list(    
+#     bscols(
+#       widths = c(7,5,6,6),
+#     filter_slider(id="year", label = "year", sharedData = shared_map1, column=~year1),  # sep = "", # sep grrr.
+#     #filter_slider(id="date", label = "year", sharedData = shared_map1, column = ~start_date), # !!!!!
+#     filter_checkbox(id="position", label="position", sharedData = shared_map1, group = ~position_label), #, inline = TRUE),
+#     filter_select(id = "person_label", label = "names", sharedData = shared_map1, group = ~person_label),
+#     filter_select(id="locality", label="area", sharedData = shared_map1, group = ~locality)
+#     )
+#   ),
+#   
+#   
+#  # nb reactable filter doesn't do anyting to map even when crosstalk is working
+# 
+#   reactable(
+#   shared_map1 ## |> select(-person, -long, -lat, -label, -rowid) # can't use this here!
+#   ,
+#   #filterable = TRUE,
+#   #searchable = TRUE,
+#   bordered = TRUE,
+#   highlight = TRUE,
+#   defaultPageSize = 100,
+#   #groupBy =  "college_label",
+#   defaultExpanded = TRUE,
+#   defaultColDef = colDef(maxWidth = 150),
+#   # , headerClass = "sticky" but i think it has to be fixed height to use this
+#   columns = list(
+#     bn_id = colDef(name="id", maxWidth = 75),
+# #    person_label = colDef(name="name", maxWidth = 220),
+#     person_label =colDef(maxWidth = 220, name="name",
+#       html = TRUE,
+#       cell = function(value, index) { 
+#         sprintf('<a href="%s" target="_blank">%s</a>', bn_work_loc_geo_map1_table$person[index], value) #shared_map1 doesn't work here
+#       })   ,
+#     locality = colDef(maxWidth = 125, name="area"),
+#     position_label = colDef(maxWidth = 150, name = "position"),
+#     year1 = colDef(maxWidth = 100, name = "year"),
+#     person=colDef(show = F),
+#     long=colDef(show = F),
+#     lat=colDef(show = F),
+#     label=colDef(show = F),
+#     s_id=colDef(show = F),
+#     is_mm=colDef(show=F),
+#     start_date=colDef(show=F)
+#     
+#   )
+# )
+# 
+# 
+# 
+# )
+```
+
+
+       
+```{r}
+  leaflet(
+    bn_work_loc_geo_map1_table, 
+    width = "100%",
+    height = 750
+    ) |>
+    addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+  # finally! how to use addTiles urlTemplate with an api key.
+  # https://github.com/rstudio/leaflet/issues/410#issuecomment-290471333
+  # addTiles(
+  #   urlTemplate = "https://api.maptiler.com/tiles/uk-oslondon1k1893/{z}/{x}/{y}.jpg?key={key}", # slighlty different url from uk os
+  #   #urlTemplate = "https://api.maptiler.com/tiles/uk-osgb1888/{z}/{x}/{y}?key={key}",  #uk
+  #   attribution = "&copy; <a href='http://maps.nls.uk/projects/subscription-api/'>National Library of Scotland</a>,  &copy;",
+  #   # opacity affects the whole map. minZoom changes point at which it switches to the default as you zoom out.
+  #   options = tileOptions(key="Qm3IHfglBpG81gp4ZK4G", opacity = 5)
+  # ) |>
+    #addPopups(lat=~lat, lng=~long, popup = ~label) # very nope!
+  # problem of multi people at same geo...
+  # clusterOptions seems to need freezeAtZoom set really high. but then the default pins look ugly. make circles.
+     addCircleMarkers(
+       lat = ~lat, lng=~long,
+       popup = ~label,
+       color = ~pal(is_mm),
+                stroke = FALSE, fillOpacity = 0.5,
+                labelOptions = labelOptions(noHide = F, direction = 'auto'),
+                options = markerOptions(riseOnHover = TRUE) , clusterOptions = markerClusterOptions(freezeAtZoom = 18)
+             )
+```
+
+
+
+
+
+
