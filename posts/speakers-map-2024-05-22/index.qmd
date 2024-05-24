@@ -1,0 +1,792 @@
+---
+title: "A Map of Speakers"
+author: "Sharon Howard"
+description: "Yackety yak"
+date: "2024-05-01"
+date-modified: today
+categories: 
+  - place
+  - work
+execute: 
+  warning: false
+  message: false
+  echo: false 
+toc: false
+---
+
+This is adapted from the maps for lecturers. 
+
+filters:
+
+- years (again, sorry about the number formatting)
+  - you can filter start/end years independently or as a fixed date range (narrow down to a range, eg five years apart, and then drag the horizontal blue bar)
+- people
+- organisations
+- localities 
+- event types (meeting, conference, "other")
+  - most "other" are probably also meetings but I don't have quite enough data to identify them with certainty
+
+You can also make a selection in the map itself; click on the button just beneath the + and - buttons.
+
+Bear in mind (as with the lecturers map) that when there is more than one data point at the same location, you can only see one label; the others are hidden behind it. 
+
+In particular, many conferences (dark blue) are hidden behind meetings which may give a misleading impression.
+
+Circles hiding multiple data points are likely to be darker than singles and a slightly different colour if there are mixed event types. Sometimes filters will help. The table also reacts automatically to the filters so you can see the full data for any filtered selection.
+
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(leaflet)
+
+library(crosstalk)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+# for all the geo. will be in WQS format. several seconds so maybe should only get the subset.
+source(here::here("_R/locatable.R"))
+```
+
+
+
+
+
+
+```{r}
+## from events 20240226 but for spoke at only. this is almost certainly over complicated for this purpose, but it was a complicated thing.
+
+# organised by (P109): union query for linked event pages or in quals, excluding human organisers. atm all are items.
+
+bn_organised_by_sparql <-
+'SELECT distinct 
+?s ?organised_by ?organised_byLabel 
+#?person ?prop ?ev 
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P23 ?s .
+    ?s bnps:P23 ?ev .  
+
+  # organised by  
+  {
+    # in linked event page
+   ?ev bnwdt:P109 ?organised_by .  
+  }
+  union
+  {
+    # in qualifier
+     ?s bnpq:P109 ?organised_by . 
+    }
+  
+  # exclude human organisers... P12 Q2137
+       filter not exists { ?organised_by bnwdt:P12 bnwd:Q2137 . }
+        
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}'
+
+
+bn_organised_by_query <-
+  bn_std_query(bn_organised_by_sparql) |>
+  #make_bn_item_id(person) |>
+  make_bn_ids(c(organised_by, s)) 
+
+
+
+# could this be a bit speedier? what's not actually being used? or could you include more stuff to cut down on number of queries?
+bn_women_spoke_sparql <-
+  'SELECT distinct ?person ?personLabel ?propLabel ?ppaLabel  ?qual_propLabel ?qual_valueLabel ?qual_value ?prop ?ppa ?qual_prop
+?s
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P23  ?s .
+    ?s bnps:P23 ?ppa .  
+   
+  ?person ?p ?s .
+      ?prop wikibase:claim ?p.      
+          
+  # qualifiers
+   optional { 
+     ?s ( bnpq:P78 | bnpq:P66 | bnpq:P2	 ) ?qual_value . # limit to the qualifiers youre actually using
+     ?s ?qual_p ?qual_value .   
+     ?qual_prop wikibase:qualifier ?qual_p . 
+    }
+        
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+order by ?personLabel '
+
+
+bn_events_fetched <-
+  bn_std_query(bn_women_spoke_sparql)
+  
+
+# process the data a bit
+bn_women_events_query <-
+  bn_events_fetched |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(ppa, s, qual_value, prop, qual_prop)) |>
+  mutate(across(c(qual_value, qual_valueLabel, qual_prop, qual_propLabel), ~na_if(., ""))) |>
+  relocate(person, .after = last_col()) |>
+  arrange(bn_id, s)
+
+
+
+#  main only
+bn_women_events <-
+bn_women_events_query |>
+  distinct(bn_id, personLabel, propLabel, ppaLabel, prop, ppa, s) |>
+  left_join(bn_women_dob_dod |> select(bn_id, bn_dob_yr, bn_dod_yr), by="bn_id") |>
+  # meh. do you really need this?
+  left_join(bn_organised_by_query |>
+              # just in case you get another with multiple organisers
+              group_by(s) |>
+              top_n(1, row_number()) |>
+              ungroup() |>
+              select(s, organised_by, organised_byLabel), by="s") |>
+  #renaming to match original
+  rename(event=ppaLabel, event_id=ppa) |>
+  rename(ppa=prop, ppa_label=propLabel) |>
+  relocate(ppa, .after = ppa_label) |>
+  relocate(s, .after = last_col())
+
+
+# bn_women_ppa_events_qualifiers <-
+bn_women_events_qualifiers <-
+bn_women_events_query |>
+  #renaming to match original
+  rename(event=ppaLabel, event_id=ppa) |>
+  rename(ppa=prop, ppa_label=propLabel) |>
+  rename(qual_label = qual_propLabel, qual_p=qual_prop) |>
+  relocate(ppa, .after = ppa_label) |>
+  relocate(event_id, .after = event)
+
+```
+
+
+```{r}
+
+# this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
+# fetching date_prop makes the query a *lot* slower, so get R to turn the prop IDs into labels instead.
+# it's fast without the labels
+
+bn_women_spoke_time_precision_sparql <-
+'SELECT distinct ?person ?date ?date_precision ?pq ?pqv  ?s  ?ppa  
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P23 ?s .
+    ?s bnps:P23 ?ppa .  
+
+  # qualifier timevalue and precision.
+      ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 ) ?pqv.
+      ?s ?pq ?pqv .
+          ?pqv wikibase:timeValue ?date .  
+          ?pqv wikibase:timePrecision ?date_precision .
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}'
+
+bn_events_time_precision_fetched <-
+  bn_std_query(bn_women_spoke_time_precision_sparql)
+
+
+bn_women_events_time_precision_query <-
+  bn_events_time_precision_fetched |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(ppa, pq, pqv, s)) |>
+  #make_bn_ids(c(prop, ppa, date_prop, pqv, s)) |>
+  make_date_year() |>
+  mutate(date_propLabel = case_when(
+    pq=="P1" ~ "point in time",
+    pq=="P27" ~ "start time",
+    pq=="P28" ~ "end time"
+  )) |>
+  rename(date_prop=pq) |>
+  select(-person)
+
+# read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
+#bn_std_query(bn_women_events_time_precision_sparql) # not converted
+#read_csv(bn_events_timeprecision_csv_file) # converted
+
+
+bn_women_events_dates <-
+  bn_women_events_time_precision_query |>
+  # you need to keep the date as well as the precision when you pivot, to join. c() in values_from
+  # start/end pivot to a single row
+  filter(date_prop %in% c("P27", "P28")) |>
+  pivot_wider(names_from = date_propLabel, values_from = c(date_precision, date), id_cols = s) |>
+  clean_names("snake") |>
+  rename(start_precision=date_precision_start_time, end_precision = date_precision_end_time) |>
+  # then add p.i.t.
+  bind_rows(
+    bn_women_events_time_precision_query |>
+      filter(date_prop %in% c("P1")) |>
+      select(s, pit_precision=date_precision, date)
+  ) |> 
+  mutate(date = case_when(
+    !is.na(date) ~ date,
+    !is.na(date_start_time) ~ date_start_time
+  )) |>
+  mutate(date_precision = case_when(
+    !is.na(pit_precision) ~ pit_precision,
+    !is.na(start_precision) ~ start_precision
+  )) |>
+  mutate(year = year(date)) |>
+  # drop extra stuff; you can always get it back if you need it right.
+  select(s, date, date_precision, year)
+
+
+
+
+# add a new step before of_dates for doing of_org combination
+bn_women_events_of <-
+bn_women_events |> 
+  left_join(bn_women_events_qualifiers |>
+              # of (item/free text)
+              filter(qual_p %in% c("P78", "P66")) |>
+              anti_join(bn_women_events |> filter(event_id=="Q3644"), by="s") |> # exclude CAS AGM of 
+              distinct(s, qual_p, qual_label, qual_value, qual_valueLabel) |> # do i need distinct? possibly not.
+              # ensure you have only 1 per stmt. these are all spoke_at; are they the ones with multiple papers?
+              group_by(s) |>
+              top_n(1, row_number()) |>
+              ungroup() |>
+              rename(of_label=qual_label, of=qual_p, of_id=qual_value, of_value=qual_valueLabel) 
+              , by="s") |>
+  # prefer of if you have both
+  # i think organised_by is Items only, but use the id here just in case
+  mutate(of_org = case_when(
+    !is.na(of_value) ~ of_value,
+    !is.na(organised_by) ~ organised_byLabel
+  )) |>
+  mutate(of_org_id = case_when(
+    !is.na(of_id) ~ of_id,
+    !is.na(organised_by) ~ organised_by
+  )) 
+
+
+# had manytomany warning. caused by multiple orgs in of. top_n as a quick hack to get rid. there are only a handful.
+bn_women_events_of_dates <-
+  bn_women_events_of |>
+  left_join(bn_women_events_dates, by="s")  |>
+  relocate(s, .after = last_col())
+
+
+
+# before adding organised_by
+# # watch out for manytomany warning. caused by multiple orgs in of. top_n as a quick hack to get rid. there are only a handful.
+# bn_women_events_of_dates <-
+# bn_women_events |> 
+#   left_join(bn_women_events_qualifiers |>
+#               # of (item/free text)
+#               filter(qual_p %in% c("P78", "P66")) |>
+#               anti_join(bn_women_events |> filter(event_id=="Q3644"), by="s") |> # exclude CAS AGM of 
+#               distinct(s, qual_p, qual_label, qual_value, qual_valueLabel) |> # do i need distinct? possibly not.
+#               # ensure you have only 1 per stmt. 
+#               group_by(s) |>
+#               top_n(1, row_number()) |>
+#               ungroup() |>
+#               rename(of_label=qual_label, of=qual_p, of_id=qual_value, of_value=qual_valueLabel) 
+#               , by="s") |>
+#   left_join(bn_women_events_dates, by="s")  |>
+#   relocate(s, .after = last_col())
+# 
+
+```
+
+
+
+```{r}
+
+# get instance of for qualifiers
+# i think it's better to get them separately esp as there are multis etc
+# problems adapting the query for events only... just get all for ppa for now and get moving
+# it's not that slow; maybe come back to it
+# but i think you may need to work it out so you can narrow down? for now do a semi join afterwards
+
+bn_women_ppa_qual_inst_sparql <-
+  'SELECT distinct ?person ?ppa ?qual ?qual_instance ?qual_instanceLabel  ?s
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person ?p ?s .  
+ 
+      ?ppa wikibase:claim ?p;      
+         wikibase:statementProperty ?ps.       
+      ?ppa bnwdt:P12 bnwd:Q151 . # i/o ppa      
+ 
+      # get stuff about ?s 
+      ?s ?ps ?qual.
+  
+      # get instance of for qual
+        ?qual bnwdt:P12 ?qual_instance .
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+order by ?s'
+
+bn_women_ppa_qual_inst_query <-
+  bn_std_query(bn_women_ppa_qual_inst_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(ppa, qual, qual_instance, s)) |>
+  select(-person) |>
+  semi_join(bn_women_events, by="s")
+
+
+
+## even newer versions: of_org replaces use of of_value
+
+bn_women_events_of_dates_types_all <-
+bn_women_events_of_dates |>
+  # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
+  left_join(
+    bn_women_ppa_qual_inst_query |>
+      filter(qual_instanceLabel %in% c("meeting", "conference", "exhibition")) |>
+      distinct(qual, qual_instance, qual_instanceLabel) |>
+      rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
+  ) |>
+  # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
+  # left_join(
+  #   bn_women_ppa_qual_inst_query |>
+  #     filter(!qual_instanceLabel %in% c("meeting", "conference", "exhibition", "event", "bucket", "locality", "venue")) |>
+  #     distinct(qual, qual_instance, qual_instanceLabel) |>
+  #     rename(instance2_id=qual_instance, instance2=qual_instanceLabel), by=c("event_id"="qual")
+  # )  |>
+  # add directly available locations. why on earth did i call the qual_location id "value"?
+  left_join(
+    bn_women_events_qualifiers |>
+      filter(qual_label=="location") |>
+      group_by(s) |>
+      top_n(1, row_number()) |>
+      ungroup() |>
+      select(s, qual_locationLabel=qual_valueLabel, qual_location=qual_value)
+  , by="s") |>
+  
+  # consolidate ppa_label item/text. currently only for delegate
+  mutate(ppa_type = case_when(
+    str_detect(ppa_label, "was delegate") ~ "was delegate at",
+    .default = ppa_label
+  )) |>
+  relocate(ppa_type, .after = ppa)  |>
+  
+  # make event type. adjusted to do more as you dropped second i/o join. tweak for F.S.
+  mutate(event_type = case_when(
+    event %in% c("meeting", "exhibition", "conference") ~ event,
+    event_id=="Q292" & is.na(of_org) ~ "meeting",  # folklore society not specified as meetings, but they almost certainly are
+    #event_id=="Q682" ~ "conference", # Annual Meeting as conference? - to work this has to go before instance
+    instance %in% c("meeting", "exhibition", "conference") ~ instance,
+    event %in% c("committee", "museum") ~ "other",
+    str_detect(event, "Meeting|Congress of the Congress of Archaeological Societies") ~ "meeting",
+    str_detect(event, "Conference|Congress") | str_detect(of_org, "Conference|Congress") ~ "conference",
+    #str_detect(instance2, "society|organisation|museum|institution|library") ~ "other",
+    str_detect(of_org, "Society|Museum|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") | str_detect(event, "Society|Museum|Museo|Library|Institut|Association|School|College|Academy|University|Club|Gallery|Committee") ~ "other",
+    .default = "misc"
+  )) |>
+  
+    mutate(event_org = case_when(
+    !is.na(of_org) ~ of_org,
+    event_id=="Q292" & is.na(of_org) ~ event,
+    event_type=="other" ~ event,
+    str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Royal Archaeological Institute", 
+    str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Society of Antiquaries of London",
+    str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Congress of Archaeological Societies",
+    str_detect(event, "Royal Academy") ~ "Royal Academy",
+    str_detect(event, "Society of Lady Artists") ~ "Society of Women Artists", 
+    str_detect(event, "Folklore Society") ~ "The Folklore Society",
+    # i think use event name for conferences/exhibitions without an of. but not generic
+    event_type %in% c("conference", "exhibition", "misc")  & !event %in% c("meeting", "exhibition", "event", "petition", "conference")  ~ event
+  )) |>
+
+  # need an org id as well as org name. not quite the same as of_org_id... probably
+  mutate(org_id = case_when(
+    !is.na(of_org_id) ~ of_org_id,
+    event_id=="Q292" & is.na(of_org) ~ event_id,
+    # need these IDs 
+    str_detect(event, "Royal Archaeological Institute|\\bRAI\\b") ~ "Q35", 
+    str_detect(event, "Society of Antiquaries of London|\\bSAL\\b") ~ "Q8",
+    str_detect(event, "Congress of Archaeological Societies|\\bCAS\\b") ~ "Q186", 
+    str_detect(event, "Royal Academy") ~ "Royal_Academy",
+    str_detect(event, "Society of Lady Artists") ~ "Q1891", # probably don't need this now ?
+    str_detect(event, "Folklore Society") ~ "Q292",
+    !is.na(event_org) ~ event_id,
+    # conferences etc without an of - use event_id. but not if generic
+    event_type %in% c("conference", "exhibition", "misc") & !event %in% c("meeting", "exhibition", "event", "petition", "conference") ~ event_id
+  )) |>
+  
+  # event title. still probably wip. this is now not going to exactly match grouping of instance id, i think.
+  # adding organised by -> needs some sort of tweak
+  mutate(event_title = case_when(
+    # for FS. not sure if still needed...
+    event_id=="Q292" & is.na(of_org) ~ paste("meeting,", event),
+    # use location if present and other info not available
+    is.na(of_org) & !is.na(qual_locationLabel) ~ paste0(event, ", ", qual_locationLabel),
+    #  use year if other info is lacking. either should match instance id without a problem 
+    event %in% c("exhibition", "meeting", "event", "conference") & is.na(of_org) & !is.na(year) ~ paste0(event, " (", year, ")"),
+    event_id %in% c("Q1918") ~ event,  # society of ladies exhibition- don't want organised by in title here.
+    !event %in% c("meeting", "event", "conference") & !is.na(organised_by) ~ event,
+    is.na(of_org) ~ event,
+    event=="event" ~ of_org,
+    .default = paste(event, of_org, sep=", ")
+  )) |>
+  # some abbreviations
+  mutate(event_title = str_replace_all(event_title, sal_rai_cas_abbr))  |>
+
+  # grouping date for distinct events according to type of event
+  # do i need to check this again after adjusting event_type? 
+  mutate(event_instance_date = case_when(
+    is.na(date) ~ NA,
+    event_id=="Q682" ~ paste0(year, "-01-01"),
+    event_type %in% c("misc", "meeting", "other") ~ as.character(date), # should i make this month?
+    event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
+  ))  |>
+  
+# NB: there is no event_of_id now; event_org_id instead.
+  # id columns for convenience
+  # mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
+  # mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
+  mutate(event_instance_id = paste(event_instance_date, org_id, event_type, sep="_"))  |>
+  
+  # hmm, this may not quite work. and might need a bit of extra work for CAS etc. 
+  mutate(event_org_id = case_when(
+    # if generic and no other info except date, add year to the id [as in event_title].
+    event %in% c("exhibition", "meeting", "event", "conference", "Annual Meeting", "petition") & is.na(of_org) & !is.na(year) ~ paste(org_id, event_type, year, sep="_"),
+    # otherwise exclude date info
+    .default =  paste(org_id, event_type, sep="_"))
+         
+         ) |>
+  relocate(event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, of_org, of_org_id, .after = ppa_type) 
+  
+bn_women_events_of_dates_types <-
+bn_women_events_of_dates_types_all |>
+  # losing ppa_label, but keep ppa in case you need any joins. just bear in mind slight difference.
+  # also dropping separate organised by and of cols.
+  distinct(bn_id, personLabel, ppa_type, ppa, event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, bn_dob_yr)
+
+# unique event instances based on the workings
+# but this is probably not quite right because it includes too much stuff incl title in group by
+bn_women_event_instances <-
+bn_women_events_of_dates_types_all |>
+  group_by(event_instance_id, event_org_id, event_title, event_type, event_org, event, of_org, event_id, of_org_id, event_instance_date, year) |>
+  # get all unique dates listed for the event instance, in chronological order
+  arrange(date, .by_group = T) |>
+  summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
+  ungroup() 
+
+
+
+
+
+
+
+# for geo, use qual_location id first if available, then org_id
+bn_women_event_geo_ids <-
+bn_women_events_of_dates_types_all  |>
+  # consolidated location/org location id.
+  mutate(link_p2_id = if_else(!is.na(qual_location), qual_location, org_id)) |>
+  mutate(link_p2_type = case_when(
+    !is.na(qual_location) ~ "location",
+    !is.na(org_id) ~ "org"
+  )) |>
+  make_display_date() |>
+  distinct(bn_id, personLabel, link_p2_id, link_p2_type, event_title, event_org, org_id, qual_locationLabel, qual_location, event_instance_id, event_type, year, date, display_date, s) |>
+  filter(!is.na(link_p2_id)) |>
+  # a few multi s so you need this.
+  group_by(s) |>
+  mutate(s_id = paste(s, row_number(), sep = ".")) |>
+  ungroup() 
+```
+
+
+```{r added-to-shared-r}
+# make_display_date <- function(data, date=date, date_precision=date_precision){
+#   # requires lubridate
+#   data |>
+#   mutate(m = month({{date}}, label=TRUE, abbr=F), d=day({{date}}), y=year({{date}})) |>
+#   mutate(display_date = case_when(
+#     {{date_precision}}==11 ~ paste(d, m, y),
+#     {{date_precision}}==10 ~ paste(m, y),
+#     {{date_precision}}==9 ~ as.character(y)
+#   )) 
+# }
+```
+
+
+
+
+
+
+```{r spql-sparql}
+## spql-sparqls for linked p2/p33
+
+## may need to add more top_n if you get any dups
+
+# # linked locations P2
+bn_event_p2_loc_sparql <-
+  bn_women_event_geo_ids |>
+  #bn_work_loc_id |>
+  #filter(!is.na(location)) |>
+  bn_make_union(link_p2_id) |>
+  mutate_glue_sparql(bn_linked_p2_spql)
+
+bn_event_p2_loc_query <-
+  bn_std_query(bn_event_p2_loc_sparql) |>
+  make_bn_ids(c(location, item)) |>
+  mutate(across(c(wd), ~na_if(., ""))) |>
+  inner_join(geo_bn_wd_locality |> distinct(item, wd, p2_linked_loc_bn_geo= bn_geo, p2_linked_loc_wd_geo= wd_geo), by=c("location"="item", "wd"))
+
+
+## p33  only do this for location. 
+bn_event_p33_loc_sparql <-
+  bn_women_event_geo_ids |>
+ # filter(!is.na(location)) |>
+  bn_make_union(link_p2_id) |>
+  mutate_glue_sparql(bn_linked_p33_spql)
+
+bn_event_p33_loc_query <-
+  bn_std_query(bn_event_p33_loc_sparql) |>
+  make_bn_ids(c(admin, item)) |>
+  mutate(across(c(wd), ~na_if(., "")))  |>
+  inner_join(geo_bn_wd_locality |> distinct(item, wd, p33_linked_loc_bn_geo= bn_geo, p33_linked_loc_wd_geo= wd_geo), by=c("admin"="item", "wd")) |>
+  # drop any dup
+  group_by(item) |>
+  top_n(1, row_number()) |>
+  ungroup()
+
+
+# consolidated non-location
+
+bn_event_p2_c_sparql <-
+  bn_women_event_geo_ids |>
+  #filter(!is.na(link_p2_id)) |>
+  bn_make_union(link_p2_id) |>
+  mutate_glue_sparql(bn_linked_p2_spql)
+
+bn_event_p2_c_query <-
+  bn_std_query(bn_event_p2_c_sparql) |>
+  make_bn_ids(c(location, item)) |>
+  mutate(across(c(wd), ~na_if(., "")))  |>
+  inner_join(geo_bn_wd_locality |> distinct(item, wd, p2_linked_c_bn_geo= bn_geo, p2_linked_c_wd_geo= wd_geo), by=c("location"="item", "wd")) |>
+  group_by(item) |>
+  top_n(1, row_number()) |>
+  ungroup()
+```
+
+```{r}
+# only 93 don't join... hopefully because of lots of repeat IDs...
+# bn_women_event_geo_ids |>
+#   anti_join(
+#     bind_rows(bn_event_p2_c_query, bn_event_p2_loc_query, bn_event_p33_loc_query) , by=c("link_p2_id"="item") )
+```
+
+```{r}
+# TODO ???
+# several items have >1 location. probably dated changes but that's tricky to handle, will need some working out.
+# ## RHS Q432 has 5 or 6 different addresses in two PCAs... similarly Q1760
+# so for now just fudge it with top_n
+# bn_event_p2_loc_query |>
+#   add_count(item) |>
+#   filter(n>1)
+
+```
+
+
+
+```{r}
+# join all the geos to the work df
+# this *only* adds geos, not place names or io
+bn_event_loc_geo <-
+bn_women_event_geo_ids |>
+  # direct to geo_bn_wd_locality. loc_io / c_io should tell you if it's a locality
+  # first qual_location. then org_id. 
+  left_join(geo_bn_wd_locality |> select(item, loc_bn_geo=bn_geo, loc_wd_geo=wd_geo, loc_io=ioLabel), by=c("qual_location"="item")) |>
+  left_join(geo_bn_wd_locality |> select(item, c_bn_geo=bn_geo, c_wd_geo=wd_geo, c_io=ioLabel), by=c("org_id"="item"))  |>
+  # now dig for linked stuff
+  # pretty sure this should be link_p2_id so you do both lots at once
+  # manytomany, why? the others are fine. multi locs for some orgs; fudge it with top_n for now. include location Q and label
+  left_join(
+    bn_event_p2_loc_query |> 
+      select(item, p2_linked_loc_bn_geo, p2_linked_loc_wd_geo, p2_linked_loc_id=location, p2_linked_loc_label=locationLabel) |>
+      group_by(item) |>
+      top_n(1, row_number()) |>
+      ungroup()  , by=c("link_p2_id"="item")) |>
+  # don't add admin Q and label yet. 
+  left_join(bn_event_p33_loc_query |> select(item, p33_linked_loc_bn_geo, p33_linked_loc_wd_geo), by=c("link_p2_id"="item")) |>
+  left_join(bn_event_p2_c_query |> select(item, p2_linked_c_bn_geo, p2_linked_c_wd_geo, p2_linked_c_loc_id=location, p2_linked_c_loc_label=locationLabel), by=c("link_p2_id"="item")) |>
+mutate(use_geo = case_when(
+    !is.na(loc_wd_geo) ~ loc_wd_geo, 
+    !is.na(loc_bn_geo) ~ loc_bn_geo, # should this be 2nd above c_wd_geo?
+    !is.na(c_wd_geo) ~ c_wd_geo,
+    !is.na(c_bn_geo) ~ c_bn_geo,
+    !is.na(p2_linked_loc_wd_geo) ~ p2_linked_loc_wd_geo,
+    !is.na(p2_linked_loc_bn_geo) ~ p2_linked_loc_bn_geo,
+    !is.na(p2_linked_c_wd_geo) ~ p2_linked_c_wd_geo,
+    !is.na(p2_linked_c_bn_geo) ~ p2_linked_c_bn_geo,
+    # p33 may add something here.
+    !is.na(p33_linked_loc_wd_geo) ~ p33_linked_loc_wd_geo,
+    !is.na(p33_linked_loc_bn_geo) ~ p33_linked_loc_bn_geo
+  )) |>
+  mutate(geo_used = case_when(
+    !is.na(loc_wd_geo) ~ "loc_wd_geo",
+    !is.na(loc_bn_geo) ~ "loc_bn_geo",
+    !is.na(c_wd_geo) ~ "c_wd_geo",
+    !is.na(c_bn_geo) ~ "c_bn_geo",
+    !is.na(p2_linked_loc_wd_geo) ~ "p2_linked_loc_wd_geo",
+    !is.na(p2_linked_loc_bn_geo) ~ "p2_linked_loc_bn_geo",
+    !is.na(p2_linked_c_wd_geo) ~ "p2_linked_c_wd_geo",
+    !is.na(p2_linked_c_bn_geo) ~ "p2_linked_c_bn_geo",
+    !is.na(p33_linked_loc_wd_geo) ~ "p33_linked_loc_wd_geo",
+    !is.na(p33_linked_loc_bn_geo) ~ "p33_linked_loc_bn_geo"
+  )) |>
+  mutate(long = parse_number(str_remove(use_geo, "Point"))) |>
+  mutate(lat = parse_number(word(use_geo, -1))) 
+
+
+```
+
+
+
+
+
+```{r map-table}
+# can you get any more localities? only a handful missing. some not in uk.
+bn_event_loc_geo_map1 <-
+bn_event_loc_geo |>
+  filter(!is.na(geo_used)) |> 
+    mutate(locality = case_when(
+    #loc_io=="locality"|c_io=="locality" ~ location_label, # idk where this came from
+      !is.na(qual_location) ~ qual_locationLabel,
+    !is.na(p2_linked_loc_id) ~ p2_linked_loc_label,
+    !is.na(p2_linked_c_loc_id) ~ p2_linked_c_loc_label,
+    .default = "unidentified"
+  ))  |> 
+  # adjust event type -> three only
+  mutate(event_type = if_else(
+    !event_type %in% c("meeting", "conference"), 
+    "other",
+    event_type
+  )) |>
+  select(bn_id, personLabel, event_type, event_org, locality, event_title, display_date, year, long, lat, event_instance_id, s_id) |>
+ # select(bn_id, person_label, position_label, organisation, locality, start_date, year1, precision, is_mm, statements, lat, long, use_geo, geo_used, link_p2_id, link_p2_type, s_id, person)  |>
+  mutate(label = paste(personLabel, event_title, display_date, sep="<br>")) 
+
+#make this uk only...??
+# bn_event_loc_geo_map1_table <-
+# bn_event_loc_geo_map1 
+#  select(bn_id, person_label, position_label, organisation, locality, year1, start_date, label, is_mm, lat, long, person, s_id) 
+#  filter(!locality %in% c("Rome", "Paris"))
+
+
+
+
+# Create a palette that maps factor levels to colors
+pal <- colorFactor(c("navy", "#f46d43", "darkgrey"), domain = c("meeting", "conference", "other"))
+
+
+
+## for crosstalk. does this need a uid?
+shared_map1 <- SharedData$new(bn_event_loc_geo_map1)
+```
+
+
+
+
+
+
+
+
+```{r}
+##  don't like that this only shows one label for several items on one point. but cluster doesn't work with crosstalk.
+suppressWarnings({
+bscols(
+  widths = c(12),
+   #device = "lg", # forces single column except on bigger screens... but really want always single column?
+
+   leaflet(
+      shared_map1, # don't get the select area thing without this.
+      width = "100%",
+      height = 650
+      ) |>
+      addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+  # problem of multi people at same address...
+  # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
+  # looks like clusteroptions doesn't play with crosstalk
+     addCircleMarkers(
+       data=shared_map1,
+       lat = ~lat, lng=~long,
+       stroke = TRUE, # darker border ??
+       color = ~pal(event_type),
+       opacity = 0.5,
+       fillOpacity = 0.2,
+       radius=5,
+       #options = markerOptions(riseOnHover = TRUE) , # what does this do?
+       #clusterOptions = markerClusterOptions(freezeAtZoom = 18), # known issue that cluster doesn't work with crosstalk
+
+       popup = ~label
+       )
+  ,
+
+  list(
+    bscols(
+      widths = c(8, 4, 12, 6, 6),
+    filter_slider(id="year", label = "year", sharedData = shared_map1, column=~year, dragRange = TRUE),  # sep = "", # sep grrr.
+    #filter_slider(id="date", label = "year", sharedData = shared_map1, column = ~start_date), # !!!!!
+    filter_checkbox(id="event_type", label="event type", sharedData = shared_map1, group = ~event_type), #, inline = TRUE),
+    filter_select(id ="personLabel", label = "names", sharedData = shared_map1, group = ~personLabel),
+    filter_select(id="locality", label="localities", sharedData = shared_map1, group = ~locality),
+    filter_select(id="event_org", label="organisations/events", sharedData = shared_map1, group = ~event_org)
+    )
+  ),
+
+
+ # nb reactable filter doesn't do anything to map so i think better to turn it off to avoid confusion
+
+  reactable(
+  shared_map1 ## |> select(-person, -long, -lat, -label, -rowid) # can't use this here!
+  ,
+  #filterable = TRUE,
+  #searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 100,
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 150),
+  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 75),
+    personLabel = colDef(name="name", maxWidth = 200),
+    # personLabel =colDef(maxWidth = 220, name="name",
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     sprintf('<a href="%s" target="_blank">%s</a>', bn_event_loc_geo_map1$person[index], value) #shared_map1 doesn't work here
+    #   })   ,
+    event_type = colDef(maxWidth = 120, name = "event"),
+    event_org=colDef(name="organisation", maxWidth = 220),
+    locality = colDef(maxWidth = 180, name="locality"),
+    display_date=colDef(name="date", maxWidth = 150),
+    year = colDef(maxWidth = 100, name = "year"),
+    #person=colDef(show = F),
+    long=colDef(show = F),
+    lat=colDef(show = F),
+    label=colDef(show = F),
+    s_id=colDef(show = F),
+    use_geo=colDef(show=F),
+    geo_used=colDef(show = F),
+    event_instance_id=colDef(show = F),
+    event_title=colDef(show=F)
+
+  )
+)
+
+)
+  
+})
+```
+
+

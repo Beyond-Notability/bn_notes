@@ -81,6 +81,8 @@ library(WikipediR)
 ## functions (general purpose) ####
 
 
+## DATES
+
 # since i can never remember how to do this...
 make_decade <- function(data, year) {
   data |>
@@ -97,7 +99,47 @@ make_date_year <-function(data){
 }
 
 
+# add date property labels inside a mutate (primarily for qualifier dates)
+date_property_labels <- function(v) {
+  case_when(
+    {{v}}=="P1" ~ "point in time",
+    {{v}}=="P27" ~ "start time",
+    {{v}}=="P28" ~ "end time",
+    {{v}}=="P53" ~ "earliest date",
+    {{v}}=="P51" ~ "latest date"
+  )
+}
+# but it's probably easier and more generalisable to (left) join to bn_properties, renaming as appropriate.
+# eg:
+#  left_join(bn_properties |> select(date_qual_prop= bn_prop_id, date_qual_label= propertyLabel), by="date_qual_prop") |>
 
+
+
+# turn standard ymdHMS or ymd dates with precision levels into EDTF format. works with posixct dates as well as strings.
+# use inside a mutate.
+make_edtf_date_from_ymdhms <- 
+  function(p=date_precision, d=date){
+    case_when(
+      {{p}}==9 ~ str_sub({{d}}, 1, 4), # year only
+      {{p}}==10 ~ str_sub({{d}}, 1,7), # year-month
+      {{p}}==11 ~ str_sub({{d}}, 1, 10) # ymd
+    )
+  }
+
+# take a posixct date + wikibase numerical date precision and turn into display date
+# would be trivial to add parse date step for a ymdHMS date straight from wikibase but usually done that already
+make_display_date <- 
+  function(data, date=date, date_precision=date_precision){
+  # requires lubridate
+  data |>
+    mutate(m = month({{date}}, label=TRUE, abbr=F), d=day({{date}}), y=year({{date}})) |>
+    mutate(display_date = case_when(
+      is.na({{date}}) ~ NA,
+      {{date_precision}}==11 ~ paste(d, m, y),
+      {{date_precision}}==10 ~ paste(m, y),
+      {{date_precision}}==9 ~ as.character(y)
+    )) 
+}
 
 ## to get stuff in shared data folder... 
 

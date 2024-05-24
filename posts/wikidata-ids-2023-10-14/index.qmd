@@ -121,7 +121,7 @@ bn_women_key_ids_query <-
 
 bn_women_key_ids <-
 bn_women_key_ids_query |>
-  pivot_longer(isni_ID:ads_ID) |>
+  pivot_longer(c(isni_ID, viaf_ID, ads_ID)) |>
   distinct(bn_id, name, value) |>
   filter(value !="") |>
   # add wikidata P IDs rather than bn?
@@ -172,6 +172,8 @@ bn_women_key_ids_query |>
 ```
 
 
+
+
 ```{r}
 bn_women_key_ids |>
   count(p, wd_p, name="BN") |>
@@ -179,7 +181,7 @@ bn_women_key_ids |>
     bn_wikidata_ids_query |>
       select(wd_p= bn_id, id_label, WD= count), by="wd_p"
   ) |>
-  mutate(ID = paste0(id_label, " (bn: ", p, " | wikidata: ", wd_p, ")")) |>
+  mutate(ID = paste0(id_label, " (bn: ", p, " / wikidata: ", wd_p, ")")) |>
   select(ID, BN, WD) |>
   kable() |>
   kable_styling()

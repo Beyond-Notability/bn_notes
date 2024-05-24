@@ -229,7 +229,9 @@ group by ?person ")) |>
 
 bn_women_vitals <-
 bn_women_list |>
+  select(-dob, -dod) |>
   #left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
+  # don't use bn_women_dob_dod
   left_join(bn_women_dobs |> 
               #add_count(bn_id, name="n_dob") |>
               group_by(bn_id) |>
@@ -309,11 +311,12 @@ bn_women_vitals_shadow |>
   # get first birth year only if more than one
   mutate(birth_date = parse_number(str_extract(birth_date, "^\\d+"))) |> #count(birth_date)
   mutate(birth_p = case_when(
-    between(birth_date, 1800, 1839) ~ "1801-1839",
+    between(birth_date, 1790, 1839) ~ "1790-1839",
     between(birth_date, 1840, 1864) ~ "1840-1864",
     between(birth_date, 1865, 1894) ~ "1865-1894",
     between(birth_date, 1895, 1925) ~ "1895-1921"
   )) |> #count(birth_p)
+  filter(!is.na(birth_p)) |>
   # make decade
   #mutate(birth_date = birth_date - (birth_date %% 10))  |> count(birth_date)
   select(birth_p, death_date, SAL:VIAF, birth_name, married_name)  |>

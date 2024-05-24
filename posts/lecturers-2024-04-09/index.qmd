@@ -160,6 +160,9 @@ bn_lecturers_query |>
 ```
 
 
+
+
+
 ```{r}
 # relationship to spoke at ?
 

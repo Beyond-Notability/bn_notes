@@ -12,6 +12,7 @@ categories:
   - summaries
   - musthave
 page-layout: full
+toc: false
 ---
 
 ```{r}
@@ -107,7 +108,7 @@ bn_women_dobs <-
         {bn_filter_project}
          ?person bnwdt:P26  ?dateOfBirth.
          {wb_service_label}
-        }}") 
+        }}")
   ) |>
   sparql2df(endpoint=bn_endpoint) |>
   make_bn_item_id(person) |>
@@ -126,7 +127,7 @@ bn_women_dods <-
         {bn_filter_project}
          ?person bnwdt:P15  ?dateOfDeath .
          {wb_service_label}
-        }}") 
+        }}")
   ) |>
   sparql2df(endpoint=bn_endpoint) |>
   make_bn_item_id(person) |>
@@ -257,6 +258,8 @@ group by ?person ")) |>
 ```
 
 
+
+
 ```{r put-them-together}
 ## putting together the vitals:
 ## count of statements
@@ -266,8 +269,10 @@ group by ?person ")) |>
 
 bn_women_vitals <-
 bn_women_list |>
+  select(-dob, -dod) |>
   #left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
-  left_join(bn_women_dobs |> 
+  # oops not the already summarised bn_dob_dod here.
+  left_join(bn_women_dobs |>
               #add_count(bn_id, name="n_dob") |>
               group_by(bn_id) |>
               arrange(year_of_birth, .by_group = TRUE) |>
@@ -326,8 +331,8 @@ reactable(
         sprintf('<a href="%s" target="_blank">%s</a>', bn_women_vitals$person[index], value)
       })   ,
     statements = colDef(maxWidth = 70, name="stmts"),
-    birth = colDef(maxWidth = 70),
-    death = colDef(maxWidth = 70),
+    year_of_birth = colDef(maxWidth = 70, name="birth"),
+    year_of_death = colDef(maxWidth = 70, name="death"),
     birthcount = colDef(name="birth name", maxWidth = 70),
     marriedcount = colDef(name="marr name", maxWidth = 70)
     

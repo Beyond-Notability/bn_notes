@@ -833,7 +833,8 @@ For scale:
 all_supporters |>
   count(org) |>
   ggplot(aes(org, n, fill=org)) +
-  geom_col() +
+  geom_col(show.legend = FALSE) +
+  scale_fill_ptol() +
   labs(x=NULL, y="number of support actions", title = "All support actions at RAI and SAL elections")
 ```
 

@@ -89,8 +89,8 @@ bind_rows(
   add_count(bn_id) |>
   filter(n==2) |>
   arrange(bn_id) |>
-  select(bn_id, date_prop_label, year) |>
-  pivot_wider(names_from = date_prop_label, values_from = year) |>
+  select(bn_id, date_propLabel, year) |>
+  pivot_wider(names_from = date_propLabel, values_from = year) |>
   clean_names("snake") |>
   rename(year_birth=date_of_birth, year_death=date_of_death) |>
   left_join(
@@ -105,8 +105,8 @@ bind_rows(
   mutate(bn_date_id=row_number()+1, l=last(bn_date_id)) |>
   ungroup() |>
   mutate(bn_date_id = case_when(
-    date_prop_label=="date of birth" ~ 1,
-    date_prop_label=="date of death" ~ l+1,
+    date_propLabel=="date of birth" ~ 1,
+    date_propLabel=="date of death" ~ l+1,
     .default = bn_date_id
   )) |>
   arrange(bn_id, bn_date_id) |>
@@ -123,7 +123,7 @@ bind_rows(
 bn_women_dates_subcat <-
 bn_women_dates_categories |>
   mutate(subcat = case_when(
-    date_prop_label %in% c("date of birth", "date of death") ~ "birth/death",
+    date_propLabel %in% c("date of birth", "date of death") ~ "birth/death",
     # use ppa buckets first. short forms if appropriate. make charitable na
     category=="PPA" & ppa_bucket=="event participation" ~ "events",
     category=="PPA" & ppa_bucket=="charitable/organisational" ~ NA,
@@ -150,7 +150,7 @@ bn_women_dates_categories |>
   # # for display labels only; don't use in processing. in dates.r but keep here in case that doesn't work out
   # # remove minor variations in name labels: free text v item, EDTF v PIT
   # # don't forget can't use std_ col for joins back to original...
-  # mutate(date_prop_label_std = str_trim(str_remove(date_prop_label, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
+  # mutate(date_prop_label_std = str_trim(str_remove(date_propLabel, "\\((free text|item|EDTF value|PIT value)\\)"))) |>
   # # shorten a few very long labels...
   # mutate(date_prop_label_std = case_when(
   #   date_prop=="P36" ~ "excavation director",
@@ -169,7 +169,7 @@ bn_women_dates_categories |>
 
 bn_women_dates_birth_death_subcat <-
 bn_women_dates_birth_death |>
-  left_join(bn_women_dates_subcat |> ##select(-date_prop_label) 
+  left_join(bn_women_dates_subcat |> ##select(-date_propLabel) 
               filter(!is.na(subcat)) |>
             distinct(date_prop, date_prop_label_std, section, category, subcat, group_label)
             , by="date_prop") |>
@@ -295,14 +295,14 @@ This is considerably simplified from the first version...
 ```{r with-death}
 # bn_women_dates_birth_death_with_categories |>
 #   filter(between(year_birth, 1825, 1914)) |>
-#   filter(date_prop_label != "date of birth") |>
+#   filter(date_propLabel != "date of birth") |>
 #   # mutate(age = year-year_birth) |>
 #   # mutate(period = case_when(
 #   #   between(year_birth, 1825, 1854) ~ "1825-1854",
 #   #   between(year_birth, 1855, 1879) ~ "1855-1879",
 #   #   between(year_birth, 1880, 1914) ~ "1880-1914"
 #   # )) |>
-#   filter(date_prop_label !="date of birth") |>
+#   filter(date_propLabel !="date of birth") |>
 #   arrange(group) |>
 #   ggplot(aes(period, age, colour=colour_category)) +
 #   ggbeeswarm::geom_beeswarm(size=1, show.legend = F, method = "center") +  #, corral = "wrap", corral.width = 0.9, cex=0.8
@@ -321,7 +321,7 @@ This is considerably simplified from the first version...
 ##lower cex makes each swarm narrower so they fit in better; might also mean more overplotting though.
 bn_women_dates_birth_death_subcat |>
   filter(between(year_birth, 1815, 1924)) |>
-  filter(date_prop_label != "date of birth") |>
+  filter(date_propLabel != "date of birth") |>
   filter(!is.na(group_label)) |>
 #  filter(group_label !="ng") |> 
   arrange(group_label, year) |>
@@ -358,7 +358,7 @@ Usage:
 bn_bees <-
 bn_women_dates_birth_death_subcat |>
   filter(between(year_birth, 1815, 1924)) |>
-  filter(date_prop_label != "date of birth") |>
+  filter(date_propLabel != "date of birth") |>
   filter(!is.na(group_label)) |>
 #  filter(group_label !="ng") |> 
   arrange(group_label, year) |>
@@ -450,7 +450,7 @@ A year-only date should display as 01/01/year but in some cases below the softwa
 ```{r}
 reactable(
   bn_women_dates_birth_death |>
-  select(-person, -bn_date_id, -year_birth, -year_death, -date_string, -prop_value, -s) ,
+  select(-person, -bn_date_id, -year_birth, -year_death, -prop_value, -s, -date_pit_precision, -qual_date_prop) ,
   filterable = TRUE,
   searchable = TRUE,
   bordered = TRUE,
@@ -469,7 +469,7 @@ reactable(
       #   sprintf('<a href="%s" target="_blank">%s</a>', bn_women_dates_birth_death$person[index], value)
       # }
       )   ,
-    date_prop_label = colDef(maxWidth = 120, name="property",
+    date_propLabel = colDef(maxWidth = 120, name="property",
       html = TRUE,
       cell = function(value, index) {
         sprintf('<a href="%s" target="_blank">%s</a>', paste(bn_women_dates_birth_death$person[index], bn_women_dates_birth_death$date_prop[index], sep="#"), value)

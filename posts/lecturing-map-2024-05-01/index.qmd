@@ -1,8 +1,8 @@
 ---
-title: "A Map of Lecturing"
+title: "Another Map of Lecturing"
 author: "Sharon Howard"
-description: "Margaret Murray gets about."
-date: "2024-04-30"
+description: "Fun with filters."
+date: "2024-05-01"
 date-modified: today
 categories: 
   - place
@@ -14,7 +14,21 @@ execute:
 toc: false
 ---
 
+This map uses the same data as [the previous version](/posts/lecturing-map-2024-04-30/) but has added filtering options:
 
+- years (sorry about the number formatting; can't work out how to fix this)
+  - I didn't realise this initially but you can either filter start/end dates independently using the year circles or as a fixed range using the horizontal blue bar
+- people
+- places 
+- position type
+
+You can also make a selection in the map itself; click on the button just beneath the + and - buttons.
+
+BUT the clustering mechanism used in the previous map can't be combined with these filters. 
+
+That means that when you click on a circle that represents than one data point at the same location, you can only see one label; the others are hidden behind it. 
+
+You can tell which circles have multiple data points because they're darker than the singles. (If there's both MM and an other at the same place the circles look slightly more purple.) Sometimes the filters will help. The table also reacts automatically to the filters so you can see the full data for any filtered selection.
 
 
 
@@ -220,7 +234,7 @@ bn_work_loc_id <-
 
 
 
-# haven't done this. don't think i'll need it here.
+# haven't done this. don't think i'll need it here because there are no employers.
   # mutate(across(c(organisedLabel, ofLabel, locationLabel, employerLabel, of, organised, location, employer), ~na_if(., ""))) |>
   # # t82684 (Label), _:t82684
   # mutate(across(c(organised, of, location, employer), ~if_else(str_detect(., "^_:t\\d"), NA, .))) |>
@@ -231,7 +245,7 @@ bn_work_loc_id <-
 ```
 
 
-```{r}
+```{r spql-sparql}
 ## spql-sparqls for linked p2/p33
 
 ## may need to add more top_n if you get any dups
@@ -290,8 +304,19 @@ bn_work_p2_c_query <-
 
 
 # join all the geos to the work df
+# this *only* adds geos, not place names or io
 bn_work_loc_geo <-
 bn_work_loc_id |>
+  # # direct to geo_bn_wd_locality
+  # left_join(geo_bn_wd_locality |> select(item, loc_bn_geo=bn_geo, loc_wd_geo=wd_geo), by=c("location"="item")) |>
+  # left_join(geo_bn_wd_locality |> select(item, c_bn_geo=bn_geo, c_wd_geo=wd_geo), by=c("link_p2_id"="item"))  |>
+  # # if you did separate cols...
+  # #left_join(bn_work_loc_geos |> mutate(has_direct_geo="y"), by="s_id") |>
+  # # linked
+  # left_join(bn_work_p2_loc_query |> select(item, p2_linked_loc_bn_geo, p2_linked_loc_wd_geo), by=c("location"="item")) |>
+  # left_join(bn_work_p33_loc_query |> select(item, p33_linked_loc_bn_geo, p33_linked_loc_wd_geo), by=c("location"="item")) |>
+  # # this needs to join on the link_p2_id you dummy
+  # left_join(bn_work_p2_c_query |> select(item, p2_linked_c_bn_geo, p2_linked_c_wd_geo), by=c("link_p2_id"="item"))  |>
   
 ## try again adding a bit more info....
   # direct to geo_bn_wd_locality. loc_io / c_io should tell you if it's a locality
@@ -334,21 +359,6 @@ bn_work_loc_id |>
   #mutate(use_geo= str_remove(use_geo, "\\)")) |>
   #separate(use_geo, into = c("a", "lat", "long"), sep="\\(| +", convert = T) 
 
-# this *only* added geos, not place names or io
-  # # direct to geo_bn_wd_locality
-  # left_join(geo_bn_wd_locality |> select(item, loc_bn_geo=bn_geo, loc_wd_geo=wd_geo), by=c("location"="item")) |>
-  # left_join(geo_bn_wd_locality |> select(item, c_bn_geo=bn_geo, c_wd_geo=wd_geo), by=c("link_p2_id"="item"))  |>
-  # # if you did separate cols...
-  # #left_join(bn_work_loc_geos |> mutate(has_direct_geo="y"), by="s_id") |>
-  # # linked
-  # left_join(bn_work_p2_loc_query |> select(item, p2_linked_loc_bn_geo, p2_linked_loc_wd_geo), by=c("location"="item")) |>
-  # left_join(bn_work_p33_loc_query |> select(item, p33_linked_loc_bn_geo, p33_linked_loc_wd_geo), by=c("location"="item")) |>
-  # # this needs to join on the link_p2_id you dummy
-  # left_join(bn_work_p2_c_query |> select(item, p2_linked_c_bn_geo, p2_linked_c_wd_geo), by=c("link_p2_id"="item"))  |>
-
-
-
-
 ## need to test that this scales up from the subset in the map
   #   mutate(locality = case_when(
   #   loc_io=="locality"|c_io=="locality" ~ location_label,
@@ -365,7 +375,7 @@ bn_work_loc_id |>
 
 
 
-```{r}
+```{r map-table}
 # does organisation match geo? only 2 from of and link_p2_type matches.
 # only 16 without geo; all but one freelance which will need to be borne in mind. mostly no org. 
 # errrm where has NA statements come from... it's all Miss Lowenthal, only 9. most >20
@@ -397,12 +407,12 @@ bn_work_loc_geo_map1 |>
 
 
 # Create a palette that maps factor levels to colors
-pal <- colorFactor(c("navy", "brown"), domain = c("MM", "other"))
+pal <- colorFactor(c("navy", "#f46d43"), domain = c("MM", "other"))
 
 
 
 ## for crosstalk. 
-#shared_map1 <- SharedData$new(bn_work_loc_geo_map1_table)
+shared_map1 <- SharedData$new(bn_work_loc_geo_map1_table)
 ```
 
 
@@ -410,143 +420,71 @@ pal <- colorFactor(c("navy", "brown"), domain = c("MM", "other"))
 
 
 ```{r}
-## not got this to work right yet. don't like that it only shows one label when several items on one point. but cluster doesn't work with crosstalk.
-# bscols(
-#   widths = c(12,12,12),
-#    #device = "lg", # forces single column except on bigger screens... but really want always single column?
-#    
-#    leaflet(
-#       shared_map1, # don't get the select area thing without this.
-#       width = "100%") |>
-#       addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
-#   # problem of multi people at same address...
-#   # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
-#   # looks like clusteroptions doesn't play nicely with crosstalk
-#      addCircleMarkers(
-#        data=shared_map1,
-#        lat = ~lat, lng=~long, 
-#        color = ~pal(is_mm),
-#        stroke = FALSE, # darker border
-#        fillOpacity = 0.5,
-#        #options = markerOptions(riseOnHover = TRUE) , # what does this do?
-#        #clusterOptions = markerClusterOptions(freezeAtZoom = 18), # known issue that cluster doesn't work with crosstalk
-# 
-#        popup = ~label
-#        )
-#   ,
-# 
-#   list(    
-#     bscols(
-#       widths = c(7,5,6,6),
-#     filter_slider(id="year", label = "year", sharedData = shared_map1, column=~year1),  # sep = "", # sep grrr.
-#     #filter_slider(id="date", label = "year", sharedData = shared_map1, column = ~start_date), # !!!!!
-#     filter_checkbox(id="position", label="position", sharedData = shared_map1, group = ~position_label), #, inline = TRUE),
-#     filter_select(id = "person_label", label = "names", sharedData = shared_map1, group = ~person_label),
-#     filter_select(id="locality", label="area", sharedData = shared_map1, group = ~locality)
-#     )
-#   ),
-#   
-#   
-#  # nb reactable filter doesn't do anyting to map even when crosstalk is working
-# 
-#   reactable(
-#   shared_map1 ## |> select(-person, -long, -lat, -label, -rowid) # can't use this here!
-#   ,
-#   #filterable = TRUE,
-#   #searchable = TRUE,
-#   bordered = TRUE,
-#   highlight = TRUE,
-#   defaultPageSize = 100,
-#   #groupBy =  "college_label",
-#   defaultExpanded = TRUE,
-#   defaultColDef = colDef(maxWidth = 150),
-#   # , headerClass = "sticky" but i think it has to be fixed height to use this
-#   columns = list(
-#     bn_id = colDef(name="id", maxWidth = 75),
-# #    person_label = colDef(name="name", maxWidth = 220),
-#     person_label =colDef(maxWidth = 220, name="name",
-#       html = TRUE,
-#       cell = function(value, index) { 
-#         sprintf('<a href="%s" target="_blank">%s</a>', bn_work_loc_geo_map1_table$person[index], value) #shared_map1 doesn't work here
-#       })   ,
-#     locality = colDef(maxWidth = 125, name="area"),
-#     position_label = colDef(maxWidth = 150, name = "position"),
-#     year1 = colDef(maxWidth = 100, name = "year"),
-#     person=colDef(show = F),
-#     long=colDef(show = F),
-#     lat=colDef(show = F),
-#     label=colDef(show = F),
-#     s_id=colDef(show = F),
-#     is_mm=colDef(show=F),
-#     start_date=colDef(show=F)
-#     
-#   )
-# )
-# 
-# 
-# 
-# )
-```
+##  don't like that this only shows one label for several items on one point. but cluster doesn't work with crosstalk.
+bscols(
+  widths = c(12,12,12),
+   #device = "lg", # forces single column except on bigger screens... but really want always single column?
 
-
-       
-```{r}
-  leaflet(
-    bn_work_loc_geo_map1_table, 
-    width = "100%",
-    height = 750
-    ) |>
-    addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
-  # finally! how to use addTiles urlTemplate with an api key.
-  # https://github.com/rstudio/leaflet/issues/410#issuecomment-290471333
-  # addTiles(
-  #   urlTemplate = "https://api.maptiler.com/tiles/uk-oslondon1k1893/{z}/{x}/{y}.jpg?key={key}", # slighlty different url from uk os
-  #   #urlTemplate = "https://api.maptiler.com/tiles/uk-osgb1888/{z}/{x}/{y}?key={key}",  #uk
-  #   attribution = "&copy; <a href='http://maps.nls.uk/projects/subscription-api/'>National Library of Scotland</a>,  &copy;",
-  #   # opacity affects the whole map. minZoom changes point at which it switches to the default as you zoom out.
-  #   options = tileOptions(key="Qm3IHfglBpG81gp4ZK4G", opacity = 5)
-  # ) |>
-    #addPopups(lat=~lat, lng=~long, popup = ~label) # very nope!
-  # problem of multi people at same geo...
-  # clusterOptions seems to need freezeAtZoom set really high. but then the default pins look ugly. make circles.
+   leaflet(
+      shared_map1, # don't get the select area thing without this.
+      width = "100%",
+      height = 650
+      ) |>
+      addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+  # problem of multi people at same address...
+  # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
+  # looks like clusteroptions doesn't play nicely with crosstalk
      addCircleMarkers(
+       data=shared_map1,
        lat = ~lat, lng=~long,
-       popup = ~label,
        color = ~pal(is_mm),
-                stroke = FALSE, fillOpacity = 0.5,
-                labelOptions = labelOptions(noHide = F, direction = 'auto'),
-                options = markerOptions(riseOnHover = TRUE) , clusterOptions = markerClusterOptions(freezeAtZoom = 18)
-             )
-```
+       stroke = TRUE, # darker border
+       opacity = 0.5,
+       fillOpacity = 0.2,
+       radius=5,
+       #options = markerOptions(riseOnHover = TRUE) , # what does this do?
+       #clusterOptions = markerClusterOptions(freezeAtZoom = 18), # known issue that cluster doesn't work with crosstalk
 
-
-
-
-## Table
-
-```{r}
-  reactable(
-  bn_work_loc_geo_map1_table 
+       popup = ~label
+       )
   ,
-  filterable = TRUE,
-  searchable = TRUE,
+
+  list(
+    bscols(
+      widths = c(8,4,6,6),
+    filter_slider(id="year", label = "year", sharedData = shared_map1, column=~year1, dragRange = TRUE),  # sep = "", # sep grrr.
+    #filter_slider(id="date", label = "year", sharedData = shared_map1, column = ~start_date), # !!!!!
+    filter_checkbox(id="position", label="position", sharedData = shared_map1, group = ~position_label), #, inline = TRUE),
+    filter_select(id = "person_label", label = "names", sharedData = shared_map1, group = ~person_label),
+    filter_select(id="locality", label="places", sharedData = shared_map1, group = ~locality)
+    )
+  ),
+
+
+ # nb reactable filter doesn't do anything to map so i think better to turn it off
+
+  reactable(
+  shared_map1 ## |> select(-person, -long, -lat, -label, -rowid) # can't use this here!
+  ,
+  #filterable = TRUE,
+  #searchable = TRUE,
   bordered = TRUE,
   highlight = TRUE,
-  defaultPageSize = 150,
+  defaultPageSize = 100,
   #groupBy =  "college_label",
   defaultExpanded = TRUE,
   defaultColDef = colDef(maxWidth = 150),
   # , headerClass = "sticky" but i think it has to be fixed height to use this
   columns = list(
-    bn_id = colDef(name="id", maxWidth = 80),
-    person_label =colDef(maxWidth = 240, name="name",
+    bn_id = colDef(name="id", maxWidth = 75),
+#    person_label = colDef(name="name", maxWidth = 220),
+    person_label =colDef(maxWidth = 220, name="name",
       html = TRUE,
       cell = function(value, index) {
         sprintf('<a href="%s" target="_blank">%s</a>', bn_work_loc_geo_map1_table$person[index], value) #shared_map1 doesn't work here
       })   ,
-    locality = colDef(maxWidth = 200, name="area"),
-    position_label = colDef(maxWidth = 160, name = "position"),
-    organisation = colDef(maxWidth = 240),
+    locality = colDef(maxWidth = 125, name="area"),
+    position_label = colDef(maxWidth = 150, name = "position"),
     year1 = colDef(maxWidth = 100, name = "year"),
     person=colDef(show = F),
     long=colDef(show = F),
@@ -558,6 +496,82 @@ pal <- colorFactor(c("navy", "brown"), domain = c("MM", "other"))
 
   )
 )
+
+
+
+)
+```
+
+
+       
+```{r non-crosstalk-leaflet}
+  # leaflet(
+  #   bn_work_loc_geo_map1_table, 
+  #   width = "100%",
+  #   height = 750
+  #   ) |>
+  #   addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
+  # # finally! how to use addTiles urlTemplate with an api key.
+  # # https://github.com/rstudio/leaflet/issues/410#issuecomment-290471333
+  # # addTiles(
+  # #   urlTemplate = "https://api.maptiler.com/tiles/uk-oslondon1k1893/{z}/{x}/{y}.jpg?key={key}", # slighlty different url from uk os
+  # #   #urlTemplate = "https://api.maptiler.com/tiles/uk-osgb1888/{z}/{x}/{y}?key={key}",  #uk
+  # #   attribution = "&copy; <a href='http://maps.nls.uk/projects/subscription-api/'>National Library of Scotland</a>,  &copy;",
+  # #   # opacity affects the whole map. minZoom changes point at which it switches to the default as you zoom out.
+  # #   options = tileOptions(key="Qm3IHfglBpG81gp4ZK4G", opacity = 5)
+  # # ) |>
+  #   #addPopups(lat=~lat, lng=~long, popup = ~label) # very nope!
+  # # problem of multi people at same geo...
+  # # clusterOptions seems to need freezeAtZoom set really high. but then the default pins look ugly. make circles.
+  #    addCircleMarkers(
+  #      lat = ~lat, lng=~long,
+  #      popup = ~label,
+  #      color = ~pal(is_mm),
+  #               stroke = FALSE, fillOpacity = 0.5,
+  #               labelOptions = labelOptions(noHide = F, direction = 'auto'),
+  #               options = markerOptions(riseOnHover = TRUE) , clusterOptions = markerClusterOptions(freezeAtZoom = 18)
+  #            )
+```
+
+
+
+
+
+```{r non-crosstalk-reactable}
+## Table
+#   reactable(
+#   bn_work_loc_geo_map1_table 
+#   ,
+#   filterable = TRUE,
+#   searchable = TRUE,
+#   bordered = TRUE,
+#   highlight = TRUE,
+#   defaultPageSize = 150,
+#   #groupBy =  "college_label",
+#   defaultExpanded = TRUE,
+#   defaultColDef = colDef(maxWidth = 150),
+#   # , headerClass = "sticky" but i think it has to be fixed height to use this
+#   columns = list(
+#     bn_id = colDef(name="id", maxWidth = 80),
+#     person_label =colDef(maxWidth = 240, name="name",
+#       html = TRUE,
+#       cell = function(value, index) {
+#         sprintf('<a href="%s" target="_blank">%s</a>', bn_work_loc_geo_map1_table$person[index], value) #shared_map1 doesn't work here
+#       })   ,
+#     locality = colDef(maxWidth = 200, name="area"),
+#     position_label = colDef(maxWidth = 160, name = "position"),
+#     organisation = colDef(maxWidth = 240),
+#     year1 = colDef(maxWidth = 100, name = "year"),
+#     person=colDef(show = F),
+#     long=colDef(show = F),
+#     lat=colDef(show = F),
+#     label=colDef(show = F),
+#     s_id=colDef(show = F),
+#     is_mm=colDef(show=F),
+#     start_date=colDef(show=F)
+# 
+#   )
+# )
 # 
 ```
 
