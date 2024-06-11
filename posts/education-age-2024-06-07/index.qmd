@@ -1,0 +1,193 @@
+---
+title: "Age and Higher Education"
+description: "Age at which BN women first entered university education"
+author: "Sharon Howard"
+date: "2024-06-07"
+date-modified: today
+categories: 
+  - education
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+## Notes
+
+- Universities and colleges only (eg university extension excluded)
+- Wikibase start dates only
+- Ages are calculated by subtracting year of birth from starting year, so could be +/- 1 year out
+
+```{r}
+
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+library(reactable)
+library(ggbeeswarm)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+
+```{r}
+## same data you use for Obs educated/degree age timelines
+bn_women_educated_dates_sparql <-
+'SELECT ?personLabel ?collegeLabel ?universityLabel ?organisedLabel ?subjectLabel ?date_qual ?date_prop ?date_precision ?s ?college ?university ?subject ?organised ?person
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  # note: academic degree is P59. 
+  ?person bnp:P94 ?s .  # educated at
+    ?s bnps:P94 ?college .
+      ?college bnwdt:P12 bnwd:Q2914 .   # tertiary ed inst
+      optional {?college bnwdt:P4 ?university . } # a few college arent part of a university
+      optional {?s bnpq:P109 ?organised . } # some extension centres
+      optional {?s bnpq:P60 ?subject . } 
+   
+  # dates. timevalue and precision.
+         # pit/start/end. there are a few earliest/latest as well.
+      ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28  ) ?pqv. 
+      ?s ?date_prop ?pqv.
+          ?pqv wikibase:timeValue ?date_qual .
+          ?pqv wikibase:timePrecision ?date_precision .  
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}
+order by ?personLabel ?collegeLabel ?date_qual'
+
+bn_women_educated_dates_query <-
+  bn_std_query(bn_women_educated_dates_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(college, university, subject, date_prop, organised, s)) |>
+  mutate(across(c(university, organised, subject, universityLabel, organisedLabel, subjectLabel), ~na_if(., ""))) |>
+  mutate(date_label = date_property_labels(date_prop)) |>
+  # precision
+  mutate(date_precision = case_when(
+    date_precision==9 ~ "y",
+    date_precision==10 ~ "ym",
+    date_precision==11 ~ "ymd"
+  )) |>
+  # parsed posixct date
+  mutate(date = parse_date_time(date_qual, "ymdHMS"))  |>
+  mutate(year = year(date)) |>
+  relocate(person, s, .after = last_col())
+
+## this is much simpler than the timeline
+bn_women_educated_dates_ages_first <-
+bn_women_educated_dates_query |>
+  filter(date_label %in% c("start time")) |>  # i think drop pit; only 7 of them
+  # drop all alternative provision including extension centres for now. then don't need date_precision as all are year.
+  filter(college != "Q2485") |>
+  clean_names("snake") |>
+  # create by_label - prefer college for this, i think. needs tidying up in degrees.
+    mutate(by = case_when(
+    !is.na(college) ~ college,
+    !is.na(university) ~ university
+  )) |>
+  mutate(by_label = case_when(
+    !is.na(college_label) ~ college_label,
+    !is.na(university_label) ~ university_label
+  )) |>
+  # rgx College|University should work to filter
+  filter(str_detect(by_label, "College|University")) |>
+  distinct(bn_id, person_label, year, date_label, by_label, by, person) |>
+  left_join(
+    bn_women_dob_dod |> select(bn_id, bn_dob_yr), by="bn_id"
+  ) |>
+  filter(!is.na(bn_dob_yr)) |>
+  mutate(age = year-bn_dob_yr) |>
+  group_by(bn_id) |>
+  arrange(year, .by_group = TRUE) |>
+  top_n(1, year) |>
+  ungroup()  |>
+  make_decade(year) |>
+# only one in 1940s (??) so drop that
+  filter(decade<1940) 
+```
+
+## Averages per decade
+
+```{r}
+bn_women_educated_dates_ages_first|>
+  group_by(decade) |>
+  summarise(n=n(), median_age=median(age), mean_age=mean(age)) |>
+  ungroup() |>
+  mutate(decade=paste0(decade, "s")) |>
+  ggplot(aes(decade, mean_age)) +
+  geom_lollipop() +
+#  geom_col() +
+  labs(title="Average age at first entry to university, by decade", y="mean age")
+```
+
+
+## Scatter chart with trendline
+
+```{r}
+bn_women_educated_dates_ages_first |>
+  ggplot(aes(year, age)) +
+  geom_point()  +
+  geom_smooth() +
+  labs(title = "Age at first entry to university")
+```
+
+## Beeswarm
+
+```{r}
+
+bn_women_educated_dates_ages_first |>
+  mutate(decade = paste0(decade, "s")) |>
+  ggplot(aes(y=age, x=decade)) +
+  ggbeeswarm::geom_beeswarm(size=0.8,  method = "swarm") +  ##, cex = 0.8, corral = "wrap", corral.width = 0.9) + #, cex=0.8
+  #scale_colour_ptol() +
+  #scale_x_discrete(expand=expansion(add=c(0.5,0.5))) +
+  theme(legend.position = "bottom") +
+  #guides(colour = guide_legend(override.aes = list(size=2))) +
+  labs(title = "Age at first entry to university, by decade")
+
+```
+
+
+
+## Table
+
+
+```{r}
+bn_reactable <-
+  bn_women_educated_dates_ages_first |>
+  select(bn_id, person_label, year, bn_dob_yr, age, by_label, person) |>
+  arrange(bn_id, year)
+
+
+reactable(
+  bn_reactable |> select(-person) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 130,
+  #groupBy = "personLabel",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 80),
+    person_label =colDef(maxWidth = 220, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s#P59" target="_blank">%s</a>', bn_reactable$person[index], value)
+      })   ,
+   by_label = colDef(maxWidth = 220, name="university"),
+   age = colDef(maxWidth = 100, name="age"),
+   bn_dob_yr = colDef(maxWidth = 120, name="year of birth"),
+   year = colDef(maxWidth = 100)
+    
+  )
+)
+```

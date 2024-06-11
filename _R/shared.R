@@ -2,6 +2,7 @@
 
 ## BEFORE std_queries.R ##
 
+
 # date of R session
 session_date_ymd <- format(Sys.time(), "%Y%m%d") 
 
@@ -79,6 +80,7 @@ library(WikipediR)
 
 
 ## functions (general purpose) ####
+
 
 
 ## DATES

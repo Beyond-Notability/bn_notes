@@ -39,21 +39,19 @@ source(here::here("_R/std_queries.R"))
 
 I've added `spoke at` data for some comparisons, but only for the women in this lecturer subset, not the whole lot.
 
-TODO 
+update
 
-places and travel questions. (sorry! as with suffrage, this needs some more working out)
+- added heatmap of regional distribution of posts
 
 
-
-```{r}
-
+```{r lecturers-query}
 ##query without date property labels
 
 bn_lecturers_sparql <- 
-'SELECT distinct ?person ?personLabel ?workLabel  ?positionLabel 
+'SELECT distinct ?person ?personLabel ?workLabel  ?positionLabel ?locationLabel
 ?date ?date_precision ?pq
 ?organisedLabel ?ofLabel 
-?position ?of  ?work ?organised 
+?position ?of  ?work ?organised ?location
 ?s
 
 WHERE {
@@ -76,7 +74,7 @@ WHERE {
     OPTIONAL { ?s bnpq:P109 ?organised .}
     OPTIONAL { ?s ( bnpq:P78 | bnpq:P66 ) ?of .}
  
-   # optional { ?s bnpq:P2 ?location . } # do locations separately.
+    optional { ?s bnpq:P2 ?location . } # multis
     
   # dates - get precision here because some are almost certainly yyyy
     optional {
@@ -102,8 +100,8 @@ ORDER BY ?person
 bn_lecturers_query <-
   bn_std_query(bn_lecturers_sparql) |>
   make_bn_item_id(person) |>
-  make_bn_ids(c(pq, position, of, work, organised, s)) |>
-  mutate(across(c(organisedLabel, ofLabel, of, organised, pq), ~na_if(., ""))) |>
+  make_bn_ids(c(pq, position, of, work, organised, location, s)) |>
+  mutate(across(c(organisedLabel, ofLabel, of, organised, locationLabel, location, pq), ~na_if(., ""))) |>
   make_date_year() |>
   # add the date property labels
   mutate(date_propLabel = case_when(
@@ -114,7 +112,7 @@ bn_lecturers_query <-
   rename(date_prop=pq)  |>
   relocate(person, .after = last_col())
 
-
+# without locations
 bn_lecturers_dates <-
 bn_lecturers_query |>
   filter(!is.na(date)) |>
@@ -160,10 +158,7 @@ bn_lecturers_query |>
 ```
 
 
-
-
-
-```{r}
+```{r spoke-at}
 # relationship to spoke at ?
 
 bn_spoke_at_sparql <- 
@@ -242,6 +237,230 @@ bn_spoke_at <-
   )) |>
   mutate(is_mm = if_else(bn_id=="Q569", "MM", "other"))
 ```
+
+
+```{r locations-regions}
+source(here::here("_R/mapping.R"))
+
+## which things to use for locations?
+## location; organised by; of
+
+
+bn_lecturers_locations <-
+bn_lecturers_query |>
+  distinct(bn_id, personLabel, locationLabel, organisedLabel, ofLabel, location, organised, of, s) 
+# there may be multiple locations for an s but it shouldn't matter unless they end up in different regions/sub-regions
+
+
+# pivot longer to put all potential locatables into a single find_loc col
+bn_lecturers_loc_id_long <-
+  bn_lecturers_locations |>
+  pivot_longer(c(location, organised, of), names_to = "find_loc_type", values_to = "find_loc_id", values_drop_na = TRUE) |>
+  mutate(find_loc_label = case_when(
+    find_loc_type=="location" ~ locationLabel,
+    find_loc_type=="organised" ~ organisedLabel,
+    find_loc_type=="of" ~ ofLabel
+  )) |>
+  select(bn_id, find_loc_type, find_loc_id, find_loc_label, s)
+
+# bn_make_union for VALUES
+bn_lecturers_loc_id_values <-
+bn_lecturers_loc_id_long |>
+  bn_make_union(find_loc_id) 
+
+
+# which find_loc_id items have io locality ####
+
+## questions for first run. 
+## - are there any arch.site/hist.house? may need an extra query 
+
+bn_p12_spql <-
+  'select distinct ?item ?itemLabel ?ioLabel
+  where {
+    values ?item { <<bn_bnwd_values>> }
+    ?item bnwdt:P12 ?io .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  }' 
+
+bn_lecturers_p12_sparql <-
+  bn_lecturers_loc_id_values |>
+  mutate_glue_sparql(bn_p12_spql)
+
+
+bn_lecturers_p12_query <-
+  bn_std_query(bn_lecturers_p12_sparql) |>
+  make_bn_ids(item)
+
+
+bn_lecturers_p12 <-
+bn_lecturers_p12_query |>
+  group_by(item, itemLabel) |>
+  arrange(ioLabel, .by_group = TRUE) |>
+  summarise(ios = paste(ioLabel, collapse = " | "), .groups = "drop_last" ) |>
+  ungroup() |>
+  left_join(
+  bn_lecturers_p12_query |>
+  filter(ioLabel=="locality") |>
+    mutate(has_locality="y") |>
+    select(item, has_locality), by="item")
+
+
+# add locality to _loc_id
+bn_lecturers_loc_id_long_locality <-
+bn_lecturers_loc_id_long |>
+  left_join(bn_lecturers_p12, by=c("find_loc_id"="item")) 
+
+
+
+
+## set up IDs with io locality for later p33 query.  what?
+bn_lecturers_has_locality <-
+bn_lecturers_loc_id_long_locality |>
+  filter(!is.na(has_locality)) |>
+  distinct(find_loc_id, find_loc_label) |>
+  mutate(p33_id=find_loc_id, p33_label=find_loc_label)
+  #inner_join(bn_lecturers_p12 |> filter(!is.na(has_locality)) , by=c("find_loc_id"="item")) |> # shouldn't need this
+
+
+
+## set up IDs without io locality for p2 queries.
+bn_lecturers_not_locality_values <-
+bn_lecturers_p12 |>
+  filter(is.na(has_locality)) |>
+  bn_make_union(item)
+
+
+# get p2 (with io) for non-locality quals ####
+
+# questions for first run
+# - do any p2 not have io locality?  if none, you don't need p2p2
+# - does p2p2 work for non locality?
+# - can run checks for P33 instead of P2, or p2p33, but very unlikely to get anything new.
+
+bn_p2_spql <-
+  'select distinct ?item ?itemLabel ?p2 ?p2Label ?p2_ioLabel ?p2p2Label ?p2p2
+  where {
+    values ?item { <<bn_bnwd_values>> }
+    ?item bnwdt:P2 ?p2 .
+      ?p2 bnwdt:P12 ?p2_io .
+      optional { ?p2 bnwdt:P2 ?p2p2 . }
+        
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  }' 
+
+bn_lecturers_p2_sparql <-
+  bn_lecturers_not_locality_values |>
+  mutate_glue_sparql(bn_p2_spql)
+
+
+bn_lecturers_p2_query <-
+  bn_std_query(bn_lecturers_p2_sparql) |>
+  make_bn_ids(c(item, p2, p2p2)) |>
+  mutate(across(c(p2p2, p2p2Label), ~na_if(., "")))
+
+## check: are there any items with multi localities and what effect will collapsing them have.
+
+# choose p2/p2p2 for p33id
+bn_lecturers_p2 <-
+bn_lecturers_p2_query |>
+  mutate(p33_id = case_when(
+    p2_ioLabel=="locality" ~ p2,
+    .default = p2p2 
+  )) |>
+  mutate(p33_label = case_when(
+    p2_ioLabel=="locality" ~ p2Label,
+    .default = p2p2Label
+  )) |>
+  # distinct because there were some multi i/o
+  distinct(p33_id, p33_label, item, itemLabel) |> 
+  filter(!is.na(p33_id)) |> # 5 rows
+  rename(find_loc_id=item, find_loc_label=itemLabel) |>
+  # occasionally more than 1 location: pick 1
+  group_by(find_loc_id) |>
+  top_n(1, row_number()) |>
+  ungroup()
+
+
+## check: how many locations have been omitted due to absence of P2/P33 info? If there are a lot it may be worth trying wikidata for admin territory/historic county/region data.
+
+# combine p2 with original io locality 
+bn_lecturers_p33_ids <-
+bind_rows(
+  bn_lecturers_p2 |> mutate(src="p2"),
+  bn_lecturers_has_locality |> mutate(src="p33")
+  ) |>
+  arrange(find_loc_id) 
+
+
+
+bn_lecturers_p33_values <-
+bn_lecturers_p33_ids |>
+  bn_make_union(p33_id)
+
+
+# add uk regions. don't think this is helpful tbh.
+# check that any dropped are non-UK. IT DROPS STUFF THAT IS A REGION EG WALES. YOU NEED THE P33 QUERY FOR FUCK SAKE.
+# check for any multis
+# bn_lecturers_p33_ids_regions <-
+# bn_lecturers_p33_ids |>
+#   inner_join(bn_regions_localities |> select(-itemLabel, -ioLabel), by=c("p33_id"="item"))
+
+
+# get UK region for the p33s.####
+# p33_ids_regions may not have everything
+# spql
+bn_p33_spql <-
+  'SELECT distinct ?item ?itemLabel ?region ?regionLabel
+  WHERE {
+    VALUES ?item { <<bn_bnwd_values>> }
+    ?item bnwdt:P33* ?region .
+      ?region bnwdt:P12 bnwd:Q4207 .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+  }'
+
+# sparql.
+bn_lecturers_p33_sparql <-
+  bn_lecturers_p33_values |>
+  mutate_glue_sparql(bn_p33_spql)
+
+# query
+bn_lecturers_p33_query <-
+  bn_std_query(bn_lecturers_p33_sparql) |>
+  make_bn_ids(c(item, region))
+
+
+
+
+# check: no unexpected m2m
+
+bn_lecturers_loc_linked <-
+bn_lecturers_loc_id_long_locality |>
+  left_join(bn_lecturers_p33_ids |> select(find_loc_id, p33_id, p33_label), by=c("find_loc_id")) |>
+  # to prioritise find_loc locations 
+  mutate(link_type = case_when(
+    find_loc_type=="location" ~ 1,
+    .default = 2
+  )) |>
+  left_join(bn_lecturers_p33_query |> select(item, region, regionLabel), by=c("p33_id"="item"))  |>
+  relocate(p33_id, p33_label, region, regionLabel)
+
+
+bn_lecturers_loc_linked_region <-
+bn_lecturers_loc_linked |>
+  filter(!is.na(region)) |>
+  group_by(s) |> # not got s_id, not sure if it matters
+  top_n(-1, link_type) |>
+  ungroup() 
+
+
+  # to check for more than 1 region. (after filtering NA region)
+  # group_by(s_id) |>
+  # mutate(nd_region = n_distinct(region)) |>
+  # ungroup() |>
+  # filter(nd_region>1) |>
+```
+
+
 
 
 
@@ -748,6 +967,51 @@ bind_rows(bn_lecturers_dates,
 #   mutate(cum_sum_ev = cumsum(n_ev)) |>
 #   ungroup() 
 ```
+
+## Regions
+
+(excluding `spoke at`)
+
+caveats
+
+- some positions didn't have enough information recorded to look for a location
+- some potentially mappable posts in the UK failed to be mapped, because they didn't have location information to link to on their pages. 
+- it's possible in some cases to look for information on wikidata instead, but that tends to be rather unrewarding (compared to the extra work involved)
+
+Some of the numbers beyond London and the south east are very small. (None in N-E England or Scotland, and only one in Wales.)
+
+```{r}
+# bn_lecturers_dates |>
+#   anti_join(bn_lecturers_loc_id_long, by="s")
+
+# ?? distinct IDs
+# bn_lecturers_loc_id_long |>
+#   anti_join(bn_lecturers_loc_linked_region, by="find_loc_id")
+# Q2004 soc of women musicians no location on page (does have wd)
+# Q4130 univ extension guild p2 caxton hall no location on page (except in text) and no wd
+# Q4029 women's institute - hq location might not be relevant
+# Q3775 westend mystery
+# Q2420 chelsea club no location on page (except in text) and no wd
+# Q2082 fabian soc no location on page (does have wd)
+
+```
+
+
+
+```{r}
+bn_lecturers_loc_linked_region |>
+  count(regionLabel) |>
+  inner_join(ons_uk_regions_map, by=c("regionLabel"="bn_name")) |>
+  ggplot(aes(geometry=geometry, fill=n)) +
+  geom_sf(colour="white") +
+  coord_sf() +
+  scale_fill_viridis_b() +
+  labs(fill="count", title="Heatmap of regional locations of lecturing positions")
+
+```
+
+
+
 
 
 ## Table

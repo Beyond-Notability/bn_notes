@@ -166,70 +166,11 @@ geo_bn_wd_locality <-
 #   left_join(bn_*_loc_geos, by="s_id")
 
 
-
-
-## spql ####
-
-## a few templates that may be regularly used 
-## NB use of <<values>> (with .open=<< and .close=>> in glue function), so {} in sparql don't clash with glue defaults.
-## bn_bnwd_values is created in bn_make_union() function
-
-## linked P2 locations. may occasionally get multis.
-bn_linked_p2_spql <-
-  'select distinct ?item ?itemLabel ?location ?locationLabel ?wd
-  where {
-    values ?item { <<bn_bnwd_values>> }
-  ?item bnwdt:P2 ?location .
-  optional {?location bnwdt:P117 ?wd .}
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
-  }' 
-
-
-## linked P33 admin territories. likely to get multis.
-bn_linked_p33_spql <-
-  'select distinct ?item ?itemLabel ?admin ?adminLabel ?wd
-  where {
-    values ?item { <<bn_bnwd_values>> }
-  ?item bnwdt:P33 ?admin .
-  optional { ?admin bnwdt:P117 ?wd .}
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
-  }'  
-
-
-
-## additional non-locality wd_geo/bn_geo if needed in analysis
-## though shouldn't need this now you've separated locality and wd_geo queries
-## keep it anyway, in case you decide not to fetch all wd_geo after all.
-
-## fetch wd_geo for a VALUES bnwd items (might be created with bn_make_union); will need to make glue_values first.
-## non-optional but beware of having too many items in the values list. 
-## seems to be able to handle several hundred, but probably depends how much data you're fetching/complexity of query...
-bn_get_wd_geo_spql <-
-    'SELECT distinct ?item ?itemLabel ?wd ?wd_geo 
-      WHERE {  
-      VALUES ?item { <<glue_values>> }
-      ?item bnwdt:P117 ?wd .
-      bind(iri(concat("http://www.wikidata.org/entity/", str(?wd))) as ?wikidata) .
-      SERVICE <https://query.wikidata.org/sparql> {
-           ?wikidata wdt:P625 ?wd_geo .
-       } # /wikidata service
-      SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
-      }
-      ORDER BY ?itemLabel' 
-
-
-
-## next step is to insert data in spql to make a sparql. along the lines of
-
-## sparql <-
-## data |>
-## filter(!is.na(item)) |> # if there are likely to be any NAs, get rid!
-## bn_make_union(item) |>
-## mutate_glue_sparql(spql)
-
-## query <- bn_std_query(sparql) |> make_bn_item_id(item)
-
-
+# 
+# 
+# ## spql ####
+# moved to std_queries.
+# 
 
 
 ## todo: areas ????

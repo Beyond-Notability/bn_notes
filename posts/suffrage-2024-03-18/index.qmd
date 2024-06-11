@@ -60,16 +60,11 @@ locations? will need more complex queries (which I'll work out for the lecturing
 
 ```{r}
 
-
-
 # sub_io is so you know what kind of thing sub_ is - can be event, role, organisaiton...
 
 # SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
 
 ##i think you'll have to fetch locations separately
-
-
-
 
 # sub io
 # - lose suffrage activity. 

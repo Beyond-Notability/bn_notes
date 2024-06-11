@@ -44,28 +44,29 @@ source(here::here("_R/std_queries.R"))
 ```{r}
 ##for beeswarms you only need dob not dod as well... unless you want to reconstruct missing dobs from dods? hmm.
 ## this is a quick query so i think just run it.
-bn_women_dob_sparql <-
-'SELECT distinct ?person ?date 
-WHERE {
-   ?person bnwdt:P3 bnwd:Q3 .
-  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
-  ?person bnwdt:P26 ?date .   
-}'
-
-bn_women_dob_query <-
-  bn_std_query(bn_women_dob_sparql) |>
-  make_bn_item_id(person) |>
-  select(-person) |>
-  make_date_year() |>
-  rename(dob=date, yob=year) |>
-  group_by(bn_id) |>
-  top_n(1, dob) |>
-  ungroup() 
+# bn_women_dob_sparql <-
+# 'SELECT distinct ?person ?date 
+# WHERE {
+#    ?person bnwdt:P3 bnwd:Q3 .
+#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
+#   ?person bnwdt:P26 ?date .   
+# }'
+# 
+# bn_women_dob_query <-
+#   bn_std_query(bn_women_dob_sparql) |>
+#   make_bn_item_id(person) |>
+#   select(-person) |>
+#   make_date_year() |>
+#   rename(dob=date, yob=year) |>
+#   group_by(bn_id) |>
+#   top_n(1, dob) |>
+#   ungroup() 
 # top_n for a few women with >1 dob...
 # some of these look like a year + more specific date. you only need year for this anyway... use top_n. if that's not enough, will need distinct(bn_id, yob) and top_n(yob)
+```
 
 
-
+```{r}
 # organised by (P109): union query for linked event pages or in quals, excluding human organisers. atm all are items.
 # slightly trimmed version to speed up query as you don't need claim . don't even really need ?person.
 
@@ -107,12 +108,10 @@ bn_organised_by_query <-
   make_bn_ids(c(organised_by, s)) ## |>
 #  select(-person) |>
  # rename(ppa=prop)
-```
 
 
 
 
-```{r}
 
 # path to CSV
 # bn_events_csv_file <- 
@@ -164,7 +163,7 @@ bn_women_events_query <-
 bn_women_events <-
 bn_women_events_query |>
   distinct(bn_id, personLabel, propLabel, ppaLabel, prop, ppa, s) |>
-  left_join(bn_women_dob_query, by="bn_id") |>
+  left_join(bn_women_dob_dod |> select(bn_id, yob=bn_dob_yr, dob=bn_dob), by="bn_id") |>
   left_join(bn_organised_by_query |> 
               # just in case you get another with multiple organisers
               group_by(s) |>
@@ -197,11 +196,10 @@ bn_women_events_query |>
 # qual_prop unchanged
 # qual_valueLabel (timestamps, text (incl society names)) unchanged?
 # qual_value (timestamps, Qs, text) unchanged?
-```
 
 
-```{r}
-# not saved (yet)
+
+
 # get instance of for qualifiers
 # i think it's better to get them separately esp as there are multis etc
 # problems adapting the query for events only... just get all for ppa for now and get moving
@@ -389,11 +387,8 @@ bn_women_events_of_dates <-
 #   relocate(s, .after = last_col())
 # 
 
-```
 
 
-
-```{r}
 
 ## even newer versions: of_org replaces use of of_value
 
@@ -533,7 +528,253 @@ bn_women_events_of_dates_types_all |>
 
 ```
 
+```{r}
 
+## of course this is more complicated than you wanted it to be.
+
+source(here::here("_R/mapping.R"))
+
+
+# use consolidated event org_id for locations? yes.
+# probably need to prioritise location ahead of any org matches, but worry about that after you've done matching
+# for some reason qual_location_value seems to be the ID, not the name...
+bn_events_locations <-
+bn_women_events_of_dates_types_all |>
+  distinct(bn_id, event_org, org_id, location_label=qual_location, location= qual_location_value,  s) 
+
+
+## which things to use for locations?
+## location; event_org id
+
+
+# pivot longer to put all potential locatables into a single find_loc col
+bn_events_loc_id_long <-
+  bn_events_locations |>
+  pivot_longer(c(location, org_id), names_to = "find_loc_type", values_to = "find_loc_id", values_drop_na = TRUE) |>
+  mutate(find_loc_label = case_when(
+    find_loc_type=="location" ~ location_label,
+    find_loc_type=="org_id" ~ event_org
+  )) |>
+  # remove any non Q items.
+  filter(str_detect(find_loc_id, "^Q\\d")) |>
+  distinct(bn_id, find_loc_type, find_loc_id, find_loc_label, s)
+
+# bn_make_union for VALUES
+# these must all be Q ids...
+bn_events_loc_id_values <-
+bn_events_loc_id_long |>
+  bn_make_union(find_loc_id) 
+
+
+
+# which find_loc_id items have io locality ####
+
+## questions for first run. 
+## - are there any arch.site/hist.house? may need an extra query 
+
+bn_p12_spql <-
+  'select distinct ?item ?itemLabel ?ioLabel
+  where {
+    values ?item { <<bn_bnwd_values>> }
+    ?item bnwdt:P12 ?io .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  }' 
+
+bn_events_p12_sparql <-
+  bn_events_loc_id_values |>
+  mutate_glue_sparql(bn_p12_spql)
+
+
+bn_events_p12_query <-
+  bn_std_query(bn_events_p12_sparql) |>
+  make_bn_ids(item)
+
+
+bn_events_p12 <-
+bn_events_p12_query |>
+  group_by(item, itemLabel) |>
+  arrange(ioLabel, .by_group = TRUE) |>
+  summarise(ios = paste(ioLabel, collapse = " | "), .groups = "drop_last" ) |>
+  ungroup() |>
+  left_join(
+  bn_events_p12_query |>
+  filter(ioLabel=="locality") |>
+    mutate(has_locality="y") |>
+    select(item, has_locality), by="item")
+
+
+## CHANGE needs checking
+# add locality to work_loc_id
+bn_events_loc_id_long_locality <-
+bn_events_loc_id_long |>
+  left_join(bn_events_p12, by=c("find_loc_id"="item")) 
+
+
+
+## set up IDs with io locality for p33 query. 
+bn_events_has_locality <-
+bn_events_loc_id_long |>
+  inner_join(bn_events_p12 |> filter(!is.na(has_locality)) , by=c("find_loc_id"="item")) |>
+  distinct(find_loc_id, find_loc_label) |>
+  mutate(p33_id=find_loc_id, p33_label=find_loc_label)
+
+
+
+## set up IDs without io locality for p2 queries.
+bn_events_not_locality_values <-
+bn_events_p12 |>
+  filter(is.na(has_locality)) |>
+  bn_make_union(item)
+
+
+# get p2 (with io) for non-locality quals ####
+
+# questions for first run
+# - do any p2 not have io locality?  if none, you don't need p2p2
+# - does p2p2 work for non locality?
+# - can run checks for P33 instead of P2, or p2p33, but very unlikely to get anything new.
+
+bn_p2_spql <-
+  'select distinct ?item ?itemLabel ?p2 ?p2Label ?p2_ioLabel ?p2p2Label ?p2p2
+  where {
+    values ?item { <<bn_bnwd_values>> }
+    ?item bnwdt:P2 ?p2 .
+      ?p2 bnwdt:P12 ?p2_io .
+      optional { ?p2 bnwdt:P2 ?p2p2 . }
+        
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+  }' 
+
+bn_events_p2_sparql <-
+  bn_events_not_locality_values |>
+  mutate_glue_sparql(bn_p2_spql)
+
+
+bn_events_p2_query <-
+  bn_std_query(bn_events_p2_sparql) |>
+  make_bn_ids(c(item, p2, p2p2)) |>
+  mutate(across(c(p2p2, p2p2Label), ~na_if(., "")))
+
+## check: are there any items with multi localities and what effect will collapsing them have.
+
+# choose p2/p2p2 for p33id
+bn_events_p2 <-
+bn_events_p2_query |>
+  mutate(p33_id = case_when(
+    p2_ioLabel=="locality" ~ p2,
+    .default = p2p2 
+  )) |>
+  mutate(p33_label = case_when(
+    p2_ioLabel=="locality" ~ p2Label,
+    .default = p2p2Label
+  )) |>
+  # distinct because there were some multi i/o
+  distinct(p33_id, p33_label, item, itemLabel) |> 
+  filter(!is.na(p33_id)) |> # 5 rows
+  rename(find_loc_id=item, find_loc_label=itemLabel) |>
+  # occasionally more than 1 location: pick 1
+  # a few; all are london.
+  group_by(find_loc_id) |>
+  top_n(1, row_number()) |>
+  ungroup()
+
+
+## check: how many potential locations have been omitted due to absence of P2/P33 info? If there are a lot it may be worth trying wikidata for admin territory/historic county/region data.
+
+# combine p2 with original io locality 
+bn_events_p33_ids <-
+bind_rows(
+  bn_events_p2 |> mutate(src="p2"),
+  bn_events_has_locality |> mutate(src="p33")
+  ) |>
+  arrange(find_loc_id) 
+
+
+## ADDED CHECK
+bn_events_p33_values <-
+bn_events_p33_ids |>
+  bn_make_union(p33_id)
+
+
+
+# # get UK region for the p33s.####
+# # the regions query already exists for this info you dingbat. it's not in the lecturers thing in notes. do you need it at all?
+# 
+# # spql
+bn_p33_spql <-
+  'SELECT distinct ?item ?itemLabel ?region ?regionLabel
+  WHERE {
+    VALUES ?item { <<bn_bnwd_values>> }
+    ?item bnwdt:P33* ?region .
+      ?region bnwdt:P12 bnwd:Q4207 .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+  }'
+
+# sparql.
+bn_events_p33_sparql <-
+  bn_events_p33_values |>
+  mutate_glue_sparql(bn_p33_spql)
+
+# query
+bn_events_p33_query <-
+  bn_std_query(bn_events_p33_sparql) |>
+  make_bn_ids(c(item, region))
+
+
+# add uk regions. dont use, can miss things.
+# check that any dropped are non-UK
+# check for any multis
+# bn_events_p33_ids_regions <-
+# bn_events_p33_ids |>
+#   inner_join(bn_regions_localities |> select(-itemLabel, -ioLabel), by=c("p33_id"="item")) 
+
+
+
+
+
+bn_events_loc_linked <-
+bn_events_loc_id_long_locality |>
+  left_join(bn_events_p33_ids |> select(find_loc_id, p33_id, p33_label), by=c("find_loc_id")) |>
+  # to prioritise find_loc locations 
+  mutate(link_type = case_when(
+    find_loc_type=="location" ~ 1,
+    .default = 2
+  )) |>
+  left_join(bn_events_p33_query |> select(item, region, regionLabel), by=c("p33_id"="item"))  |>
+  relocate(p33_id, p33_label, region, regionLabel)
+
+
+bn_events_loc_linked_region <-
+bn_events_loc_linked |>
+  filter(!is.na(region)) |>
+  group_by(s) |>
+  top_n(-1, link_type) |>
+  ungroup() 
+
+  # to check for more than 1 region. (after filtering NA region)
+# 176 :-/ are there any left in loc_linked_region?
+# bn_events_loc_linked |>
+#   filter(!is.na(region)) |>
+#   group_by(s) |>
+#   mutate(nd_region = n_distinct(region)) |>
+#   ungroup() |>
+#   filter(nd_region>1) 
+
+#0
+# bn_events_loc_linked_region |>
+#   group_by(s) |>
+#   mutate(nd_region = n_distinct(region)) |>
+#   ungroup() |>
+#   filter(nd_region>1) 
+
+# all non UK
+# bn_events_p33_ids |>
+#   anti_join(bn_regions_localities |> select(-itemLabel, -ioLabel), by=c("p33_id"="item"))
+
+# 116 distinct find_loc_id not located. some not UK
+# bn_events_loc_id_long_locality |>
+#    anti_join(bn_events_loc_linked |> filter(!is.na(region)), by=c("find_loc_id")) |> count(find_loc_label, find_loc_id)
+```
 
 
 
@@ -584,12 +825,12 @@ In a few cases, there's more than one possible way to structure a record of what
 ### updates
 
 - added more about event activities
+- added regions heatmap
 
 ### TODO
 
 - I may be able to make a few further improvements by pulling in some infrequently used qualifiers
-- Several events are related to suffrage activities (or other interesting subjects); nothing is being done with this kind of information at the moment.
-- I want to look at locations, but this will involve more complicated queries. (As a more general TODO, I really need to write out reusable code for fetching location data as reliably as possible.)
+- Several events are related to suffrage activities (or other interesting subjects); nothing is being done with this kind of information at the moment. [post added on suffrage]
 - Look into adding text annotations for data points of interest
 
 
@@ -1135,6 +1376,28 @@ bn_women_events_of_dates_types |>
 ```
 
 
+
+## Regions
+
+caveats
+
+- UK only
+- some positions don't have enough information recorded to look for a location
+- some potentially mappable posts in the UK fail to be mapped, because they didn't have location information to link to on their pages. 
+- it's possible in some cases to look for information on wikidata instead, but that tends not to add very much
+
+
+```{r}
+bn_events_loc_linked_region |>
+  count(regionLabel) |>
+  inner_join(ons_uk_regions_map, by=c("regionLabel"="bn_name")) |>
+  ggplot(aes(geometry=geometry, fill=n)) +
+  geom_sf(colour="white") +
+  coord_sf() +
+  scale_fill_viridis_c() +
+  labs(fill="count", title="Heatmap of regional locations of event attendances")
+
+```
 
 
 ## Activities
