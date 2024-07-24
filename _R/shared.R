@@ -49,6 +49,9 @@ library(reactable)
 
 # wikidata/sparql etc
 
+#SPARQL package (which used to be the standard go-to) has been removed from CRAN. 
+#Could install it anyway or even write a custom function using curl but SPARQLchunks seems to work fine.
+#remotes::install_github("aourednik/SPARQLchunks", build_vignettes = TRUE)
 library(SPARQLchunks) # can't get chunks working! but it's fine for inline queries.
 
 ## ARRRGHHH. 
@@ -148,6 +151,19 @@ make_display_date <-
 # this might be slightly different in _site project ?
 get_folder_one_above_root <- function(ext_folder){
   file.path(dirname(here::here()), ext_folder)  ## nb creates absolute path
+}
+
+
+
+
+# TIL how to take a DF (or other object) name and use in a column. eg for bind_rows.
+# deparse(substitute(.)) isn't pipable afaict... but it is if you put it in a function
+# NB object has to already exist! and may not work as expected if you use sthg like as_tibble before it
+
+obj_name_as_var <- function(d){
+  d_name <- deparse(substitute(d))
+  d |>
+    mutate(src = d_name)
 }
 
 

@@ -269,7 +269,6 @@ group by ?person ")) |>
 
 bn_women_vitals <-
 bn_women_list |>
-  select(-dob, -dod) |>
   #left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
   # oops not the already summarised bn_dob_dod here.
   left_join(bn_women_dobs |>

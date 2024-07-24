@@ -15,7 +15,7 @@ execute:
 
 ## Wikibase queries
 
-This brings together a number of different queries which are also used in [the summary table for all women](../notes/women-summary-browser.html).
+This brings together a number of different queries which are also used in [the summary table for all women](../../notes/women-summary-browser.html).
 
 Relevant wikibase queries
 
@@ -229,7 +229,7 @@ group by ?person ")) |>
 
 bn_women_vitals <-
 bn_women_list |>
-  select(-dob, -dod) |>
+  
   #left_join(bn_women_n_statements |> select(-person), by="bn_id") |>
   # don't use bn_women_dob_dod
   left_join(bn_women_dobs |> 

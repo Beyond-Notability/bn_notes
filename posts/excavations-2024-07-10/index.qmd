@@ -1,0 +1,1324 @@
+---
+title: "Networks part 1: Excavations"
+description: "Exploration of excavation networks"
+author: "Sharon Howard"
+date: "2024-07-22"
+date-modified: today
+categories: 
+  - ppa
+  - excavations
+  - networks
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(ggbeeswarm)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+source(here::here("_R/excavations-networks.R"))
+
+```
+
+
+
+
+
+```{r network-make-graphs}
+set.seed(240710)
+
+# everything. moved this one into .R 
+# network_all <-
+
+
+# by time periods
+
+# 1883-1914 (1918) - 39
+network_1900 <-
+  bn_excavations_grp_network(bn_excavations_people_participants_named, 1880, 38) |>
+  bn_centrality() |>
+  bn_clusters()
+
+network_1920 <-
+  bn_excavations_grp_network(bn_excavations_people_participants_named, 1920, 10)  |>
+  bn_centrality()  |>
+  bn_clusters()
+
+network_1930 <-
+  bn_excavations_grp_network(bn_excavations_people_participants_named, 1930, 10) |>
+  bn_centrality() |>
+  bn_clusters()
+
+# combine for faceting
+networks_periods <-
+  bind_graphs(
+    network_1900 |> obj_name_as_var(),
+    network_1920 |> obj_name_as_var(),
+    network_1930 |> obj_name_as_var()
+  ) |>
+  mutate(src = str_remove(src, "network_"))
+
+
+# # overlapping five year periods 1920-37
+# 
+# network_1920_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1920, 5)  |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# network_1922_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1922, 5) |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# network_1925_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1925, 5) |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# network_1927_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1927, 5) |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# network_1930_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1930, 5) |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# network_1932_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1932, 5) |>
+#   bn_centrality()
+# 
+# network_1935_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1935, 5) |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# # this won't be a complete five years but there will be plenty of them anyway!
+# network_1937_05 <-
+#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1937, 5) |>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# 
+# # combine five year periods and add src name col for faceting 
+# networks_1920_1937_05 <-
+# bind_graphs(
+#   network_1920_05 |> obj_name_as_var(),
+#   network_1922_05 |> obj_name_as_var(),
+#   network_1925_05 |> obj_name_as_var(),
+#   network_1927_05 |> obj_name_as_var(),
+#   network_1930_05 |> obj_name_as_var(),
+#   network_1932_05 |> obj_name_as_var(),
+#   network_1935_05 |> obj_name_as_var(),
+#   network_1937_05 |> obj_name_as_var()
+# )  |>
+#   mutate(src = str_remove(src, "network_"))
+
+
+
+
+# size of excavation
+
+# network_size_03 <-
+# bn_excavations_people_participants_named_size_03 |>
+#   bn_excavations_make_network()|>
+#   bn_centrality() |>
+#   bn_clusters()
+
+network_size_05 <-
+bn_excavations_people_participants_named_size_05 |>
+  bn_excavations_make_network()|>
+  bn_centrality() |>
+  bn_clusters()
+
+network_size_gt05 <-
+bn_excavations_people_participants_named_size_gt05 |>
+  bn_excavations_make_network()|>
+  bn_centrality() |>
+  bn_clusters()
+
+# network_size_10 <-
+# bn_excavations_people_participants_named_size_10 |>
+#   bn_excavations_make_network()|>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# network_size_20 <-
+# bn_excavations_people_participants_named_size_20 |>
+#   bn_excavations_make_network()|>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+# networks_size_lte <-
+#   bind_graphs(
+#     network_size_03 |> obj_name_as_var(),
+#     network_size_05 |> obj_name_as_var(),
+#     network_size_10 |>obj_name_as_var(),
+#     network_size_20 |> obj_name_as_var()
+#   ) |>
+#   mutate(src = str_remove(src, "network_"))
+
+
+# network_size_gt03 <-
+# bn_excavations_people_participants_named_size_gt03 |>
+#   bn_excavations_make_network()|>
+#   bn_centrality() |>
+#   bn_clusters()
+# 
+
+# network_size_gt10 <-
+# bn_excavations_people_participants_named_size_gt10 |>
+#   bn_excavations_make_network()|>
+#   bn_centrality() |>
+#   bn_clusters()
+
+
+# networks_size_gt <-
+#   bind_graphs(
+#     network_size_gt03 |> obj_name_as_var(),
+#     network_size_gt05 |> obj_name_as_var(),
+#     network_size_gt10 |>obj_name_as_var()
+#   ) |>
+#   mutate(src = str_remove(src, "network_"))
+
+
+networks_size_split05 <-
+  bind_graphs(
+    network_size_05 |>obj_name_as_var(),
+    network_size_gt05 |> obj_name_as_var()
+  ) |>
+  mutate(src = str_remove(src, "network_"))
+```
+
+
+
+
+```{r how-many}
+how_many_excavations <- bn_excavations_people_participants_named |> distinct(excavation) |> tally() |> pull(n)
+```
+
+## Notes
+
+total of ``r how_many_excavations`` excavations at time of writing (removed one excavation with date 1960)
+
+"participants" refers only to directors and members of excavations; there are occasionally other associated people who I've not tried to count or include in networks at present (eg facilitated by, collaborated with [I'm not sure if the latter ever adds any additional names or just repeats directors])
+
+Unnamed participants are dropped from network analysis; I'm also dropping a single individual whose gender is unknown.
+
+### notes on sources
+
+(via AT)
+
+- if a dig has multiple seasons there can be annual progress reports which are detailed about people etc and final summary reports with an overview but less detail
+- people's contributions are not exclusively at the dig itself; eg data analysis for reports (need to look at roles?)
+- a lot of the data has come from CAS reports which are not that detailed (though they are datable)
+	- more detail may be available in many cases but harder to track down
+
+
+### wikibase
+
+data from
+
+- excavation pages
+- director/member of excavation statements in person pages
+
+merged all distinct individuals from both sources and deduplicated 
+
+I haven't done much with the director/member distinction so far; if someone was recorded as both director and member on the same excavation (a rare occurrence), I kept only the director role.
+
+
+### dates
+
+- many excavations cover more than one year, though rarely by very much
+- dates can be in various places on the excavation page and/or in individual participant pages
+- sometimes individual participants' dates vary
+- a few excavations have date information only in the excavation description (where possible I've added this as a supplement)
+
+So I've simplified dates for analysis:
+
+- bring together all associated dates from the different sources 
+- record earliest and latest dates
+- use the earliest date throughout (`start year`), unless otherwise stated
+
+Occasionally this is a bit unsatisfactory; eg there is an excavation with dates from 1929 to 1934 which gets put in the 1920s group though obviously it's more 1930s really. An individual participant's earliest date might be later than the overall start date, though rarely by more than a year or so. 
+
+
+### todo
+
+- places (this may be a non-networky thing though)
+
+Things I probably won't try to do
+
+- change over time (in any detail), but I do have a method worked out for this and will try it on SAL elections
+- I thought about more complex analyses, eg a directed network (directors > members) or bimodal network (excavations / people), but I'm not convinced they'd justify the extra work
+
+
+## Overview
+
+### dates
+
+note via AT:
+
+> I think the spike in excavations in the late 1930s is down to excavations of roman sites being reported in the Journal of Roman Studies, which one of our interns was working on
+
+```{r excavations-years-bar}
+# [make sure you use excavation year not person year for these; col name varies because you have no sense]
+bn_excavations_people_participants |>
+  distinct(excavation, year1) |>
+  count(year1) |>
+  filter(!is.na(year1)) |>
+  ggplot(aes(year1, n)) +
+  geom_col() +
+  labs(x="start year", y="count", title = "Excavations 1883-1950")
+```
+
+I've experimented with splitting into periods (by start year), but it's been difficult to find meaningful/balanced buckets, apart from the breaks created by WW1 and WW2 (no excavations during WW1 and only a handful during WW2).
+
+- 1883-1914 ("1900")
+- 1920-29 ("1920")
+- 1930-39 ("1930") - nearly half of all excavations and more than half of participants
+- 1940-50 ("1950) - very few so mostly ignored
+
+
+```{r excavations-people-pies}
+# if you use _named you need e_year1 not year1
+bn_excavations_people_participants |>
+  distinct(excavation, year1) |>
+  filter(!is.na(year1)) |>
+  mutate(p = case_when(
+    year1 < 1918 ~ "1900",
+    year1 < 1930 ~ "1920",
+    year1 < 1940 ~ "1930",
+    year1 >= 1940 ~ "1950"
+  )) |>
+  count(p) |>
+# https://r-graph-gallery.com/piechart-ggplot2.html but added position= to geom_text.
+# this is a lot simpler than previous lolpie...
+  # count(gender)  |> 
+  mutate(prop = n / sum(n)*100) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=p)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = p), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("Excavations")  +
+  
+
+  
+bn_excavations_people_participants |>
+  select(excavation, year1) |>
+  filter(!is.na(year1)) |>
+  mutate(p = case_when(
+    year1 < 1918 ~ "1900",
+    year1 < 1930 ~ "1920",
+    year1 <= 1940 ~ "1930",
+    year1 > 1940 ~ "1950"
+  )) |>
+  count(p) |> 
+  mutate(prop = n / sum(n)*100) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=p)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = p), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("Excavation participants") 
+```
+
+[pie charts are frowned upon in the dataviz world these days, but I still like them where there is a small number of categories with very clear contrasts in proportions.]
+
+
+### participants per excavation 
+
+(including unnamed people)
+
+very wide variation in numbers; largest (Q2560) has 42 people but vast majority have only one or two (6 have more than 10; only four have more than 10 *named* participants).
+
+```{r}
+bn_excavations_people_participants  |>
+  count(excavation, sort = T) |>
+  ggplot(aes(n)) +
+  geom_histogram(binwidth = 1) +
+  labs(x="number of recorded participants", title = "Histogram of participants per excavation")
+```
+
+
+Four of the six excavations with more than 10 participants are in the 1930s, and the 1930s excavations tend to have more recorded participants.
+
+```{r}
+bn_excavations_people_participants |>
+  count(excavation, excavationLabel, year1) |>
+  filter(!is.na(year1)) |>
+  mutate( label = if_else(n>10, excavationLabel, "")) |>
+  ggplot(aes(year1, n)) +
+  geom_point(alpha=0.5) +
+  geom_text(aes(label = label), nudge_y=1.5, size=3.5) +
+  scale_x_continuous(breaks = seq(1880, 1950, 10)) +
+  labs(y="recorded participants", x="start year", title = "Dotplot of counts of participants, by year", caption = "darker dots = more than 1 excavation")
+
+# Q2560	Excavations at Maiden Castle	42		
+# Q90	Excavations at Colchester	31		
+# Q2026	Excavations at Verulamium	21		
+# Q565	Excavations at Saqqara	21		
+# Q3380	Excavations at Richborough	18	(16 named)
+```
+
+
+### excavations per person 
+
+(named participants only)
+
+Of the ``r  bn_excavations_people_participants_named |> distinct(person) |> tally() |> pull(n) `` named individuals in the network, only 80 (at time of writing) are recorded in more than one excavation. 
+
+22 people have no connections to anyone else (because they are the sole recorded participant in their excavation(s)) and a further 29 (most in a single excavation) are linked to only one other person.
+
+This makes for a very sparse network (which is far from unusual).
+
+```{r}
+bn_excavations_people_participants_named |>
+  count(person) |>
+  ggplot(aes(n)) +
+  geom_histogram(binwidth = 1) +
+  scale_x_continuous(breaks = c(2,4,6,8)) +
+  labs(title = "Histogram of excavations per named participant", x="excavations")
+```
+
+
+```{r}
+# might be better to do bar chart for excavations count from _named so you can get at role...
+bn_excavations_people_participants_named |>
+  filter(p_n_excavations>=3) |>
+  count(personLabel, p_n_excavations, role_short) |>
+  mutate(personLabel = fct_reorder(personLabel, p_n_excavations)) |>
+  ggplot(aes(n, personLabel, fill = role_short)) +
+  geom_col() +
+  scale_fill_tableau() +
+  scale_x_continuous(breaks = c(2,4,6,8)) +
+  labs(y=NULL, x="excavations", fill="role", title = "Individuals with at least 3 excavations, by role")
+```
+
+
+```{r}
+# is this worth segmenting per excavation_n? not sure how to make it work
+# network_all |>
+#   filter(degree>=40) |>
+#   #filter(all_excavations>3) |>
+#   as_tibble() |>
+#   mutate(personLabel = fct_reorder(personLabel, degree)) |>
+#   ggplot(aes(degree, personLabel)) +
+#   geom_col() +
+#   #scale_x_continuous(breaks=c(0,2,4,6,8) ) +
+#   labs(y=NULL, x="number of links", title="Individuals with at least 40 links")
+```
+
+
+
+
+
+## Network
+
+This is an "undirected" network. (A directed network is one where the connections between nodes are asymmetrical, eg senders and receivers of letters.) People are "nodes" and the links between them, created by being participants on the same excavation, are "edges". 
+
+I think it should be borne in mind for the men in the network that this is only reflecting their connectedness to *women*, and they might not look exactly the same in a full set from the same sources that included male only excavations (which are presumably the majority?).
+
+
+### degree-distribution plots
+
+The "degree" is a simple count of a node's links. Counting how many nodes have each degree can tell you something about the overall structure of the network, which can be visualised in degree-distribution plots.
+
+We'd quite like them to look something like these, in which a very small number of nodes have a lot of connections goes down (in a fairly straight line) to many nodes with a very small number of connections. This is a very common pattern in networks.
+
+![](robustness_degreeDist-1.png) 
+
+ ([source](https://doi.org/10.22148/001c.25943))
+
+
+This is what the degree-distribution plot for the whole excavation network actually looks like. Very very broadly speaking it's somewhere in the same zone (a few nodes with high degree, a lot of nodes with low degree). But it has bulges.
+
+```{r all-degree-distribution}
+network_all |>
+  as_tibble() |>
+  count(degree) |>
+  filter(degree !=0) |>
+  mutate(p = n/sum(n)) |>
+  ggplot(aes(x=degree, y=n)) +
+  geom_point() +
+   scale_x_log10() +
+   scale_y_log10() +
+  #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
+  geom_smooth(se=FALSE, formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
+  labs(y="number of people", title="Degree distribution for the whole network")
+```
+
+
+```{r}
+# ok notthis one but lolz
+# networks_1920_1937_05 |>
+#   as_tibble() |>
+#   count(degree, src) |>
+#   filter(degree!=0) |>
+#   group_by(src) |>
+#   mutate(p = n/sum(n)) |>
+#   ungroup() |>
+#   ggplot(aes(degree, n)) +
+#   geom_point(alpha=0.5)  +
+#     scale_x_log10() +
+#    scale_y_log10() +
+#   #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
+#   geom_smooth(se=FALSE, formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
+#     facet_wrap(~src, scales = "free", ncol = 4)
+```
+
+By period (excluding the handful of 1940s excavations). 
+
+The 1900s set is too small for any statistical analysis to be meaningful. The 1920s are a bit weird. The 1930s look much the same as the overall picture (considering they form the bulk of it, not surprising).
+
+```{r}
+networks_periods |>
+  as_tibble() |>
+  count(degree, src) |>
+  filter(degree!=0) |>
+  group_by(src) |>
+  mutate(p = n/sum(n)) |>
+  ungroup() |>
+  ggplot(aes(degree, n)) +
+  geom_point(alpha=0.5)  +
+  scale_x_log10() +
+  scale_y_log10() +
+  #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
+  geom_smooth(se=FALSE, formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
+    facet_wrap(~src, scales = "free", ncol = 3) +
+  labs(y="number of people", title = "Degree distribution for sub networks by period")
+```
+
+A different kind of split, by number of participants per excavation. Interestingly, the distribution of excavations with up to 5 people looks much more like the "expected" pattern. The bulginess is in the larger excavations
+
+```{r}
+networks_size_split05 |>
+  as_tibble() |>
+  count(degree, src) |>
+  filter(degree!=0) |>
+  group_by(src) |>
+  mutate(p = n/sum(n)) |>
+  ungroup() |>
+  ggplot(aes(degree, n)) +
+  geom_point(alpha=0.5)  +
+    scale_x_log10() +
+   scale_y_log10() +
+  #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
+  geom_smooth(formula = y~x, colour="cyan4", lty=2, linewidth=0.7, se=FALSE) +
+    facet_wrap(~src, scales = "free", ncol = 2) +
+  labs(y="number of people", title = "Degree distribution for sub networks by size")
+```
+
+
+
+
+```{r}
+##Comparing excavation sizes up to 3, up to 5, up to 10 and up to 20. 
+# networks_size_lte |>
+#   as_tibble() |>
+#   count(degree, src) |>
+#   filter(degree!=0) |>
+#   group_by(src) |>
+#   mutate(p = n/sum(n)) |>
+#   ungroup() |> #arrange(n, degree)
+#   ggplot(aes(degree, n)) +
+#   geom_point(alpha=0.5)  +
+#   scale_x_log10() +
+#   scale_y_log10() +
+#   #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
+#   geom_smooth(se=FALSE, method = "loess", formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
+#     facet_wrap(~src, scales = "free", ncol = 2)  +
+#   labs(y="number of people")
+
+```
+
+I think this is happening because the large excavations have quite a lot of people who *only* appear in those large excavations, often in just one. If there are (for example) 20 people on an excavation and 18 of them are *only* recorded on that excavation, the 18 will all have degree of 18. Notably, the single larger 1920s excavation, Richborough (Q3380), has 17 participants and only three of them appear on any other excavation. (The decade as a whole has only 79 named participants in 43 excavations.)
+
+This is one of the reasons why simply counting links between nodes in a network is a limited measure; it can be useful, like this, to get a picture of the network as a whole but misleading for understanding individuals within the network.
+
+```{r}
+# bn_excavations_people_participants_named |>
+#   filter(p=="1920") |> count(excavation)
+```
+
+
+```{r}
+# what is it i want to do here...???? show if 14/17 singletons at richborough is disproportionate (cf other large excavations)
+# bn_excavations_people_participants_named |> 
+#   filter(excavation_n>10) |>
+#   #count(excavation, excavation_n, p_n_excavations)|> arrange(excavation, n) |>
+#   ggplot(aes(p_n_excavations, excavation_n)) +
+#   geom_point()
+  #filter(excavation=="Q3380")
+```
+
+
+
+## Highly connected individuals
+
+The limitations of counting links is why a number of different "centrality" measures have been developed in network analysis. These heatmaps compare rankings for four of the most commonly used:
+
+- degree (how many connections a node has)
+- betweenness (how well a node connects other nodes)
+- eigenvector (how close a node is to well-connected nodes)
+- harmonic closeness (on average, how close a node is to every other node in the network)
+
+(I'm using rankings because the measures produce very different sorts of scores which are not directly comparable.)
+
+
+```{r cunningtons}
+# network_all |>
+#   activate(edges) |>
+#   filter(from %in% c(206, 208) | to %in% c(206, 208)) |>
+#   as_tibble() 
+# bn_excavations_people_participants_named  |>
+#   filter(person %in% c("Q434", "Q471"))
+```
+
+
+Top ten rankings are coloured and other rankings are in grey. The most striking thing here is just how much they can vary. Only one person (Tessa Verney Wheeler) is in the top ten on every measure.
+
+An interesting absence is Margaret Murray who is recorded in 7 excavations (the same number as Mortimer Wheeler) but she has only 18 connections and her highest ranking is at 22 [betweenness]. 
+
+Also perhaps worth noting that Maud and B.H. Cunnington are absolutely nowhere in any rankings in spite of being recorded on more excavations than anyone else (9), because they only connect to each other. That may reflect the sources too, given that most of their excavations were pre-WW1, though I [see](https://beyondnotability.org/biographical/maud-cunnington-part-1/) that Maud had a reputation for being "difficult".
+
+
+```{r all-top-ten-heatmap}
+network_centrality_top_r_plus(network_all, 10) |>
+  gg_centrality_heatmap("top ranked (whole network)") +
+  scale_fill_viridis_b(breaks=c(2,4,6,8,10), na.value = "grey") 
+```
+
+
+Because there's so much variation I hesitated over doing averages of the rankings; I've tried out a boxplot combined with beeswarm. It's possibly a bit odd looking (lol) but I quite like it.  
+
+It turns out that at the top end of the chart (it's been sorted by median average) there's quite a bit of consistency; for 2 to 10 the lowest rankings are in the 20s.  
+
+
+```{r all-top-ten-averages}
+network_centrality_top_r_plus(network_all, 10) |>
+  group_by(person) |>
+  mutate(sort = median(rank)) |>
+  ungroup() |>
+  #arrange(sort)
+  mutate(centrality = str_remove(centrality, "_rank")) |>
+  mutate(personLabel = fct_reorder(personLabel, -sort)) |>
+  # With categorical y-axis
+  ggplot(aes(rank, personLabel)) + 
+  geom_boxplot(show.legend = F, colour="grey", outliers = F) +
+  geom_beeswarm(aes(colour = centrality)) +
+  #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+  scale_colour_ptol() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, title = "boxplot of top ranked individuals (whole network)")
+```
+
+
+
+```{r}
+## So the same thing  but restricted to the overall top 10. what a PITA
+# network_centrality_top_r_plus(network_all, 10) |>
+#   group_by(person) |>
+#   # mutate here because you want to show each point
+#   mutate(sort = median(rank)) |>
+#   ungroup() |>
+#   # need rank for each person or some other way to filter the overall top ten.
+#   # this seems a bit clunky...
+#   inner_join(
+#     network_centrality_top_r_plus(network_all, 10) |>
+#       group_by(person) |>
+#       summarise(overall_rank = median(rank)) |>
+#       ungroup() |>
+#       mutate(overall_rank = min_rank(overall_rank) ) , by="person"
+#   ) |>
+#   #arrange(overall_rank)
+#   filter(overall_rank <= 10) |>
+#   mutate(centrality = str_remove(centrality, "_rank")) |>
+#   mutate(personLabel = fct_reorder(personLabel, -sort)) |>
+#   # With categorical y-axis
+#   ggplot(aes(rank, personLabel)) + 
+#   geom_boxplot(show.legend = F, colour="grey", outliers = F) +
+#   geom_beeswarm(aes(colour = centrality)) +
+#   #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+#   scale_colour_tableau() +
+#   theme(legend.position = "bottom") +
+#   labs(y=NULL, title = "boxplot of top ranked individuals (whole network)")
+```
+
+
+
+```{r}
+# network_centrality_top_r_plus(network_all, 10) |>
+#   gg_centrality_heatmap("top ranked (1930s)") +
+#   scale_fill_viridis_b(breaks=c(2,4,6,8,10), na.value = "grey") 
+```
+
+Trying the beeswarm/boxplots for sub-networks
+
+1930s
+
+```{r}
+network_centrality_top_r_plus(network_1930, 10) |>
+  group_by(person) |>
+  mutate(sort = median(rank)) |>
+  ungroup() |>
+  mutate(centrality = str_remove(centrality, "_rank")) |>
+  mutate(personLabel = fct_reorder(personLabel, -sort)) |>
+  # With categorical y-axis
+  ggplot(aes(rank, personLabel)) + 
+  geom_boxplot(show.legend = F, colour="grey", outliers = F) +
+  geom_beeswarm(aes(colour = centrality)) +
+  #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+  scale_colour_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, title = "boxplot of top ranked (1930s)")
+```
+
+1920s
+
+This decade looks really weird. (Miss Hobling, Aileen Fox and Joscelyn Plunket Bushe-Fox are the three Richborough people who are on at least one other excavation.)
+
+```{r}
+network_centrality_top_r_plus(network_1920, 10) |>
+  group_by(person) |>
+  mutate(sort = median(rank)) |>
+  ungroup() |>
+  mutate(centrality = str_remove(centrality, "_rank")) |>
+  mutate(personLabel = fct_reorder(personLabel, -sort)) |> # don't use fct_rev here
+  # With categorical y-axis
+  ggplot(aes(rank, personLabel)) + 
+  geom_boxplot(show.legend = F, colour="grey", outliers = F) +
+  geom_beeswarm(aes(colour = centrality)) +
+  #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+  scale_colour_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, title = "boxplot of top ranked (1920s)")
+```
+
+Pre-WW1
+
+Again, a bit doubtful but does at least put some individuals you'd expect at the top. Margaret Murray's back! I expanded it to the top 12 just to see where Petrie had got to.
+
+```{r}
+network_centrality_top_r_plus(network_1900, 12) |>
+  group_by(person) |>
+  mutate(sort = median(rank)) |>
+  ungroup() |>
+  mutate(centrality = str_remove(centrality, "_rank")) |>
+  mutate(personLabel = fct_reorder(personLabel, -sort)) |>
+  # With categorical y-axis
+  ggplot(aes(rank, personLabel)) + 
+  geom_boxplot(show.legend = F, colour="grey", outliers = F) +
+  geom_beeswarm(aes(colour = centrality)) +
+  #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+  scale_colour_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, title = "boxplot of top 10 rankings (pre WW1)")
+```
+
+
+### the big four problem
+
+So far, so weird. The "big four" excavations (Maiden Castle, Colchester, Verulamium and Richborough) are really causing all sorts of problems here.
+While I would assume that they really were important and big excavations - hence the existence of detailed records compared to many others - they're having some very disproportionate effects. 
+This is most obvious for Richborough in the 1920s, given that there's more data generally for the 1930s. But not confined to it.
+
+To go back to the top 10s, several of these apparently high ranked individuals *only* appear in one or more of the big excavations. This may not necessarily be "wrong"; Wikipedia tells me that Hugh O'Neil really was an important figure in British archaeology. Huntley S Gordon, on the other hand, doesn't even seem to be listed in the ADS library.
+
+
+```{r}
+# Q2560	Excavations at Maiden Castle	42		
+# Q90	Excavations at Colchester	31		
+# Q2026	Excavations at Verulamium	21		
+# Q565	Excavations at Saqqara	21		
+# Q3380	Excavations at Richborough	18	(16 named)
+##the number of excavations recorded for the top individuals varies quite a bit.
+# network_centrality_top_r_plus(network_all, 10) |>
+#   group_by(person, personLabel, gender) |>
+#   summarise(median_rank = median(rank), .groups = "drop_last") |>
+#   ungroup() |>
+#   inner_join(
+#     network_all |>
+#       as_tibble() |>
+#       select(person, all_excavations), by="person"
+#   ) |>
+#   arrange(median_rank, all_excavations) |>
+#   kable() |>
+#   kable_styling()
+```
+
+I don't want to drop the big excavations entirely. But could I remove some of their data to make them more consistent with the level of recording we have for other excavations?
+
+One thing it's easy to do is simply take out those people who do not appear in *any* other excavations and see what happens. (Yes, this is probably a really monstrous idea.)
+
+
+```{r slice-big-four}
+big_four <- c("Q2560", "Q90", "Q2026", "Q3380")
+
+# everything apart from the big four
+excl_big_four <-
+  bn_excavations_people_participants_named |>
+  filter(!excavation %in% big_four) |>
+  select(person, excavation)
+
+
+bn_excavations_people_participants_named_slice <-
+bn_excavations_people_participants_named |>
+  anti_join(
+    bn_excavations_people_participants_named |>
+      # only people in the big four
+      filter(excavation %in% big_four) |>  # 110
+      # of those, who are not in any others?
+      anti_join(excl_big_four, by="person")  # 71
+    , by="person"
+  )
+# to double check this works, look at the handful of people with n>1
+# do you get the same number of rows after join back to full table... 
+# bn_excavations_people_participants_named |>
+#   # people in big four only
+#   filter(excavation %in% big_four) |>  # 110
+#   ## of those in big four, who are not in others?
+#   anti_join(excl_big_four, by="person") |> # 71
+#   distinct(person) |>
+#   inner_join(bn_excavations_people_participants_named, by="person") # is this also 71
+
+
+
+network_slice <-
+bn_excavations_people_participants_named_slice |>
+  bn_excavations_make_network()|>
+  bn_centrality() |>
+  bn_clusters()
+```
+
+
+
+```{r}
+# network_slice |>
+#   as_tibble() |>
+#   count(degree) |>
+#   filter(degree !=0) |>
+#   mutate(p = n/sum(n)) |>
+#   ggplot(aes(x=degree, y=n)) +
+#   geom_point() +
+#    scale_x_log10() +
+#    scale_y_log10() +
+#   #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
+#   geom_smooth(se=FALSE, formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
+#   labs(y="number of people")
+```
+
+
+```{r}
+network_centrality_top_r_plus(network_slice, 10) |>
+  gg_centrality_heatmap("top ranked after removals") +
+  scale_fill_viridis_b(breaks=c(2,4,6,8,10), na.value = "grey") 
+```
+
+(In this version Tessa and Mortimer have identical median average, though Tessa still comes out top by mean.)
+
+```{r}
+network_centrality_top_r_plus(network_slice, 10) |>
+  mutate(centrality = str_remove(centrality, "_rank")) |>
+  group_by(person) |>
+  mutate(sort = median(rank), m=mean(rank)) |>
+  ungroup() |>
+  mutate(personLabel = fct_reorder(personLabel, -sort)) |>
+  # With categorical y-axis
+  ggplot(aes(rank, personLabel)) + 
+  geom_boxplot(show.legend = F, colour="grey", outliers = F) +
+  geom_beeswarm(aes(colour = centrality)) +
+  #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+  scale_colour_ptol() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, title = "boxplot of top ranked individuals after removals")
+```
+
+
+
+This isn't necessarily a more accurate picture of the most connected people in the network, but it is arguably a more useful one.
+
+
+### circles
+
+Some very simple graphs of the links for the top ranked. These are just their immediate connections (I can't at the moment quite get a cleverer neighbourhood graph to work properly; will update if I can work out the problem).
+
+The focus person is the centre node; the length and weight of edges represent the number of connections (shorter and darker = more connections). Colour is used for gender.
+
+```{r}
+# network_centrality_top_r_plus(network_all, 10) |>
+#   group_by(person) |>
+#   mutate(sort = median(rank)) |>
+#   ungroup() |>
+#   distinct(person, personLabel, sort) |>
+#   arrange(sort)
+# 
+# Q145	Tessa Verney Wheeler	3.0		
+# Q147	Thomas Davies Pryce	6.0		
+# Q136	Mortimer Wheeler	6.5		
+# Q2549	Huntley S. Gordon	6.5		
+# Q1426	Bryan Hugh St John O'Neil	7.0		
+# Q2550	Delia Parker	7.0		
+# Q2551	Margaret Clay	7.0		
+# Q2555	Ione Gedye	7.0		
+# Q2554	Nancy Champion de Crespigny	7.5		
+# Q1118	Margaret Eleanore Murray Threipland	8.0	
+
+
+```
+
+```{r}
+# network_centrality_top_r_plus(network_slice, 10) |>
+#   group_by(person) |>
+#   mutate(sort = median(rank)) |>
+#   ungroup() |>
+#   distinct(person, personLabel, sort) |>
+#   arrange(sort)
+# Q136	Mortimer Wheeler	4.0		
+# Q145	Tessa Verney Wheeler	4.0		
+# Q2554	Nancy Champion de Crespigny	6.0		
+# Q1118	Margaret Eleanore Murray Threipland	7.0		
+# Q1637	Stuart Piggott	8.0		
+# Q97	Christopher Hawkes	9.5		
+# Q710	Rachel Maxwell Hyslop	10.0		
+# Q809	Barbara Parker	10.0		
+# Q1715	Alison Nugent Young	11.5		
+# Q713	Joan Mabel Frederica du Plat Taylor	11.5
+```
+
+
+
+
+Here's Tessa Verney Wheeler's "circle" including everyone.
+
+```{r}
+# Tessa Verney Wheeler's circle.
+# Q145
+bn_one_person_circle(network_all, "Q145") |>
+  bn_circle_ggraph()
+  # ggraph("focus", focus=focus_id, weights=1/weight) +
+  # geom_edge_link(aes(alpha=weight), show.legend = F) +
+  # geom_node_point(size=2,  aes(colour=gender), show.legend = F)+
+  # geom_node_text(aes(label = personLabel, colour=gender), size=3.5, show.legend = F, repel = T, max.overlaps=25)+
+  # coord_fixed() + # circular instead of oval
+  # scale_colour_tableau() +
+  # theme_graph()
+```
+
+And after removing the big-four-only individuals.
+
+```{r}
+bn_one_person_circle(network_slice, "Q145") |>
+  bn_circle_ggraph()
+```
+
+
+Same for Mortimer Wheeler
+
+```{r}
+bn_one_person_circle(network_all, "Q136") |>
+  bn_circle_ggraph()
+```
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q136") |>
+  bn_circle_ggraph()
+```
+
+
+For reference, this is the circle for Hugh O'Neil. (I'm not going to do any other 'removed' individuals because (guess what!) they're virtually the same.)
+
+```{r}
+bn_one_person_circle(network_all, "Q1426") |>
+  bn_circle_ggraph()
+```
+
+```{r}
+# huntley
+# bn_one_person_circle(network_all, "Q2549") |>
+#   bn_circle_ggraph()
+```
+
+The rest are the "removed" versions only, but I can do the full ones if wanted.
+
+```{r}
+bn_one_person_circle(network_slice, "Q2554") |>
+  bn_circle_ggraph()
+
+# Q2554	Nancy Champion de Crespigny	6.0		
+# Q1118	Margaret Eleanore Murray Threipland	7.0		
+# Q1637	Stuart Piggott	8.0		
+# Q97	Christopher Hawkes	9.5		
+# Q710	Rachel Maxwell Hyslop	10.0		
+# Q809	Barbara Parker	10.0		
+# Q1715	Alison Nugent Young	11.5		
+# Q713	Joan Mabel Frederica du Plat Taylor	11.5
+```
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q1118") |>
+  bn_circle_ggraph()
+```
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q1637") |>
+  bn_circle_ggraph()
+```
+
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q710") |>
+  bn_circle_ggraph()
+```
+	
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q809") |>
+  bn_circle_ggraph()
+```
+
+
+Other circles of possible interest...
+
+(I can do others on request)
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q1909") |>
+  bn_circle_ggraph()
+```
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q569") |>
+  bn_circle_ggraph()
+```
+
+
+```{r}
+bn_one_person_circle(network_slice, "Q1119") |>
+  bn_circle_ggraph()
+```
+
+
+
+
+## Clusters 
+
+
+
+```{r}
+people_top_ten_excavations <-
+network_centrality_top_r_plus(network_all, 10) |>
+  group_by(person) |>
+  summarise(median_rank = median(rank), .groups = "drop_last") |>
+  ungroup() |>
+  inner_join(
+    bn_excavations_people_participants_named |>
+      select(person, personLabel, excavation, excavationLabel, gender, p_n_excavations, excavation_n), by="person"
+  )  
+# make a 1/0 matrix then turn it back into a DF for ggplot.
+people_top_ten_excavations_matrix <-
+  with(people_top_ten_excavations, table(personLabel, excavation)) |>
+  as_tibble() 
+```
+
+A closer look at the excavations for the top ten rankings (all individuals again).
+
+[There isn't space for excavation names on the x axis here. Q2026 = Verulamium; Q2560 = Maiden Castle; Q90=Colchester; Q3380=Richborough.]
+
+The overlap between Verulamium and Maiden Castle is very obvious. But Colchester accounts for only a handful of individuals in the set. Richborough also has only a couple. So, notwithstanding the problems with sources, this suggests there are some distinct clusters or communities in the network. 
+
+```{r}
+
+ with(people_top_ten_excavations, table(personLabel, excavation)) |>
+  as_tibble() |>
+  inner_join(people_top_ten_excavations |> distinct(personLabel, median_rank), by=c("personLabel")) |>
+  #distinct(personLabel, excavation, median_rank)
+  mutate(personLabel = fct_reorder(personLabel, -median_rank)) |>
+  ggplot(aes(excavation, personLabel)) +
+  geom_tile(aes(fill=n), show.legend = F) +
+  theme(axis.text.x = element_text(angle=90)) +
+  labs(y=NULL)
+```
+
+
+A network graph of the whole network is otherwise not very revealing but also hints at some distinct clusters.
+
+```{r}
+set.seed(240710)
+  ggraph(network_all, "nicely") +
+    geom_edge_link(alpha=0.3) +
+    geom_node_point(size=1)+
+    theme_graph()
+```
+
+But (of course!) there are multiple possible ways to identify clusters in a network. I tried out a few; many of them tended to give quite similar results. But I need to do more reading on the differences. Here I use one called *edge betweenness* (mainly because I think I at least understand the idea).
+
+> [The idea behind this method](https://r.igraph.org/reference/cluster_edge_betweenness.html) is that the betweenness of the edges connecting two communities is typically high, as many of the shortest paths between vertices in separate communities pass through them. The algorithm successively removes edges with the highest betweenness, recalculating betweenness values after each removal. This way eventually the network splits into two components, then one of these components splits again, and so on, until all edges are removed. 
+network graph highlighting the 8 largest community clusters. The resulting hierarhical partitioning of the vertices can be encoded as a dendrogram.
+
+
+highlighting the six largest clusters
+
+```{r}
+# apparently can use a dendrogram for this? hmm, wants a directed graph.
+set.seed(240710)
+network_all |>
+  ggraph("nicely") +
+    geom_edge_link(alpha=0.3) +
+    geom_node_point(size=1, shape=21) +
+    geom_node_point(size=1, aes(filter=as.integer(e_btwnness)<=6, colour=e_btwnness)) +
+  scale_colour_tableau() +
+    theme_graph() +
+  labs(colour="group")
+```
+
+
+```{r}
+# big-four-only individuals removed
+# 
+# (Clusters look smaller and less clearly defined.)
+# set.seed(240710)
+# network_slice |>
+#   ggraph("nicely") +
+#     geom_edge_link(alpha=0.3) +
+#     geom_node_point(size=1, shape=21) +
+#     geom_node_point(size=1, aes(filter=as.integer(e_btwnness)<=8, colour=e_btwnness)) +
+#     scale_colour_tableau() +
+#     theme_graph()
+```
+
+
+
+Who are the members of these possible clusters?
+
+This is where an interactive zoomable version of the graphs might come in useful... I'll think about that. 
+
+
+```{r}
+network_all_clusters <-
+network_all |>
+  as_tibble()  |>
+  select(person, personLabel, gender, year1, year2, e_btwnness, all_excavations) |>
+  # get median rank for sorting
+  inner_join(
+    network_all |>
+    as_tibble() |>
+    select(person, degree_rank, betweenness_rank, eigen_rank, harmonic_rank) |>
+    pivot_longer(ends_with("_rank"), names_to = "centrality", values_to = "rank")  |>
+  group_by(person) |>
+  summarise(median_rank = median(rank), .groups = "drop_last") |>
+  ungroup() , by="person"
+  ) |>
+  # get excavations info
+  inner_join(
+    bn_excavations_people_participants_named |>
+      group_by(person) |>
+      arrange(excavation, .by_group = T) |>
+      summarise(excavations = paste(excavation, collapse = " ")) |>
+      ungroup(), by="person"
+  ) |>
+  relocate(all_excavations, .after = median_rank) |>
+  arrange(median_rank) 
+
+
+cluster_reactable <- function(data, grp){
+  
+filtered <-
+data |>
+  filter(e_btwnness==grp) 
+
+reactable(
+  filtered,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 10,
+  #groupBy = "personLabel",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 90),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    person = colDef(name="id"),
+    personLabel =colDef(maxWidth = 170, name="name",  
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', filtered$person[index], value)
+      })   ,
+   #personLabel = colDef(maxWidth = 150, name="name"),
+   gender = colDef(maxWidth = 90, name="gender"),
+   year1 = colDef(maxWidth = 90, name = "earliest year"),
+   year2 = colDef(maxWidth = 90, name="latest year"),
+   e_btwnness = colDef(show = F),
+   # betweenness_rank = colDef(show=F),
+   # degree = colDef(show=F),
+   median_rank = colDef(maxWidth = 90, name="median rank"),
+   all_excavations = colDef(maxWidth = 90, name="n excav"),
+   excavations = colDef(maxWidth = 220)
+    
+  )
+)
+
+}
+```
+
+Cluster 1 - Team Wheeler
+
+```{r}
+cluster_reactable(network_all_clusters, "1")
+```
+
+
+Cluster 2 - a lot of people in this cluster are in a single excavation, many but not all at Colchester (it looks odd to me that such a large excavation should seem so isolated, regardless of problems with sources).
+
+```{r}
+cluster_reactable(network_all_clusters,"2")
+```
+
+Cluster 3 - clear chronological difference 
+
+```{r}
+cluster_reactable(network_all_clusters,"3")
+```
+
+Cluster 4 - all Richborough 
+
+```{r}
+cluster_reactable(network_all_clusters,"4")
+```
+
+Cluster 5
+
+```{r}
+cluster_reactable(network_all_clusters,"5")
+```
+
+Cluster 6
+
+```{r}
+cluster_reactable(network_all_clusters,"6")
+```
+
+
+## Tables
+
+See [excavations browser](../../notes/excavations-browser.html) for full people and excavations list.
+
+
+### Nodes
+
+
+```{r}
+table_nodes <-
+network_all |>
+  as_tibble() |>
+  select(person, personLabel, gender, year1, year2, all_excavations, e_btwnness) |>
+  left_join(
+    network_all |>
+    as_tibble() |>
+    select(person, degree_rank, betweenness_rank, eigen_rank, harmonic_rank) |>
+    pivot_longer(ends_with("_rank"), names_to = "centrality", values_to = "rank")  |>
+  group_by(person) |>
+  summarise(median_rank = median(rank), .groups = "drop_last") |>
+  ungroup() , by="person") |>
+  mutate(across(c(e_btwnness), as.integer))
+
+
+reactable(
+  table_nodes,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 50,
+  #groupBy = "personLabel",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 90),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    person = colDef(name="id"),
+    # personLabel =colDef(maxWidth = 150, name="name",  
+    #   html = TRUE,
+    #   cell = function(value, index) {
+    #     sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', filtered$person[index], value)
+    #   })   ,
+   personLabel = colDef(maxWidth = 180, name="name"),
+   gender = colDef(name="gender"),
+   year1 = colDef(name = "earliest year"),
+   year2 = colDef(name="latest year"),
+   e_btwnness = colDef(name="cluster"),
+   median_rank = colDef(name="median rank"),
+   all_excavations = colDef(name="n excav")
+  )
+)
+```
+
+### Edges
+
+Because the network is undirected "from" and "to" don't have any special meaning. There is a unique pair of people per row and "weight" = the number of links between the pair.
+
+A person can appear in either column, so if you want to look for anyone you should use the search box rather than column filters.
+
+```{r}
+table_edges <-
+network_all |>
+  activate(edges) |>
+  #ahhhhh think i'm getting the hang of this now. should i go back to have another look at the earlier efforts?
+  mutate(from_id = .N()$person[from], to_id=.N()$person[to]) |>
+  mutate(from_name = .N()$personLabel[from], to_name=.N()$personLabel[to]) |>
+  as_tibble() |>
+  select(from_id, from_name, to_id, to_name, weight)
+
+
+
+reactable(
+  table_edges,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 50,
+  #groupBy = "personLabel",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 90),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+   from_id = colDef(name="from"),
+   to_id = colDef(name="to"),
+   from_name = colDef(maxWidth = 220, name="from name"),
+   to_name = colDef(maxWidth = 220, name="to name")
+  )
+)
+```
+
+
+
+

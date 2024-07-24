@@ -301,10 +301,8 @@ bn_women_events_time_precision_query <-
 # read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
 #bn_std_query(bn_women_events_time_precision_sparql) # not converted
 #read_csv(bn_events_timeprecision_csv_file) # converted
-```
 
 
-```{r}
 bn_women_events_dates <-
   bn_women_events_time_precision_query |>
   # you need to keep the date as well as the precision when you pivot, to join. c() in values_from
@@ -533,7 +531,6 @@ bn_women_events_of_dates_types_all |>
 ## of course this is more complicated than you wanted it to be.
 
 source(here::here("_R/mapping.R"))
-
 
 # use consolidated event org_id for locations? yes.
 # probably need to prioritise location ahead of any org matches, but worry about that after you've done matching
@@ -825,7 +822,8 @@ In a few cases, there's more than one possible way to structure a record of what
 ### updates
 
 - added more about event activities
-- added regions heatmap
+- added regions heatmap; and a heatmap excluding London
+- added tables of the counts in the heatmap
 
 ### TODO
 
@@ -1383,9 +1381,16 @@ caveats
 
 - UK only
 - some positions don't have enough information recorded to look for a location
-- some potentially mappable posts in the UK fail to be mapped, because they didn't have location information to link to on their pages. 
+- some potentially mappable events in the UK fail to be mapped, because they didn't have location information to link to on their pages. 
 - it's possible in some cases to look for information on wikidata instead, but that tends not to add very much
 
+locations come from one of three possible sources:
+
+- look for a location P2 for the event on the person page if there is one
+- if there isn't, look for a location P2 on the event page (for named events)
+- if neither of the above, look for a location P2 on the page of the organisation responsible for the event (mainly for repeating meetings etc)
+
+The third choice in some cases might not be completely accurate, but only a minority of events have one of the first two. The organisation location should normally be accurate enough for aggregated analysis.
 
 ```{r}
 bn_events_loc_linked_region |>
@@ -1397,6 +1402,43 @@ bn_events_loc_linked_region |>
   scale_fill_viridis_c() +
   labs(fill="count", title="Heatmap of regional locations of event attendances")
 
+```
+
+
+
+```{r}
+bn_events_loc_linked_region |>
+  count(regionLabel) |>
+  filter(regionLabel != "London (region)") |>
+  inner_join(ons_uk_regions_map, by=c("regionLabel"="bn_name")) |>
+  ggplot(aes(geometry=geometry, fill=n)) +
+  geom_sf(colour="white") +
+  coord_sf() +
+  scale_fill_viridis_c() +
+  labs(fill="count", title="Heatmap of regional locations of event attendances excluding London")
+
+```
+
+As tables
+
+```{r}
+bn_events_loc_linked_region |>
+  count(regionLabel) |>
+  kable() |>
+  kable_styling()
+```
+
+
+A breakdown of the London postcode areas. 
+
+(the row labelled just "London" may be events for which there isn't a more detailed location or could be an issue with the data processing; I'll look into those).
+
+```{r}
+bn_events_loc_linked_region |>
+  filter(region=="Q75") |>
+  #filter(p33_label=="London")
+  count(p33_label)  |>
+  kable() |> kable_styling()
 ```
 
 

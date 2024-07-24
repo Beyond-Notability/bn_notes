@@ -2,6 +2,7 @@
 
 ## boundaries data ####
 
+##devtools::install_github("humaniverse/geographr")
 library(geographr)
 
 library(sf)

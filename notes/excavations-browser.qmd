@@ -1,0 +1,109 @@
+---
+title: "Excavations browser"
+author: "Sharon Howard"
+date: "2024-07-21"
+date-modified: today
+execute: 
+  warning: false
+  message: false
+  echo: false 
+categories: 
+  - summaries
+  - ppa
+  - excavations
+page-layout: full
+toc: false
+---
+
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+source(here::here("_R/excavations-networks.R"))
+
+```
+## All named directors and members of excavations 
+
+a complete list brought together from
+
+- excavation pages (instance of excavation)
+- director/member of excavation statements on person pages
+
+excavation dates are covering dates for the excavation as a whole (any dates associated with the excavation from either source), which can differ from individuals' dates. 
+
+
+```{r}
+
+
+## dedup 
+# you need individual dates as well as excavation dates
+# don't bother to try to separate out member/director dates if someone has both roles
+
+bn_excavations_browser_table <-
+bind_rows(
+    bn_excavations_participants |>
+      # exclude NA person
+      filter(!is.na(person)) |>
+      mutate(ex_io="Q38", ex_ioLabel="excavation", src="ex"),
+    bn_people_excavations |>
+      mutate(person_rn=person, src="ppl")
+  )  |>
+  arrange(person, role, excavation, src) |>
+  mutate(role_short = word(roleLabel)) |>
+  # drop unnamed from the start
+  filter(person !="Q576") |>  
+  distinct(person, personLabel, excavation, excavationLabel, gender, role=role_short) |>  
+  left_join(bn_excavations_people_participants_covering_dates |> select(person, excavation, p_year1, p_year2), by=c("person", "excavation")) |>
+  left_join(bn_excavations_all_covering_dates |> select(-e_years), by="excavation")  |>
+  #rename(e_year1=year1, e_year2=year2) |>
+  unite(c(year1, year2), col="excav_dates", sep="-", na.rm = T) |>
+  unite(c(p_year1, p_year2), col="person_dates", sep="-", na.rm=T) |>
+  arrange(person, role, excavation) 
+
+```
+
+
+
+```{r}
+
+reactable(
+  bn_excavations_browser_table ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 50,
+  #groupBy = "event",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 90),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    person = colDef(name="id"),
+    personLabel =colDef(maxWidth = 200, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_excavations_browser_table$person[index], value)
+      })   ,
+    excavationLabel =colDef(maxWidth = 240, name="excavation",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="https://beyond-notability.wikibase.cloud/entity/%s" target="_blank">%s</a>', bn_excavations_browser_table$excavation[index], value)
+      })   ,
+   excavation = colDef(show = F),
+   gender = colDef(name="gender"),
+
+   person_dates=colDef(name="dates", maxWidth = 120),
+   excav_dates=colDef(name="excavation dates", maxWidth = 120)
+
+  )
+)
+```
+

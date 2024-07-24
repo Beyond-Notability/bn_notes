@@ -1,0 +1,323 @@
+---
+title: "Networks part 2: SAL elections [preview]"
+description: "Network analysis of election supporters"
+author: "Sharon Howard"
+date: "2024-07-23"
+date-modified: today
+execute: 
+  warning: false
+  message: false
+  echo: false 
+categories: 
+  - ppa
+  - SAL
+  - networks
+---
+
+WIP: just a taster, for comparison with the excavations material. More to come!
+
+```{r libraries-etc}
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+library(ggbeeswarm)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+
+## general networks functions ####
+
+source(here::here("_R/networks-functions.R"))
+
+
+# the bit that has to be adapted for different analyses
+# make network for all data or an already filtered subset. 
+# start with the simple aggregated version...
+
+bn_elections_make_network <- function(data){
+  nodes <-
+  data |>
+  group_by(person) |>
+  summarise(sub_supports = n() , .groups = "drop_last") |>
+  ungroup() |>
+  arrange(person) |>
+  inner_join(
+    data |>
+      count(person, personLabel, gender, name="all_supports"), by="person")  |>
+    # should match the numerical ids in edges... until you start filtering things...
+  mutate(person_id = row_number())
+
+  edges <-
+  data |>
+  pairwise_count(person, fsa, upper=F) |>
+  select(from=item1, to=item2, weight=n) |>
+  arrange(from, to)
+
+  bn_tbl_graph(nodes, edges)
+}
+
+
+
+```
+
+A very simple analysis at this point, which doesn't differentiate proposers and signers. (You may recall from previous posts that profiles of the two forms of support can vary considerably, among both women and men.) 
+
+```{r wikibase-data}
+
+bn_fsa_sparql <-
+'SELECT ?fsa ?fsaLabel ?proposer ?electedLabel ?date ?s
+WHERE {  
+  ?fsa bnwdt:P3 bnwd:Q3 .            
+  ?fsa bnp:P16 ?s .
+  ?s bnps:P16 ?proposer .
+
+    OPTIONAL {?s bnpq:P1 ?date .}                #option select date of proposal
+    OPTIONAL {?s bnpq:P22 ?elected .}            #option select if elected
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+ORDER BY ?date'
+
+bn_fsa_query <-
+  bn_std_query(bn_fsa_sparql) |>
+  make_bn_ids(c(fsa, proposer, s)) |>
+  mutate(across(c(date, electedLabel), ~na_if(., ""))) |>
+  make_date_year() |>
+  relocate(s, .after = last_col())
+  
+
+
+bn_fsa_all <-
+bn_fsa_query |>
+  mutate(proposer = if_else( str_detect(proposer, "^_:t"), NA, proposer  )) |>
+  select(fsa, fsaLabel, elected=electedLabel, proposer, date, year, s) |>
+  # drops a couple of probably erroneous rows
+  filter(year>=1920)
+
+# only one election bid per person using latest date. keeps a few unsuccessful
+bn_fsa <-
+  bn_fsa_all |>
+  group_by(fsa) |>
+  top_n(1, date) |>
+  ungroup()
+
+
+# get a couple extra rows with the optional for signer; <uv> proposer so may as well drop them
+bn_supporters_sparql <- 
+'SELECT distinct ?fsa ?fsaLabel ?proposer ?proposerLabel ?signer ?signerLabel  ?sign_type ?s
+WHERE
+{
+  ?fsa bnwdt:P3 bnwd:Q3 .
+  ?fsa bnp:P16 ?s .
+    ?s bnps:P16 ?proposer .
+  
+  #optional {
+    ?s ( bnpq:P32 | bnpq:P82 ) ?signer .  ## person p32 general p82.
+    ?s ?sign_type ?signer .
+  #}
+  
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb".
+    }
+}
+'
+
+bn_supporters_query <-
+  bn_std_query(bn_supporters_sparql) |>
+  make_bn_ids(c(fsa, proposer, signer, sign_type, s)) |>
+  mutate(across(c(signer, sign_type), ~na_if(., "")))  |>
+  left_join(bn_properties |> select(bn_prop_id, support_role= propertyLabel), by=c("sign_type"="bn_prop_id")) |> 
+  relocate(s, .after = last_col())
+
+
+
+bn_signers <-
+bn_supporters_query |>
+  mutate(support_role = case_when(
+    support_role=="proposed election to SAL signed by (personal)" ~ "personal",
+    support_role=="proposed election to SAL signed by (general)" ~ "general"
+  )) |>
+  select(fsa, signer, signerLabel, support_type= sign_type, support_role, s)
+
+
+bn_proposers <-
+bn_supporters_query |>
+  mutate(support_role="proposer", support_type="P16") |>
+  distinct(fsa, proposer, proposerLabel, support_type, support_role, s)
+
+
+
+
+bn_supporter_gender_spql <- 
+  'select distinct ?person ?genderLabel
+    where {
+      values ?person { <<bn_bnwd_values>> }
+         ?person bnwdt:P3 ?gender .
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+    }'
+
+bn_supporter_gender_sparql <-
+bn_proposers |> 
+  rename(person=proposer, personLabel=proposerLabel) |>
+  bind_rows(bn_signers |> rename(person=signer, personLabel=signerLabel)) |>
+  bn_make_union(bn_id=person) |>
+    mutate_glue_sparql(bn_supporter_gender_spql )
+
+
+bn_supporter_gender_query <-
+  bn_std_query(bn_supporter_gender_sparql) |>
+  make_bn_ids(person)
+
+
+
+
+bn_fsa_supporters_all <-
+bn_proposers |> 
+  rename(person=proposer, personLabel=proposerLabel) |>
+  bind_rows(bn_signers |> rename(person=signer, personLabel=signerLabel)) |>
+  left_join(bn_supporter_gender_query |> filter(!is.na(genderLabel) & !str_detect(genderLabel, "^t\\d")), by="person") |>
+  # drop indecipherables. but keep other NA gender for now.
+  #filter(person !="Q47") |>
+  # drop NA gender signers [including Q47] but keep SAL council proposers
+  filter(!is.na(genderLabel) | support_type=="P16") |>
+  rename(gender=genderLabel) |>
+  left_join(bn_fsa |> select(-fsa), by="s") |>
+  relocate(s, .after = last_col())
+
+
+# one election bid per fsa
+# drop general signers for now. only about 70 anyway. maybe about 20? names who only sig general
+bn_fsa_supporters <-
+bn_fsa_supporters_all |>
+  filter(support_type != "P82") |>
+  semi_join(bn_fsa, by="fsa")
+
+
+
+
+
+
+## make network
+set.seed(240710)
+
+bn_network_all_simple <-
+  bn_elections_make_network(bn_fsa_supporters) |>
+  bn_centrality() |>
+  bn_clusters()
+
+
+```
+
+## Degree distribution
+
+```{r}
+bn_network_all_simple |>
+  as_tibble() |>
+  count(degree) |>
+  filter(degree !=0) |>
+  mutate(p = n/sum(n)) |>
+  ggplot(aes(x=degree, y=n)) +
+  geom_point() +
+   scale_x_log10() +
+   scale_y_log10() +
+  #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=2, linewidth=0.7) +
+  geom_smooth(se=FALSE, formula = y~x, colour="cyan4", lty=4, linewidth=0.7) +
+  #annotate("curve", xend = 4.05, x = 5, yend = 1.02, y = 1.3,  colour = "darkorange", arrow = arrow(length = unit(2, "mm")) , curvature=0.2 ) +
+  #annotate("text", x = 6, y = 1.4, label = "looks a bit odd!") +
+  theme(aspect.ratio = 4/6)
+# (the odd looking one (Q1523) was only elected in 1948)
+```
+
+
+
+## Top ranked supporters
+
+```{r}
+network_centrality_top_r_plus(bn_network_all_simple, 10) |>
+  gg_centrality_heatmap("whole network") +
+  scale_fill_viridis_b(breaks=c(2,4,6,8,10), na.value = "grey") 
+```
+
+
+
+```{r}
+network_centrality_top_r_plus(bn_network_all_simple, 10) |>
+  group_by(person) |>
+  mutate(sort = median(rank)) |>
+  ungroup() |>
+  mutate(centrality = str_remove(centrality, "_rank")) |>
+  mutate(personLabel = fct_rev(fct_reorder(personLabel, sort))) |>
+  # With categorical y-axis
+  ggplot(aes(rank, personLabel)) + 
+  geom_boxplot(show.legend = F, colour="grey") +
+  geom_beeswarm(aes(colour = centrality)) +
+  #geom_quasirandom(aes(colour=centrality), orientation = "y") +
+  scale_colour_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL)
+```
+
+
+## Circles
+
+[some adjustment will be needed for readability... you can right-click on images and open in new tab for larger view]
+
+```{r}
+bn_one_person_circle(bn_network_all_simple, "Q97") |>
+  bn_circle_ggraph2()
+```
+
+
+
+```{r}
+bn_one_person_circle(bn_network_all_simple, "Q57") |>
+  bn_circle_ggraph2()
+```
+
+
+
+```{r}
+bn_one_person_circle(bn_network_all_simple, "Q133") |>
+  bn_circle_ggraph2()
+```
+
+
+
+```{r}
+bn_one_person_circle(bn_network_all_simple, "Q709") |>
+  bn_circle_ggraph2()
+```
+
+## Network graph highlighting six largest clusters
+
+
+```{r}
+set.seed(240723)
+bn_network_all_simple |>
+  filter(!node_is_isolated()) |>
+  # # add the top people?
+  # # get median rank 
+  # inner_join(
+  #   bn_network_all_simple |>
+  #     as_tibble() |>
+  #     select(person, degree_rank, betweenness_rank, eigen_rank, harmonic_rank) |>
+  #     pivot_longer(ends_with("_rank"), names_to = "centrality", values_to = "rank")  |>
+  #     group_by(person) |>
+  #     summarise(median_rank = median(rank), .groups = "drop_last") |>
+  #     ungroup() , by="person"
+  # ) |>
+  ggraph(layout = "graphopt")  +
+  geom_node_point(size=1, alpha=0.2) +
+  geom_node_point(size=2, aes(filter = as.integer(infomap)<=6, colour = infomap)) +
+  geom_edge_link0(alpha=0.03)  +
+  # not working grr
+  #geom_node_text(aes(label = person, filter = median_rank<=10), size = 4, colour="white", show.legend = F, repel = T)  +
+  #geom_node_point(size=1, aes(filter = median_rank<=10, colour = e_btwnness)) +  
+  scale_colour_tableau() +
+  labs(colour="cluster") 
+
+# think about https://ggplot2-book.org/annotations#sec-custom-annotations ?
+```

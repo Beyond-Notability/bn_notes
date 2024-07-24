@@ -39,9 +39,10 @@ source(here::here("_R/std_queries.R"))
 
 I've added `spoke at` data for some comparisons, but only for the women in this lecturer subset, not the whole lot.
 
-update
+updates
 
-- added heatmap of regional distribution of posts
+- added heatmap of regional distribution of posts; and a heatmap excluding London
+- added tables of the counts in the heatmap
 
 
 ```{r lecturers-query}
@@ -980,6 +981,15 @@ caveats
 
 Some of the numbers beyond London and the south east are very small. (None in N-E England or Scotland, and only one in Wales.)
 
+
+locations come from one of two possible sources:
+
+- look for a location P2 for the position on the person page
+- if there isn't, look for a location P2 for the organising/employing organisation
+
+The latter may not always be a precisely accurate address for the place where the work actually happened, but only a minority of positions have a direct location, and the organisation location should normally be accurate enough for aggregated analysis.
+
+
 ```{r}
 # bn_lecturers_dates |>
 #   anti_join(bn_lecturers_loc_id_long, by="s")
@@ -1012,6 +1022,42 @@ bn_lecturers_loc_linked_region |>
 
 
 
+
+```{r}
+bn_lecturers_loc_linked_region |>
+  filter(region !="Q75") |>
+  count(regionLabel) |>
+  inner_join(ons_uk_regions_map, by=c("regionLabel"="bn_name")) |>
+  ggplot(aes(geometry=geometry, fill=n)) +
+  geom_sf(colour="white") +
+  coord_sf() +
+  scale_fill_viridis_b() +
+  labs(fill="count", title="Heatmap of regional locations of lecturing positions excluding London")
+
+```
+
+
+As tables
+
+```{r}
+bn_lecturers_loc_linked_region |>
+  count(regionLabel) |>
+  kable() |> kable_styling()
+```
+
+
+A breakdown of the London postcode areas. 
+
+(I'll need to look into "London" and "Greenwich"; could be pointing to some issues with data processing.)
+
+```{r}
+bn_lecturers_loc_linked_region |>
+  filter(region=="Q75") |>
+  #filter(p33_label=="London")
+  count(p33_label)  |>
+  rename(area = p33_label) |>
+  kable() |> kable_styling()
+```
 
 
 ## Table

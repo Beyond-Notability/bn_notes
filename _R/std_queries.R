@@ -278,6 +278,7 @@ bn_properties_musthave <-
 
 
 # update April 2024 to include statements and dob/dod
+# July 2024 remove dob/dod from sparql?
 bn_women_list_sparql <-
   'SELECT distinct ?person ?personLabel ?statements ?dob ?dod
 WHERE {
@@ -291,8 +292,9 @@ WHERE {
     SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }'
 
-# minimal processing to use as is or for dob/dod
-bn_women_list <-
+# minimal processing to use as a basic list of all women or for dob/dod
+# this has some dups because a few women have more than one date
+bn_women_list_query <-
   bn_std_query(bn_women_list_sparql) |>
   make_bn_item_id(person) |>
   relocate(bn_id, personLabel) |>
@@ -300,26 +302,14 @@ bn_women_list <-
   arrange(parse_number(str_remove(bn_id, "Q")))
 
 
-# ## dates of birth/death. added March 2024 - increasingly using this so let's put it here.
-# bn_women_dob_dod_sparql <-
-#   'SELECT distinct ?person ?bn_dob ?bn_dod
-# WHERE {
-#    ?person bnwdt:P3 bnwd:Q3 .
-#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
-#   optional { ?person bnwdt:P15 ?bn_dod .   }
-#   optional { ?person bnwdt:P26 ?bn_dob .   }
-#   FILTER ( EXISTS { ?person bnwdt:P15 ?bn_dod .} || EXISTS { ?person bnwdt:P26 ?bn_dob .  } ) . #  date of birth OR date of death.
-# }'
-# 
-# 
-# bn_women_dob_dod_query <-
-#   bn_std_query(bn_women_dob_dod_sparql) |>
-#   make_bn_item_id(person) |>
-#   mutate(across(c(bn_dob, bn_dod), ~na_if(., ""))) |>
-#   select(-person) 
+# deduped list
+bn_women_list <-
+  bn_women_list_query |>
+  distinct(bn_id, personLabel, statements, person) 
 
+# dates of birth/death. 
 bn_women_dob_dod <-
-  bn_women_list |>
+  bn_women_list_query |>
   filter(!is.na(dob) | !is.na(dod)) |>
   #bn_women_dob_dod_query |>
   mutate(across(c(dob, dod), ~parse_date_time(., "ymdHMS"), .names = "bn_{.col}")) |>
@@ -329,6 +319,7 @@ bn_women_dob_dod <-
   group_by(bn_id) |>
   top_n(1, row_number()) |>
   ungroup() 
+
 # to add +/- 80 years for missing dob/dod
 # mutate(bn_yob = case_when(
 #   !is.na(y_bn_dob) ~ y_bn_dob,
