@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.53">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Sharon Howard">
+<meta name="dcterms.date" content="2024-03-20">
+<meta name="description" content="Visualisations of suffrage activity in the BN database across time">
+
+<title>Suffrage activities – BN Notes</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="../../site_libs/core-js-2.5.3/shim.min.js"></script>
+<script src="../../site_libs/react-18.2.0/react.min.js"></script>
+<script src="../../site_libs/react-18.2.0/react-dom.min.js"></script>
+<script src="../../site_libs/reactwidget-2.0.0/react-tools.umd.cjs"></script>
+<link href="../../site_libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+<script src="../../site_libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+<link href="../../site_libs/reactable-0.4.4/reactable.css" rel="stylesheet">
+<script src="../../site_libs/reactable-binding-0.4.4/reactable.js"></script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">BN Notes</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../blog.html"> 
+<span class="menu-text">Posts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../notes/index.html"> 
+<span class="menu-text">Notes</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Beyond-Notability/bn_notes"> <i class="bi bi-github" role="img" aria-label="Github">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#wikibase-queries" id="toc-wikibase-queries" class="nav-link active" data-scroll-target="#wikibase-queries">Wikibase queries</a></li>
+  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes">Notes</a></li>
+  <li><a href="#types-of-activity" id="toc-types-of-activity" class="nav-link" data-scroll-target="#types-of-activity">Types of activity</a></li>
+  <li><a href="#women" id="toc-women" class="nav-link" data-scroll-target="#women">Women</a></li>
+  <li><a href="#organisations-and-types-of-activity" id="toc-organisations-and-types-of-activity" class="nav-link" data-scroll-target="#organisations-and-types-of-activity">Organisations and types of activity</a></li>
+  <li><a href="#table" id="toc-table" class="nav-link" data-scroll-target="#table">Table</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content column-page-left" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Suffrage activities</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">ppa</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Visualisations of suffrage activity in the BN database across time
+  </div>
+</div>
+
+
+<div class="quarto-title-meta column-page-left">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Sharon Howard </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">20 March 2024</p>
+    </div>
+  </div>
+  
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">23 July 2024</p>
+    </div>
+  </div>
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="wikibase-queries" class="level2">
+<h2 class="anchored" data-anchor-id="wikibase-queries">Wikibase queries</h2>
+<ul>
+<li><a href="https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates">Dates</a> section</li>
+<li><a href="https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Suffrage-related_activities">Suffrage-related activities</a></li>
+</ul>
+</section>
+<section id="notes" class="level2">
+<h2 class="anchored" data-anchor-id="notes">Notes</h2>
+<blockquote class="blockquote">
+<p>Amara and I are thinking about how women’s involvement in organisations tagged in the database as instances of suffrage activity maps other things they were doing, and what is going on in terms of suffrage activities we’ve picked up on across time. We’re not 100% sure what we want to do with this as yet, but as a starter to help us, do you think it might be possible, please, to do some visualisation that pulls together all flagged suffrage activity in our database across time? (We’ve also realised that some unflagged suffrage activity of event types has crept into the database so will aim to fix this, though we think all suffrage groups we know of are flagged.) Please note that we have also flagged anti-suffrage activity as suffrage activity, so preserving names of distinct suffrage orgs in whatever you come up with might be helpful.</p>
+</blockquote>
+<p>Nearly all the suffrage activities in the database are dated, though charts ignore differences in kinds of date - <code>positions</code> are usually at year level while <code>events</code> are more short term. (Though they’re all point in time dates, I think, rather than start/end, so presumably none were of more than a year duration.)</p>
+<p>TODO</p>
+<p>locations? will need more complex queries (which I’ll work out for the lecturing post first)</p>
+</section>
+<section id="types-of-activity" class="level2">
+<h2 class="anchored" data-anchor-id="types-of-activity">Types of activity</h2>
+<p>[“money” is an invented bucket for “gave money to”, which doesn’t seem to be in an existing PPA bucket; only a couple of them]</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>A beeswarm of activity types grouped by PPA buckets. [excluding the buckets with only one or two instances]</p>
+<ul>
+<li>most activity (unsurprisingly!) is between 1908 and 1913 (about 2/3 of dated activities)</li>
+<li>underlining the intensity of suffrage politics in that period, <code>events</code> are particularly clustered there; <code>positions</code> also peak in the same period, but they’re more spread out.</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="women" class="level2">
+<h2 class="anchored" data-anchor-id="women">Women</h2>
+<p>32 women represented here; 12 have more than one activity recorded.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Beeswarms don’t work well in this case because the concentration of activity in a small number of years makes it impossible to avoid them overlapping too much to make any sense. Instead I’ve tried out “barcode” charts to chart timelines.</p>
+<p>Each vertical bar represents one date for which a suffrage activity is recorded (making no distinction between types of date). Unlike a beeswarm it won’t show every single data point if there’s more than one on the same date, but it’s possible to make more data points visible than with chunkier shapes like dots or squares, and it will indicate more intense clusters of activity (both horizontally, for individuals, and vertically, for the group as a whole).</p>
+<ul>
+<li>order by date of earliest activity</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<ul>
+<li>order by date of birth</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>If only a single event needs to be plotted, a lollipop chart is also quite effective.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>And a dumbbell plot for the earliest and latest activities by each woman. There isn’t very much overlap (among women with more than 1 activity) between women who were active before 1908 and those who started 1908 or later. (But is this an absence, or just absence of data?) I’m not familiar enough with the historiography to know whether this might be expected; if not, handle with caution.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Separating out women with at least 2 activities</p>
+<ul>
+<li>ordered by date of earliest activity</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>There is a noticeable difference in activity types between the women with 1 activity and those with 2+. Going back to the earlier chart of PPA bucket counts, this version separates out the two groups but also shows the totals in light grey in the background - <code>positions</code> and <code>societies</code> are both quite evenly split between group 1 and group 2, but the 2+ women are much more involved in <code>events</code> (= mainly <code>spoke at</code>).</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Additionally, on average members of the 2+ group were several years younger than the 1 group at the time of their <em>first</em> recorded suffrage activity; median age at earliest activity for 2+ is 42 and for 1 is 46.</p>
+<p>But NB that this is only true of “early starters” (pre 1908) and the numbers are small (6 early starters and 5 later starters). So this needs to be treated with caution.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Lollipop chart of ages at earliest activity, sorted by <em>date</em> of the earliest activity, and coloured by group (1 or 2+ activities).</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="organisations-and-types-of-activity" class="level2">
+<h2 class="anchored" data-anchor-id="organisations-and-types-of-activity">Organisations and types of activity</h2>
+<p>18 distinct organisations (not all activities are associated with a named organisation).</p>
+<p>[label partly cut off in legend = “was member of”]</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>There’s even less overlap between pre-1908 and 1908- organisations than for the women themselves. (It looks as though local and regional organisations are only present in the earlier period.)</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="table" class="level2">
+<h2 class="anchored" data-anchor-id="table">Table</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div class="reactable html-widget html-fill-item" id="htmlwidget-bbbb73a2af60f6a217a8" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-bbbb73a2af60f6a217a8">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"bn_id":["Q916","Q1006","Q1006","Q1006","Q894","Q894","Q894","Q894","Q904","Q904","Q904","Q904","Q2681","Q878","Q878","Q878","Q536","Q536","Q825","Q825","Q825","Q426","Q426","Q426","Q1053","Q1053","Q1053","Q1053","Q1053","Q1053","Q1053","Q1053","Q1053","Q1094","Q1094","Q792","Q462","Q1044","Q3315","Q2419","Q213","Q489","Q489","Q995","Q130","Q893","Q212","Q779","Q1909","Q911","Q911","Q970","Q549","Q549","Q549","Q549","Q225","Q3993","Q2683","Q2683","Q2683","Q2683","Q2683","Q2683","Q3628","Q3628","Q3628","Q3628","Q3628","Q3628","Q3628","Q2739","Q2571","Q2571","Q2571","Q569","Q1082","Q735","Q850","Q909","Q2123","Q1002","Q57","Q57","Q57","Q57","Q57","Q57","Q57","Q57","Q57","Q2178","Q219","Q219","Q219","Q219","Q219","Q2650","Q2650","Q1043","Q1043","Q1043","Q1043","Q1043"],"personLabel":["Agnes Conway Horsfield","Agnes Ramsay","Agnes Ramsay","Agnes Ramsay","Alice Bertha Gomme","Alice Bertha Gomme","Alice Bertha Gomme","Alice Bertha Gomme","Alice Grenfell","Alice Grenfell","Alice Grenfell","Alice Grenfell","Alice Kemp-Welch","Amelia Blandford Edwards","Amelia Blandford Edwards","Amelia Blandford Edwards","Annie Abram","Annie Abram","Annie Beatrice Wallis Chapman","Annie Beatrice Wallis Chapman","Annie Beatrice Wallis Chapman","Bertha Mason","Bertha Mason","Bertha Mason","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Carmichael Stopes","Charlotte Mary Wilson","Charlotte Mary Wilson","Dorothy Mary Mackay","Edith Blake","Edith Jemima Simcox","Edith Mary Guest","Eleanor Grove","Emily Elizabeth Constance Jones","Emily Jane Andrews","Emily Jane Andrews","Frances Murray","Gertrude Bell","Gertrude Mary Godden","Gwendolen Crewdson","Harriet Loyd Lindsay","Hilda Petrie","Jane Ellen Harrison","Jane Ellen Harrison","Jessie MacGregor","Jessie Mothersole","Jessie Mothersole","Jessie Mothersole","Jessie Mothersole","Kate Eliza Trounson","Katharine Augusta Oliver","Katherine Ann Raleigh","Katherine Ann Raleigh","Katherine Ann Raleigh","Katherine Ann Raleigh","Katherine Ann Raleigh","Katherine Ann Raleigh","Katherine Routledge","Katherine Routledge","Katherine Routledge","Katherine Routledge","Katherine Routledge","Katherine Routledge","Katherine Routledge","Lina Eckenstein","Lucy Adela Jenner","Lucy Adela Jenner","Lucy Adela Jenner","Margaret Alice Murray","Margery Katherine Welsh","Mary Bateson","Mary Dendy","Mary Dormer Harris","Rhoda Garrett","Rosalind Lucy Northcote","Rose Graham","Rose Graham","Rose Graham","Rose Graham","Rose Graham","Rose Graham","Rose Graham","Rose Graham","Rose Graham","Sigríður Magnusson","Thomazine Mary Lockyer","Thomazine Mary Lockyer","Thomazine Mary Lockyer","Thomazine Mary Lockyer","Thomazine Mary Lockyer","Vera Christina Chute Collum","Vera Christina Chute Collum","Violet Mary Shillington","Violet Mary Shillington","Violet Mary Shillington","Violet Mary Shillington","Violet Mary Shillington"],"bn_dob_yr":[1885,1852,1852,1852,1853,1853,1853,1853,1842,1842,1842,1842,1856,1831,1831,1831,1869,1869,1876,1876,1876,1855,1855,1855,1840,1840,1840,1840,1840,1840,1840,1840,1840,1854,1854,1881,1846,1844,1873,1826,1848,1850,1850,1843,1868,1868,1872,1837,1871,1850,1850,1847,1873,1873,1873,1873,1866,1870,1852,1852,1852,1852,1852,1852,1866,1866,1866,1866,1866,1866,1866,1857,1859,1859,1859,1863,1880,1865,1858,1867,1841,1873,1876,1876,1876,1876,1876,1876,1876,1876,1876,1831,1852,1852,1852,1852,1852,1884,1884,1882,1882,1882,1882,1882],"year":[1908,1913,1913,1915,1893,1895,1895,1906,1881,1882,1891,1897,1884,1884,1889,1890,1913,1913,1907,1912,1913,1893,1901,1909,1885,1887,1894,1907,1908,1909,1909,1909,1914,1909,1909,1907,1909,1884,1910,1884,1913,1908,1911,1913,1913,1913,"NA",1913,1916,1908,1909,"NA",1909,1911,1912,1912,1922,1913,1910,1913,1917,1917,1917,"NA",1911,1911,1912,1912,1912,1912,1913,1908,1908,1909,"NA",1914,1917,1898,1901,1908,1872,1914,1907,1910,1910,1910,1910,1910,1910,1912,1913,1894,1909,1910,1913,1914,1914,1914,"NA",1907,1908,1908,1908,1910],"activity":["was delegate at (item)","held position","spoke at","spoke at","gave money to","was member of","was member of","gave money to","served on","held position","held position","recorded in","contributed to","contributed to","served on","held position","spoke at","spoke at","gave money to","held position","held position","served on","held position","spoke at","organiser of","organiser of","served on","spoke at","gave money to","spoke at","spoke at","spoke at","attended","was delegate at (item)","was member of","held position","was member of","contributed to","held position","contributed to","held position","contributed to","gave money to","was member of","served on","held position","held position","held position","served on","attended","was member of","organiser of","gave money to","contributed to","was member of","work(s) published in","held position","served on","spoke at","spoke at","performed at","performed at","spoke at","held position","attended","spoke at","served on","spoke at","spoke at","spoke at","served on","gave money to","served on","was member of","held position","attended","held position","held position","held position","was member of","served on","held position","gave money to","held position","served on","spoke at","organiser of","spoke at","spoke at","organiser of","served on","performed at","held position","held position","held position","exhibited at","held position","organiser of","organiser of","held position","gave money to","spoke at","spoke at","held position"],"description":["meeting of National Union of Women's Suffrage Societies","Vice President of Scottish Church League for Woman Suffrage","meeting of Equal Suffrage League of Virginia","meeting of Women's Freedom League","Parliamentary Committee for Women's Suffrage","Women's Emancipation Union","Parliamentary Committee for Women's Suffrage","Women's Social and Political Union","committee of Bristol and the West of England Society for Women's Suffrage","Treasurer of Bristol and the West of England Society for Women's Suffrage","Honorary Secretary of Women's Progressive Society","Some Supporters of the Women's Suffrage Movement","goal","goal","committee of National Society for Women's Suffrage","Vice President of Bristol and the West of England Society for Women's Suffrage","meeting of Women's Freedom League","meeting of Women's Freedom League","London Society for Women's Suffrage","Tutor","Chairman of London Society for Women's Suffrage","committee of Manchester National Society for Women's Suffrage","Chairman of North of England Society for Women's Suffrage","event of London Society for Women's Suffrage","meeting of National Society for Women's Suffrage","meeting","committee of National Society for Women's Suffrage","meeting","London Society for Women's Suffrage","meeting","meeting","meeting of National Union of Women's Suffrage Societies","Costume Dinner and Pageant, 1914",null,"International Woman Suffrage Alliance","Honorary Secretary of Women's Social and Political Union","London Society for Women's Suffrage","goal","Secretary of National Union of Women's Suffrage Societies","goal","Vice President of Conservative and Unionist Women's Franchise Association","National Union of Women's Suffrage Societies","Women's Freedom League","Women's Freedom League","Executive Committee of National League for Opposing Women Suffrage","Honorary Secretary of National League for Opposing Women Suffrage","Treasurer of National Union of Women's Suffrage Societies","President of National League for Opposing Women Suffrage","Council of London Society for Women's Suffrage","meeting","National Union of Women's Suffrage Societies","meeting of National Union of Women's Suffrage Societies","Women's Freedom League","event of Women's Social and Political Union","Church League for Women's Suffrage","The Labour Leader","Secretary of International Woman Suffrage Alliance","Council of Conservative and Unionist Women's Franchise Association","meeting of Women's Freedom League","meeting","Bijou Theatre","Wirtemberg Hall","event of Women's Freedom League","Honorary Secretary of National Union of Women's Suffrage Societies","Women's Procession","meeting of Conservative and Unionist Women's Franchise Association","Executive Committee of Conservative and Unionist Women's Franchise Association","meeting of Conservative and Unionist Women's Franchise Association","meeting of Conservative and Unionist Women's Franchise Association","meeting of Conservative and Unionist Women's Franchise Association","Council of Conservative and Unionist Women's Franchise Association","National Union of Women's Suffrage Societies","committee of London Society for Women's Suffrage","International Woman Suffrage Alliance","Honorary Secretary of London Society for Women's Suffrage","Costume Dinner and Pageant, 1914","Chairman of National Union of Women's Suffrage Societies","Secretary of Cambridge Women's Suffrage Association","Vice President of North of England Society for Women's Suffrage","National Union of Women's Suffrage Societies","committee of National Society for Women's Suffrage","Vice President of National Union of Women's Suffrage Societies","London Society for Women's Suffrage","Honorary Secretary of Conservative and Unionist Women's Franchise Association","committee of Conservative and Unionist Women's Franchise Association","meeting of Conservative and Unionist Women's Franchise Association","meeting of Conservative and Unionist Women's Franchise Association","meeting of Conservative and Unionist Women's Franchise Association","meeting","meeting of Conservative and Unionist Women's Franchise Association","Council of Conservative and Unionist Women's Franchise Association","Suffrage Fair","Chairman of Conservative and Unionist Women's Franchise Association","Honorary Treasurer of Women's Local Government Society","National Union of Women's Suffrage Societies","Women's Kingdom exhibition","Honorary Secretary of National Union of Women's Suffrage Societies","Women's Kingdom exhibition","exhibition","Honorary Secretary of London Society for Women's Suffrage","Women's Social and Political Union","meeting of National Union of Women's Suffrage Societies","meeting of London Society for Women's Suffrage","Honorary Treasurer of London Society for Women's Suffrage"]},"columns":[{"id":"bn_id","name":"id","type":"character","maxWidth":70},{"id":"personLabel","name":"name","type":"character","maxWidth":250,"cell":["<a href=\"https://beyond-notability.wikibase.cloud/entity/Q916\" target=\"_blank\">Agnes Conway Horsfield<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1006\" target=\"_blank\">Agnes Ramsay<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1006\" target=\"_blank\">Agnes Ramsay<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1006\" target=\"_blank\">Agnes Ramsay<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q894\" target=\"_blank\">Alice Bertha Gomme<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q894\" target=\"_blank\">Alice Bertha Gomme<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q894\" target=\"_blank\">Alice Bertha Gomme<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q894\" target=\"_blank\">Alice Bertha Gomme<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q904\" target=\"_blank\">Alice Grenfell<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q904\" target=\"_blank\">Alice Grenfell<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q904\" target=\"_blank\">Alice Grenfell<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q904\" target=\"_blank\">Alice Grenfell<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2681\" target=\"_blank\">Alice Kemp-Welch<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q878\" target=\"_blank\">Amelia Blandford Edwards<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q878\" target=\"_blank\">Amelia Blandford Edwards<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q878\" target=\"_blank\">Amelia Blandford Edwards<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q536\" target=\"_blank\">Annie Abram<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q536\" target=\"_blank\">Annie Abram<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q825\" target=\"_blank\">Annie Beatrice Wallis Chapman<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q825\" target=\"_blank\">Annie Beatrice Wallis Chapman<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q825\" target=\"_blank\">Annie Beatrice Wallis Chapman<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q426\" target=\"_blank\">Bertha Mason<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q426\" target=\"_blank\">Bertha Mason<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q426\" target=\"_blank\">Bertha Mason<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1053\" target=\"_blank\">Charlotte Carmichael Stopes<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1094\" target=\"_blank\">Charlotte Mary Wilson<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1094\" target=\"_blank\">Charlotte Mary Wilson<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q792\" target=\"_blank\">Dorothy Mary Mackay<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q462\" target=\"_blank\">Edith Blake<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1044\" target=\"_blank\">Edith Jemima Simcox<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3315\" target=\"_blank\">Edith Mary Guest<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2419\" target=\"_blank\">Eleanor Grove<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q213\" target=\"_blank\">Emily Elizabeth Constance Jones<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q489\" target=\"_blank\">Emily Jane Andrews<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q489\" target=\"_blank\">Emily Jane Andrews<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q995\" target=\"_blank\">Frances Murray<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q130\" target=\"_blank\">Gertrude Bell<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q893\" target=\"_blank\">Gertrude Mary Godden<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q212\" target=\"_blank\">Gwendolen Crewdson<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q779\" target=\"_blank\">Harriet Loyd Lindsay<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1909\" target=\"_blank\">Hilda Petrie<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q911\" target=\"_blank\">Jane Ellen Harrison<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q911\" target=\"_blank\">Jane Ellen Harrison<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q970\" target=\"_blank\">Jessie MacGregor<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q549\" target=\"_blank\">Jessie Mothersole<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q549\" target=\"_blank\">Jessie Mothersole<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q549\" target=\"_blank\">Jessie Mothersole<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q549\" target=\"_blank\">Jessie Mothersole<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q225\" target=\"_blank\">Kate Eliza Trounson<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3993\" target=\"_blank\">Katharine Augusta Oliver<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2683\" target=\"_blank\">Katherine Ann Raleigh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2683\" target=\"_blank\">Katherine Ann Raleigh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2683\" target=\"_blank\">Katherine Ann Raleigh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2683\" target=\"_blank\">Katherine Ann Raleigh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2683\" target=\"_blank\">Katherine Ann Raleigh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2683\" target=\"_blank\">Katherine Ann Raleigh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q3628\" target=\"_blank\">Katherine Routledge<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2739\" target=\"_blank\">Lina Eckenstein<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2571\" target=\"_blank\">Lucy Adela Jenner<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2571\" target=\"_blank\">Lucy Adela Jenner<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2571\" target=\"_blank\">Lucy Adela Jenner<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q569\" target=\"_blank\">Margaret Alice Murray<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1082\" target=\"_blank\">Margery Katherine Welsh<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q735\" target=\"_blank\">Mary Bateson<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q850\" target=\"_blank\">Mary Dendy<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q909\" target=\"_blank\">Mary Dormer Harris<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2123\" target=\"_blank\">Rhoda Garrett<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1002\" target=\"_blank\">Rosalind Lucy Northcote<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q57\" target=\"_blank\">Rose Graham<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2178\" target=\"_blank\">Sigríður Magnusson<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q219\" target=\"_blank\">Thomazine Mary Lockyer<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q219\" target=\"_blank\">Thomazine Mary Lockyer<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q219\" target=\"_blank\">Thomazine Mary Lockyer<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q219\" target=\"_blank\">Thomazine Mary Lockyer<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q219\" target=\"_blank\">Thomazine Mary Lockyer<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2650\" target=\"_blank\">Vera Christina Chute Collum<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q2650\" target=\"_blank\">Vera Christina Chute Collum<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1043\" target=\"_blank\">Violet Mary Shillington<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1043\" target=\"_blank\">Violet Mary Shillington<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1043\" target=\"_blank\">Violet Mary Shillington<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1043\" target=\"_blank\">Violet Mary Shillington<\/a>","<a href=\"https://beyond-notability.wikibase.cloud/entity/Q1043\" target=\"_blank\">Violet Mary Shillington<\/a>"],"html":true},{"id":"bn_dob_yr","name":"birth","type":"numeric","maxWidth":60},{"id":"year","name":"year","type":"numeric","maxWidth":60},{"id":"activity","name":"activity","type":"character","maxWidth":100},{"id":"description","name":"description","type":"character","maxWidth":250}],"filterable":true,"searchable":true,"defaultPageSize":130,"defaultExpanded":true,"highlight":true,"bordered":true,"dataKey":"b53f68ba225e89ccc3cb12da21593861"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("http:\/\/sharonhoward\.org\/bn\/bn_notes\/");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

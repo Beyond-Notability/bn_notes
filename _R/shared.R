@@ -20,6 +20,7 @@ library(readxl)
 library(writexl)
 
 library(janitor)
+
 library(scales)
 library(glue)
 
@@ -52,7 +53,7 @@ library(reactable)
 #SPARQL package (which used to be the standard go-to) has been removed from CRAN. 
 #Could install it anyway or even write a custom function using curl but SPARQLchunks seems to work fine.
 #remotes::install_github("aourednik/SPARQLchunks", build_vignettes = TRUE)
-library(SPARQLchunks) # can't get chunks working! but it's fine for inline queries.
+suppressPackageStartupMessages(library(SPARQLchunks) ) # can't get chunks working! but it's fine for inline queries.
 
 ## ARRRGHHH. 
 ## run into an unexpected issue with the sparqldf function: 
@@ -62,13 +63,14 @@ library(SPARQLchunks) # can't get chunks working! but it's fine for inline queri
 ## in where: BIND(concat("idstr:", ?id) as ?id_str ) or in select:  (concat("idstr:", ?id) as ?id_str )
 ## followed by a str_remove
 
-library(WikidataQueryServiceR) # may be useful 
+library(WikidataQueryServiceR) 
 
-# keep this here for reference, in case sparqlchunks stops working or whatever
+
+# keep this here for reference, in case sparqlchunks stops working or sthg.
 # library(SPARQL)
 # useragent <- paste("BN-SH", "(https://beyondnotability.org/)", R.version.string) # for SPARQL. see https://w.wiki/CX6
 
-# ditto, not convinced by this one
+# not convinced by this one
 # library(glitter)
 
 # for stuff in mediawiki non wikibase pages (also works on wikipedia)

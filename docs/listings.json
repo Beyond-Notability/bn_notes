@@ -1,0 +1,75 @@
+[
+  {
+    "listing": "/blog.html",
+    "items": [
+      "/posts/sal-2024-07-23/index.html",
+      "/posts/excavations-2024-07-10/index.html",
+      "/posts/education-age-2024-06-07/index.html",
+      "/posts/speakers-map-2024-05-22/index.html",
+      "/posts/lecturing-map-2024-05-01/index.html",
+      "/posts/lecturing-map-2024-04-30/index.html",
+      "/posts/lecturers-2024-04-09/index.html",
+      "/posts/suffrage-2024-03-18/index.html",
+      "/posts/events-2024-02-26/index.html",
+      "/posts/ppa-2024-02-25/index.html",
+      "/posts/ppa-2023-12-08/index.html",
+      "/posts/salrai-2023-11-09/index.html",
+      "/posts/women-1890s-london-2023-11-06/index.html",
+      "/posts/served_on-2023-11-05/index.html",
+      "/posts/rai-2023-10-18/index.html",
+      "/posts/sal-2023-10-17/index.html",
+      "/posts/rai-2023-10-14/index.html",
+      "/posts/wikidata-ids-2023-10-14/index.html",
+      "/posts/degrees-2023-10-03/index.html",
+      "/posts/education-2023-09-22/index.html",
+      "/posts/exploring-dates-2023-09-13/index.html",
+      "/posts/education-2023-09-09/index.html",
+      "/posts/missing-data-2023-09-01/index.html",
+      "/posts/work-queries/index.html"
+    ]
+  },
+  {
+    "listing": "/notes/index.html",
+    "items": [
+      "/notes/women-summary-browser.html",
+      "/notes/bn-presentation-20230425.html",
+      "/notes/excavations-browser.html",
+      "/notes/women-summary-main-dates.html",
+      "/notes/notes-on-dates.html"
+    ]
+  },
+  {
+    "listing": "/index.html",
+    "items": [
+      "/posts/sal-2024-07-23/index.html",
+      "/posts/excavations-2024-07-10/index.html",
+      "/notes/excavations-browser.html",
+      "/posts/education-age-2024-06-07/index.html",
+      "/posts/speakers-map-2024-05-22/index.html",
+      "/posts/lecturing-map-2024-05-01/index.html",
+      "/posts/lecturing-map-2024-04-30/index.html",
+      "/posts/lecturers-2024-04-09/index.html",
+      "/posts/suffrage-2024-03-18/index.html",
+      "/posts/events-2024-02-26/index.html",
+      "/posts/ppa-2024-02-25/index.html",
+      "/posts/ppa-2023-12-08/index.html",
+      "/notes/notes-on-dates.html",
+      "/posts/salrai-2023-11-09/index.html",
+      "/posts/women-1890s-london-2023-11-06/index.html",
+      "/posts/served_on-2023-11-05/index.html",
+      "/posts/rai-2023-10-18/index.html",
+      "/posts/sal-2023-10-17/index.html",
+      "/posts/rai-2023-10-14/index.html",
+      "/posts/wikidata-ids-2023-10-14/index.html",
+      "/posts/degrees-2023-10-03/index.html",
+      "/posts/education-2023-09-22/index.html",
+      "/posts/exploring-dates-2023-09-13/index.html",
+      "/notes/women-summary-main-dates.html",
+      "/posts/education-2023-09-09/index.html",
+      "/posts/missing-data-2023-09-01/index.html",
+      "/notes/women-summary-browser.html",
+      "/posts/work-queries/index.html",
+      "/notes/bn-presentation-20230425.html"
+    ]
+  }
+]
