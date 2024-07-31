@@ -6,7 +6,7 @@ date: "25 April 2023"
 date-format: "D MMMM YYYY"
 format:
   revealjs:
-    footer: "<a href='../../'>Home</a>"
+    footer: "<a href='../../bn_notes/'>Home</a>"
 execute: 
   echo: false
   warning: false

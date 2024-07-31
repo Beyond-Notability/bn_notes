@@ -13,6 +13,10 @@ website:
       - text: Notes
         href: notes/index.qmd        
     right:
+      - text: Beyond Notability
+        href: https://beyondnotability.org/
+      - text: Database
+        href: https://beyond-notability.wikibase.cloud/wiki/Main_Page
       - icon: github
         href: https://github.com/Beyond-Notability/bn_notes
         aria-label: Github
