@@ -1,1 +1,1 @@
-Sitemap: http://sharonhoward.org/bn/bn_notes/sitemap.xml
+Sitemap: https://beyond-notability.github.io/bn_notes/sitemap.xml

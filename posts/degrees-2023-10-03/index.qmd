@@ -526,7 +526,7 @@ bn_academic_degree |>
 
 ### FSAs 
 
-The full set has too many titles and colours for this treemap to work (which might be improved but that would take more time than I have at the moment), but I think the FSA-only subset makes a nice comparison with [educated at](http://sharonhoward.org/bn/bn_notes/posts/education-2023-09-09/).
+The full set has too many titles and colours for this treemap to work (which might be improved but that would take more time than I have at the moment), but I think the FSA-only subset makes a nice comparison with [educated at](../../posts/education-2023-09-09/).
 
 
 ```{r}

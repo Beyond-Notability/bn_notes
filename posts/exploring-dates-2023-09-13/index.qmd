@@ -171,7 +171,7 @@ bn_women_datable_main |>
 
 ```
 
-Here the undated should be all &lt;unknown value&gt; as the query doesn't include women who haven't had the property added at all. [Date of birth/death missing stats are covered [here](http://sharonhoward.org/bn/bn_notes/posts/missing-data-2023-09-01/).]
+Here the undated should be all &lt;unknown value&gt; as the query doesn't include women who haven't had the property added at all. [Date of birth/death missing stats are covered [here](../../posts/missing-data-2023-09-01/).]
 
 ```{r}
 bn_women_datable_main_summary |>

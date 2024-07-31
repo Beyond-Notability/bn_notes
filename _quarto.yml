@@ -5,7 +5,7 @@ project:
 
 website:
   title: BN Notes
-  site-url: http://sharonhoward.org/bn/bn_notes/
+  site-url: https://beyond-notability.github.io/bn_notes/
   navbar:
     left:
       - text: Posts
