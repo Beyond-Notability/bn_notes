@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.53">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Sharon Howard">
+<meta name="dcterms.date" content="2024-08-26">
+<meta name="description" content="From Wikibase to visualisations">
+
+<title>Project workflow – BN Notes</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="../site_libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="../site_libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">BN Notes</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../blog.html"> 
+<span class="menu-text">Posts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../notes/index.html"> 
+<span class="menu-text">Notes</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://beyondnotability.org/"> 
+<span class="menu-text">Beyond Notability</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://beyond-notability.wikibase.cloud/wiki/Main_Page"> 
+<span class="menu-text">Database</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Beyond-Notability/bn_notes"> <i class="bi bi-github" role="img" aria-label="Github">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-project-infrastructure" id="toc-the-project-infrastructure" class="nav-link active" data-scroll-target="#the-project-infrastructure">The project infrastructure</a></li>
+  <li><a href="#query-service-and-sparql" id="toc-query-service-and-sparql" class="nav-link" data-scroll-target="#query-service-and-sparql">Query Service and SPARQL</a></li>
+  <li><a href="#from-sparql-to-r" id="toc-from-sparql-to-r" class="nav-link" data-scroll-target="#from-sparql-to-r">From SPARQL to R</a></li>
+  <li><a href="#r-packages" id="toc-r-packages" class="nav-link" data-scroll-target="#r-packages">R packages</a>
+  <ul class="collapse">
+  <li><a href="#for-sparql-queries" id="toc-for-sparql-queries" class="nav-link" data-scroll-target="#for-sparql-queries">for SPARQL queries</a></li>
+  <li><a href="#other-wikibasewikidata-packages" id="toc-other-wikibasewikidata-packages" class="nav-link" data-scroll-target="#other-wikibasewikidata-packages">other Wikibase/Wikidata packages</a></li>
+  <li><a href="#other-r-packages" id="toc-other-r-packages" class="nav-link" data-scroll-target="#other-r-packages">other R packages</a></li>
+  </ul></li>
+  <li><a href="#setting-up" id="toc-setting-up" class="nav-link" data-scroll-target="#setting-up">Setting up</a>
+  <ul class="collapse">
+  <li><a href="#whats-in-the-setup" id="toc-whats-in-the-setup" class="nav-link" data-scroll-target="#whats-in-the-setup">what’s in the setup?</a></li>
+  </ul></li>
+  <li><a href="#querying" id="toc-querying" class="nav-link" data-scroll-target="#querying">Querying</a>
+  <ul class="collapse">
+  <li><a href="#a-simple-query-list-women-in-the-database" id="toc-a-simple-query-list-women-in-the-database" class="nav-link" data-scroll-target="#a-simple-query-list-women-in-the-database">a simple query: list women in the database</a></li>
+  <li><a href="#a-more-complex-query-suffrage-activities" id="toc-a-more-complex-query-suffrage-activities" class="nav-link" data-scroll-target="#a-more-complex-query-suffrage-activities">a more complex query: suffrage activities</a></li>
+  </ul></li>
+  <li><a href="#the-workflow-in-practice" id="toc-the-workflow-in-practice" class="nav-link" data-scroll-target="#the-workflow-in-practice">The workflow in practice</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Project workflow</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">methods</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    From Wikibase to visualisations
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Sharon Howard </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">26 August 2024</p>
+    </div>
+  </div>
+  
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">26 August 2024</p>
+    </div>
+  </div>
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="the-project-infrastructure" class="level2">
+<h2 class="anchored" data-anchor-id="the-project-infrastructure">The project infrastructure</h2>
+<p>The Beyond Notability database has been created using <a href="https://wikiba.se/">Wikibase</a>, a <a href="https://www.mediawiki.org/wiki/Wikibase">“software toolbox that offers a collaborative space to pool, edit and curate information in a structured way”</a>. The biggest and best-known instance of Wikibase is <a href="https://www.wikidata.org/wiki/Wikidata:Main_Page">Wikidata</a>.</p>
+<p>The BN wikibase lives on <a href="https://www.wikibase.cloud/">Wikibase Cloud</a>, a free service hosted by Wikimedia Deutschland which is designed to make “it easy and quick to host your Wikibase with no need for your own infrastructure”. (At the time of writing, August 2024, it’s in Open Beta. There have been a few teething troubles over the last year, but it has good community support and is being used by a growing number of projects.)</p>
+</section>
+<section id="query-service-and-sparql" class="level2">
+<h2 class="anchored" data-anchor-id="query-service-and-sparql">Query Service and SPARQL</h2>
+<p>The wikibase <a href="https://beyond-notability.wikibase.cloud/query/">Query Service</a> (WQS) has been the essential tool for querying the project database.</p>
+<p>This entailed learning <a href="https://en.wikipedia.org/wiki/SPARQL">SPARQL</a> and something about the specifics of the Wikibase/Wikidata data model. (Many Wikidata resources are equally applicable to other Wikibases; the Wikidata Query Service (WDQS) works in much the same way as the WQS.)</p>
+<p>Key resources I used, many of them free online:</p>
+<p>General:</p>
+<ul>
+<li><a href="https://www.learningsparql.com/">Learning SPARQL</a> book by Bob DuCharme (inexpensive)</li>
+</ul>
+<p>Wikidata/wikibase-specific:</p>
+<ul>
+<li><a href="https://en.wikibooks.org/wiki/SPARQL">SPARQL (Wikibooks)</a></li>
+<li><a href="https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial">Wikidata SPARQL tutorial</a></li>
+<li><a href="https://wdqs-tutorial.toolforge.org/">Wikidata Query Service tutorial</a></li>
+</ul>
+<p>However, I quickly discovered that I wanted to do a lot of queries that were a bit different from most of the examples in basic Wikidata/wikibase SPARQL tutorials. These tend to cover how to do quite specific things like “find items that are films (P179) in the Star Wars series (Q22092344)”</p>
+<p>But I was more likely to want to ask questions that would look like “find items that are associated with the Star Wars series, but I don’t know exactly what sort of things there might be yet, oh and can I have associated dates of any type for the results as well?”.</p>
+<p>Writing queries to explore a wikibase where you don’t know exactly what you’re looking for, or you want to get several different kinds of a thing at the same time, turned out to be quite a bit harder (and involved getting more familiar with an intimidatingly complex <a href="https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer">data model</a>). <a href="https://stackoverflow.com/questions/46383784/wikidata-get-all-properties-with-labels-and-values-of-an-item">Stack Overflow</a> was also invaluable.</p>
+</section>
+<section id="from-sparql-to-r" class="level2">
+<h2 class="anchored" data-anchor-id="from-sparql-to-r">From SPARQL to R</h2>
+<p>The crucial next step is to get the results of queries into R in order to use the <a href="https://www.tidyverse.org/">Tidyverse</a> and visualise with <a href="https://ggplot2.tidyverse.org/">ggplot</a>.</p>
+<p>As far as possible I wanted the queries underpinning all my work to be recorded on the <a href="https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples">wikibase queries page</a>. The queries page has two functions: it records the SPARQL queries for those who can read the language, but it also enables the queries to be run by those who can’t. So anyone can check the results against my outputs.</p>
+<p>This influenced my workflow choices in specific ways which might not be quite the same for all projects.</p>
+</section>
+<section id="r-packages" class="level2">
+<h2 class="anchored" data-anchor-id="r-packages">R packages</h2>
+<p>Almost all the packages used regularly during the project are available from the official R CRAN repository. SPARQLchunks is only on Github.</p>
+<section id="for-sparql-queries" class="level3">
+<h3 class="anchored" data-anchor-id="for-sparql-queries">for SPARQL queries</h3>
+<p>Ultimately, it isn’t essential to have a dedicated SPARQL package for sending queries to an endpoint; you could just use something like <a href="https://cran.r-project.org/package=RCurl">RCurl</a> or <a href="https://httr.r-lib.org/index.html">httr</a>. But it can be convenient to have functions set up for this particular purpose.</p>
+<ul>
+<li><a href="https://lvaudor.github.io/glitter/index.html">glitter</a></li>
+</ul>
+<p>I played around a bit with this package which</p>
+<blockquote class="blockquote">
+<p>aims at writing and sending SPARQL queries without advanced knowledge of the SPARQL language syntax. It makes the exploration and use of Linked Open Data (Wikidata in particular) easier for those who do not know SPARQL well.</p>
+</blockquote>
+<p>It’s a nice package that I might well use in the future, but it wasn’t quite right for this project. I couldn’t really avoid getting to know SPARQL and I wanted to keep records of my queries in the wikibase. (My colleagues don’t know SPARQL well, it’s true… but they don’t know R either.) So it was simpler to copy and paste queries from the WQS.</p>
+<ul>
+<li><a href="https://cran.r-project.org/package=SPARQL">SPARQL</a></li>
+</ul>
+<p>This used to be the go-to package for querying SPARQL from R. But it was removed from the official R repository a few years ago and doesn’t seem to be maintained anywhere else so I decided not to use it. (But it probably still works if you get an archived copy from CRAN.)</p>
+<ul>
+<li><a href="https://github.com/aourednik/SPARQLchunks">SPARQLchunks</a></li>
+</ul>
+<p>I couldn’t quite get this package to work to do the thing it’s primarily advertised for (creating SPARQL code chunks)! But it worked perfectly for what I did want: fetching a SPARQL query and turning the results into a dataframe ready for further work.</p>
+</section>
+<section id="other-wikibasewikidata-packages" class="level3">
+<h3 class="anchored" data-anchor-id="other-wikibasewikidata-packages">other Wikibase/Wikidata packages</h3>
+<ul>
+<li><a href="https://github.com/Ironholds/WikipediR/">WikipediR</a></li>
+</ul>
+<p>A Wikibase is installed as part of a Mediawiki site, and can also (very usefully) contain wiki pages that aren’t part of the wikibase, and this package is useful for getting stuff out of those pages.</p>
+<ul>
+<li><a href="https://github.com/wikimedia/WikidataQueryServiceR">WikidataQueryServiceR</a></li>
+</ul>
+<p>This is a handy package to have around to query Wikidata directly. In practice I rarely used it; it’s easier to write a federated query from the WQS (though that’s likely to be slower, if speed is an issue).</p>
+</section>
+<section id="other-r-packages" class="level3">
+<h3 class="anchored" data-anchor-id="other-r-packages">other R packages</h3>
+<p>Large and small packages that have been used frequently in this project:</p>
+<ul>
+<li><a href="https://www.tidyverse.org/">tidyverse</a> (“an opinionated collection of R packages designed for data science”; includes dplyr, tidyr, ggplot2, lubridate, stringr, among others)</li>
+<li><a href="https://here.r-lib.org/">here</a> (“uses the top-level directory of a project to easily build paths to files”)</li>
+<li><a href="https://glue.tidyverse.org/">glue</a> (“an implementation of interpreted string literals”, aka a smarter verson of paste/sprintf functions)</li>
+<li><a href="https://glin.github.io/reactable/index.html">reactable</a> (interactive tables)</li>
+</ul>
+<p>ggplot2 extensions for visualisations:</p>
+<ul>
+<li><a href="https://jrnold.github.io/ggthemes/index.html">ggthemes</a> (a bunch of extra themes and functions for ggplot2)</li>
+<li><a href="https://github.com/hrbrmstr/ggalt">ggalt</a> (more extras for ggplot2, including dumbbell charts)</li>
+<li><a href="https://github.com/eclarke/ggbeeswarm">ggbeeswarm</a> (a project favourite: beeswarm plots)</li>
+</ul>
+</section>
+</section>
+<section id="setting-up" class="level2">
+<h2 class="anchored" data-anchor-id="setting-up">Setting up</h2>
+<p>A number of prerequisites and frequently used functions and objects are stored in two R scripts that are loaded at the beginning of every document.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># shared libraries, functions etc ####</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"_R/shared.R"</span>))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># standard query strings and queries ####</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"_R/std_queries.R"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="whats-in-the-setup" class="level3">
+<h3 class="anchored" data-anchor-id="whats-in-the-setup">what’s in the setup?</h3>
+<p>The two scripts contain a mix of package calls, functions, wikibase queries and R objects that are reused a lot. <code>shared.R</code> comes first and is more general purpose; <code>std_queries.R</code> is specifically for SPARQL query stuff.</p>
+<p>So for example, the BN endpoint URL and <a href="https://en.wikibooks.org/wiki/SPARQL/Prefixes">prefixes</a> are in <code>std_queries</code>.</p>
+<pre><code>bn_endpoint &lt;- "https://beyond-notability.wikibase.cloud/query/sparql"
+
+bn_prefixes &lt;- 
+"PREFIX bnwd: &lt;https://beyond-notability.wikibase.cloud/entity/&gt;
+PREFIX bnwds: &lt;https://beyond-notability.wikibase.cloud/entity/statement/&gt;
+PREFIX bnwdv: &lt;https://beyond-notability.wikibase.cloud/value/&gt;
+PREFIX bnwdt: &lt;https://beyond-notability.wikibase.cloud/prop/direct/&gt;
+PREFIX bnp: &lt;https://beyond-notability.wikibase.cloud/prop/&gt;
+PREFIX bnps: &lt;https://beyond-notability.wikibase.cloud/prop/statement/&gt;
+PREFIX bnpq: &lt;https://beyond-notability.wikibase.cloud/prop/qualifier/&gt; 
+PREFIX bnpsv: &lt;https://beyond-notability.wikibase.cloud/prop/statement/value/&gt;
+PREFIX bnpqv: &lt;https://beyond-notability.wikibase.cloud/prop/qualifier/value/&gt;
+PREFIX bnwdref: &lt;https://beyond-notability.wikibase.cloud/reference/&gt;
+PREFIX bnpr: &lt;https://beyond-notability.wikibase.cloud/prop/reference/&gt;
+PREFIX bnprv: &lt;https://beyond-notability.wikibase.cloud/prop/reference/value/&gt;
+"</code></pre>
+<p>The <code>bn_std_query()</code> function puts together a query string to send to the WQS and fetch results in a dataframe:</p>
+<pre><code>bn_std_query &lt;- function(sparql){
+  c(paste(
+    bn_prefixes,
+    sparql  # a SPARQL query string *without prefixes*
+  )) |&gt;
+    sparql2df(endpoint=bn_endpoint)  # SPARQLchunks
+}</code></pre>
+<p>There are a few other functions for initial processing of results. Wikibase URIs are long URL strings like https://beyond-notability.wikibase.cloud/entity/Q537. So <code>make_bn_item_id()</code> and <code>make_bn_ids()</code> extract the plain IDs (Q537) with a bit of regex.</p>
+<pre><code>make_bn_item_id &lt;- function(df, v) {
+  df |&gt;
+    mutate(bn_id = str_extract({{v}}, "([^/]*$)")) |&gt;
+    relocate(bn_id)
+}
+
+make_bn_ids &lt;- function(data, across_cols=NULL, ...) {
+  data |&gt;
+    mutate(across({{across_cols}}, ~str_extract(., "([^/]*$)")))
+}</code></pre>
+<p>Dates are returned as <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</a> timestamps and there’s a function in <code>shared</code> to convert them to a more R-friendly format. (The date column has to be named <code>date</code>. This was laziness on my part; it would have been more useful if I’d made it more flexible.)</p>
+<pre><code># requires {lubridate}
+
+make_date_year &lt;-function(data){
+  data  |&gt;
+    # &lt;unknown value&gt; dates will fail to parse; convert to NA first
+    mutate(date = if_else(str_detect(date, "^_:t"), NA, date))  |&gt;
+    mutate(date = parse_date_time(date, "ymdHMS"))  |&gt;
+    # might as well make a year column while we're here
+    mutate(year = year(date))
+}</code></pre>
+</section>
+</section>
+<section id="querying" class="level2">
+<h2 class="anchored" data-anchor-id="querying">Querying</h2>
+<section id="a-simple-query-list-women-in-the-database" class="level3">
+<h3 class="anchored" data-anchor-id="a-simple-query-list-women-in-the-database">a simple query: list women in the database</h3>
+<p>A list of all the women currently in the BN database with the number of <a href="https://www.wikidata.org/wiki/Help:Statements">statements</a> for each woman, which gives an idea of how much information we’ve collected for her. A simple but typical example of the two-step sparql&gt;query process.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>bn_all_women_sparql <span class="ot">&lt;-</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">'SELECT distinct ?person ?personLabel ?statements</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="st"> WHERE {</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="st">   ?person bnwdt:P3 bnwd:Q3 ;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="st">         wikibase:statements ?statements .</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="st">   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="st">SERVICE wikibase:label { </span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="st">        bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". </span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="st">        } </span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="st">ORDER BY ?person'</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>bn_all_women_query <span class="ot">&lt;-</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bn_std_query</span>(bn_all_women_sparql) <span class="sc">|&gt;</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_ids</span>(person) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Who do we have most information about?</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>bn_all_women_query <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="sc">-</span>statements) <span class="sc">|&gt;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(statements<span class="sc">&gt;=</span><span class="dv">50</span>) <span class="sc">|&gt;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>() <span class="sc">|&gt;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small" data-quarto-postprocess="true">
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">person</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">personLabel</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">statements</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Q569</td>
+<td style="text-align: left;">Margaret Alice Murray</td>
+<td style="text-align: right;">165</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q911</td>
+<td style="text-align: left;">Jane Ellen Harrison</td>
+<td style="text-align: right;">101</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q23</td>
+<td style="text-align: left;">Eugénie Sellers Strong</td>
+<td style="text-align: right;">98</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q57</td>
+<td style="text-align: left;">Rose Graham</td>
+<td style="text-align: right;">95</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q133</td>
+<td style="text-align: left;">Margerie Venables Taylor</td>
+<td style="text-align: right;">80</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q60</td>
+<td style="text-align: left;">Nina Frances Layard</td>
+<td style="text-align: right;">78</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q709</td>
+<td style="text-align: left;">Kathleen Mary Kenyon</td>
+<td style="text-align: right;">75</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q1053</td>
+<td style="text-align: left;">Charlotte Carmichael Stopes</td>
+<td style="text-align: right;">70</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q894</td>
+<td style="text-align: left;">Alice Bertha Gomme</td>
+<td style="text-align: right;">66</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q624</td>
+<td style="text-align: left;">Maria Millington Lathbury Evans</td>
+<td style="text-align: right;">65</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q153</td>
+<td style="text-align: left;">Eliza Jeffries Davis</td>
+<td style="text-align: right;">61</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q145</td>
+<td style="text-align: left;">Tessa Verney Wheeler</td>
+<td style="text-align: right;">60</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q807</td>
+<td style="text-align: left;">Elsie Margaret Clifford</td>
+<td style="text-align: right;">59</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q3628</td>
+<td style="text-align: left;">Katherine Routledge</td>
+<td style="text-align: right;">58</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q275</td>
+<td style="text-align: left;">Joan Evans</td>
+<td style="text-align: right;">57</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q1065</td>
+<td style="text-align: left;">Helen Mary Tirard</td>
+<td style="text-align: right;">55</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q880</td>
+<td style="text-align: left;">Emma Louisa Radford</td>
+<td style="text-align: right;">52</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Q916</td>
+<td style="text-align: left;">Agnes Conway Horsfield</td>
+<td style="text-align: right;">51</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q863</td>
+<td style="text-align: left;">Dorothy Annie Elizabeth Garrod</td>
+<td style="text-align: right;">50</td>
+</tr>
+</tbody>
+</table>
+
+
+</div>
+</div>
+</section>
+<section id="a-more-complex-query-suffrage-activities" class="level3">
+<h3 class="anchored" data-anchor-id="a-more-complex-query-suffrage-activities">a more complex query: suffrage activities</h3>
+<p>See <a href="https://beyond-notability.github.io/bn_notes/posts/suffrage-2024-03-18/">this blog post on suffrage-related activities</a>.</p>
+<p>While analyses often revolve around distinct database <a href="https://www.wikidata.org/wiki/Help:Properties">properties (or categories)</a> in the wikibase, such as <code>spoke at</code> or <code>held position</code>, women’s suffrage-related activities are recorded using a triple <code>instance of</code> (P12) <a href="https://beyond-notability.wikibase.cloud/wiki/Item:Q1166">suffrage activity (Q1166)</a> attached to a property; occasionally an organisation is directly recorded as an instance of suffrage activity (<a href="https://beyond-notability.wikibase.cloud/wiki/Item:Q698">eg</a>).</p>
+<p>Many properties, especially for public and professional activities (PPAs) potentially could have this information attached. For example, <a href="https://beyond-notability.wikibase.cloud/wiki/Item:Q894">Alice Bertha Gomme</a> <code>was a member of</code> (P67) the Women’s Emancipation Union (Q2711) and the Parliamentary Committee for Women’s Suffrage (Q3808); she also <code>gave money to</code> (P115) the Women’s Social and Political Union (Q746).</p>
+<p>So this is a case where I can’t assume a fixed set of properties for a query; I need queries that will look for the P12-Q1166 combination anywhere (including a few cases where it’s not explicitly recorded on a woman’s page but an organisation she’s involved with has that <code>instance of</code>). I also want to get associated information (including dates) in qualifiers and not all of the properties have exactly the same qualifiers, so some flexibility is desirable there as well.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>bn_suffrage_sparql <span class="ot">&lt;-</span> </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="st">'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?s </span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="st">   WHERE {  </span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="st">    ?person bnwdt:P3 bnwd:Q3 . #select women</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="st">    FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="st">    ?person ?p ?s .</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="st">        ?s ?sub ?subval .</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="st">        ?main wikibase:claim ?p.</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="st">        ?main wikibase:statementProperty ?sub.   </span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="st">    # sub_ i/o  some have suffrage activity which will duplicate, filter </span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="st">    optional { ?subval bnwdt:P12 ?sub_io . </span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="st">                filter not exists { ?subval bnwdt:P12 bnwd:Q1166 . }</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="st">              }</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="st">             </span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="st">  # union query</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="st">   { # qualifier on the page i/o suffrage activity</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="st">       ?s bnpq:P12 bnwd:Q1166.</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="st">  union</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="st">    { # org in qualifier has i/o suffrage activity.</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="st">      ?s ?pq ?qual .</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="st">        ?qual bnwdt:P12 bnwd:Q1166 .</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a><span class="st">    } # /union</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="st">  optional { ?s bnpq:P78 ?of. }  </span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="st">  optional { </span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a><span class="st">    # dates.</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a><span class="st">        ?s ?dpq ?qual_date .   </span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a><span class="st">          ?qual_date wikibase:timeValue ?date .</span></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a><span class="st">  SERVICE wikibase:label { </span></span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a><span class="st">        bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". </span></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a><span class="st">        }</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a><span class="st">order by ?personLabel ?mainLabel'</span></span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>bn_suffrage_query <span class="ot">&lt;-</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bn_std_query</span>(bn_suffrage_sparql) <span class="sc">|&gt;</span></span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_item_id</span>(person) <span class="sc">|&gt;</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_ids</span>(<span class="fu">c</span>(s)) <span class="sc">|&gt;</span></span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(date, mainLabel, subvalLabel, ofLabel), </span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>                <span class="sc">~</span><span class="fu">na_if</span>(., <span class="st">""</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(person, <span class="at">.after =</span> <span class="fu">last_col</span>())</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a><span class="co"># use the ppa_buckets data to add broad categories to activities</span></span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>bn_suffrage_buckets <span class="ot">&lt;-</span></span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>bn_suffrage_query <span class="sc">|&gt;</span></span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(bn_ppa_buckets <span class="sc">|&gt;</span> </span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>              <span class="fu">select</span>(ppa, <span class="at">bucket=</span>label), <span class="at">by=</span><span class="fu">c</span>(<span class="st">"mainLabel"</span><span class="ot">=</span><span class="st">"ppa"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">bucket =</span> <span class="fu">case_when</span>(</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>    bucket<span class="sc">==</span><span class="st">"event participation"</span> <span class="sc">~</span> <span class="st">"events"</span>,</span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a>    <span class="fu">is.na</span>(bucket) <span class="sc">&amp;</span> mainLabel<span class="sc">==</span><span class="st">"gave money to"</span> <span class="sc">~</span> <span class="st">"money"</span>, <span class="co"># not in ppa_buckets for some reason</span></span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>    <span class="at">.default =</span> bucket</span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a>  <span class="co"># there's also a `recorded in` which is not relevant. </span></span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(bucket))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>A look at the BN women who were most involved in suffrage activities:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>bn_suffrage_buckets <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_count</span>(bn_id, <span class="at">name=</span><span class="st">"n_bn"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(n_bn<span class="sc">&gt;</span><span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(bn_id, personLabel, bucket, n_bn, <span class="at">sort =</span> T) <span class="sc">|&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">personLabel =</span><span class="fu">fct_reorder</span>(personLabel, n_bn)) <span class="sc">|&gt;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(n, personLabel, <span class="at">fill=</span>bucket)) <span class="sc">+</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_ptol</span>() <span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y=</span><span class="cn">NULL</span>, <span class="at">x=</span><span class="st">"number of actions"</span>, </span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"BN women's suffrage activities"</span>, </span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">caption =</span> <span class="st">"at least 2 actions"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="workflow_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="the-workflow-in-practice" class="level2">
+<h2 class="anchored" data-anchor-id="the-workflow-in-practice">The workflow in practice</h2>
+<p>See the posts on this blog for examples of data analysis and visualisations using the workflow; the linked Github repository contains the R code for those who’d like to dig further.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp("https:\/\/beyond-notability\.github\.io\/bn_notes\/");
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

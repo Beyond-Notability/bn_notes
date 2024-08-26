@@ -22,7 +22,7 @@ bn_std_query <- function(sparql){
     bn_prefixes,
     sparql
   )) |>
-    SPARQLchunks::sparql2df(endpoint=bn_endpoint) 
+    sparql2df(endpoint=bn_endpoint) 
 }
 
 

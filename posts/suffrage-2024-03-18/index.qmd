@@ -171,6 +171,9 @@ bn_suffrage_query |>
     is.na(bucket) & mainLabel=="gave money to" ~ "money",
     .default = bucket
   )) |>
+  # a `recorded in` has appeared which is unlikely to be relevant. 
+  # might need to keep an eye on any other unexpected NAs though!
+  filter(!is.na(bucket)) |>
   relocate(sub_type, org, bucket, .after = ofLabel) |>
   rename(activity=mainLabel) |>
   left_join(bn_women_dob_dod |> select(-person, -personLabel), by="bn_id")
@@ -218,17 +221,85 @@ A beeswarm of activity types grouped by PPA buckets. [excluding the buckets with
 ```
 
 
+
+```{r}
+
+
+# named vector of colours for variable values
+# make_named_colours <- function(df, grpname, grpcols){
+# get rows in required order before using this (this sorts by frequency; could make another version for random/uncounted etc) and then add rowid
+# grpname is the name of the group or bucket in the group col
+# **grpcols has to be a vector of colour codes** - sthg like viridis_pal()(16)  will work, just have to have enough colours. may need to reverse direction to stop the first one being white grr.
+
+c(events="#1f77b4", 
+  positions="#ff7f0e", 
+  societies="#8c564b",   
+  money="#17becf")
+
+# could probably add the counts programmatically too... in fact haven't i done that somewhere?
+g1 <- colorRampPalette(c('#1f77b4', '#071926'))(6)
+
+g2 <- colorRampPalette(c("#ff7f0e", "#361b03"))(6)
+
+g3 <- colorRampPalette(c("#8c564b", "#612013"))(4)
+
+g4 <- c("#17becf")
+
+
+
+
+suffrage_group_activities_colours <-
+  bn_suffrage |>
+  filter(!is.na(year)) |>
+  rename(colour_category=activity, group=bucket)
+
+group_1 <-
+  suffrage_group_activities_colours|>
+  filter(group =="events") |>
+  make_named_colours("events", g1)
+
+group_2 <-
+suffrage_group_activities_colours |>
+  filter(group=="positions") |>
+  make_named_colours("positions", g2)
+
+group_3 <-
+suffrage_group_activities_colours |>
+  filter(group=="societies") |>
+  make_named_colours("societies", g3)
+
+group_4 <-
+suffrage_group_activities_colours |>
+  filter(group=="money") |>
+  make_named_colours("money", g4)
+
+
+# the final named vector 
+grouped_colours <-
+  c(group_1, group_2, group_3, group_4)
+
+```
+
+
+
 ```{r}
 bn_suffrage |>
-  filter(!bucket %in% c("money", "publishing")) |>
+  # drop publishing
+  filter(!bucket %in% c("publishing")) |>
+  left_join(
+    enframe(grouped_colours, name="activity") |>
+      left_join(bn_suffrage |> distinct(bucket, activity), by="activity") |>
+      arrange(bucket) |>
+      rowid_to_column("sort_activity") |>
+      select(activity, sort_activity), by="activity"
+  ) |>
   filter(!is.na(year)) |>
   arrange(bucket, activity) |>
-  #add_count(bn_id, name="n_bn") |> filter(n_bn>1) |>
   mutate(bucket = fct_rev(bucket)) |>
+  mutate(activity = fct_reorder(activity, sort_activity)) |>
   ggplot(aes(date, bucket, colour=activity)) +
-#  geom_quasirandom(groupOnX = FALSE) +
   geom_beeswarm(size=1, method = "hex", cex=2) +
-  scale_colour_colorblind() +
+  scale_colour_manual(values = grouped_colours) +
   labs(y=NULL)
 ```
 
@@ -352,6 +423,7 @@ bn_suffrage_barcode |>
 
 ```{r}
 bn_suffrage_barcode |> 
+  filter(!is.na(bn_dob)) |>
   mutate(personLabel=fct_rev(fct_reorder(personLabel, bn_dob))) |>
   ggplot(aes(y=personLabel, x=date)) +
   geom_segment( aes(x=start_date, xend=latest, yend=personLabel), linewidth=0.2, colour="lightgrey") +
@@ -363,8 +435,6 @@ bn_suffrage_barcode |>
   #theme(legend.position = "bottom") +
   labs(y=NULL)
 ```
-
-
 
 
 
@@ -467,6 +537,7 @@ But NB that this is only true of "early starters" (pre 1908) and the numbers are
 
 ```{r}
  bn_suffrage_ages |>
+  filter(!is.na(bn_dob)) |>
   filter(date == min(date), .by=bn_id) |> #count(group, started)
   # group_by(group) |>
   # summarise(#mn_e = mean(earliest), med_e=median(earliest),
@@ -501,6 +572,7 @@ Lollipop chart of ages at earliest activity, sorted by *date* of the earliest ac
 # lollipop of age of first activity coloured by group 1/2
 # sorted by date of first activity
 bn_suffrage_ages |>
+  filter(!is.na(bn_dob)) |>
   filter(date == min(date), .by=bn_id) |>
   mutate(personLabel = fct_reorder(personLabel, desc(earliest))) |>
   ggplot(aes(y=personLabel, x=age_at, colour=group, label=earliest)) +

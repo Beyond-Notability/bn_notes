@@ -52,8 +52,6 @@ WHERE {
   ?person bnwdt:P3 bnwd:Q3 . # select women
   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} 
   
-  #?person  bnwdt:P102 ?service .   # cant have this AND the bnp: line.  have to get service via claim.
-  
   ?person bnp:P102 ?s . # need this to get quals... i think  
   ?person ?p ?s . # for claim    
   

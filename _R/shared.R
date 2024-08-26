@@ -50,10 +50,139 @@ library(reactable)
 
 # wikidata/sparql etc
 
-#SPARQL package (which used to be the standard go-to) has been removed from CRAN. 
-#Could install it anyway or even write a custom function using curl but SPARQLchunks seems to work fine.
-#remotes::install_github("aourednik/SPARQLchunks", build_vignettes = TRUE)
+# SPARQL package (which used to be the standard go-to) has been removed from CRAN. 
+# Could install it anyway or even write a custom function using curl but SPARQLchunks seems to work fine.
+
+# remotes::install_github("aourednik/SPARQLchunks", build_vignettes = TRUE)
 suppressPackageStartupMessages(library(SPARQLchunks) ) # can't get chunks working! but it's fine for inline queries.
+
+#' # key functions from https://github.com/aourednik/SPARQLchunks/blob/master/R/sparqlchunks.R
+#' # needs {httr} and {curl}
+#' 
+#' #' Fetch data from a SPARQL endpoint and store the output in a dataframe
+#' #' @param endpoint The SPARQL endpoint (a URL)
+#' #' @param query The SPARQL query (character)
+#' #' @param autoproxy Try to detect a proxy automatically (boolean). Useful on Windows machines behind corporate firewalls
+#' #' @param auth Authentication Information (httr-authenticate-object)
+#' #' @examples library(SPARQLchunks)
+#' #' endpoint <- "https://lindas.admin.ch/query"
+#' #' query <- "PREFIX schema: <http://schema.org/>
+#' #'   SELECT * WHERE {
+#' #'   ?sub a schema:DataCatalog .
+#' #'   ?subtype a schema:DataType .
+#' #' }"
+#' #' result_df <- sparql2df(endpoint, query)
+#' #' 
+#' sparql2df <- function(endpoint, query, autoproxy = FALSE, auth = NULL) {
+#'   if (autoproxy) {
+#'     proxy_config <- autoproxyconfig(endpoint)
+#'   } else {
+#'     proxy_config <- httr::use_proxy(url = NULL)
+#'   }
+#'   acceptype <- "text/csv"
+#'   outcontent <- get_outcontent(endpoint, query, acceptype, proxy_config, auth)
+#'   out <- textConnection(outcontent)
+#'   df <- utils::read.csv(out)
+#'   return(df)
+#' }
+#' 
+#' 
+#' #' Try to determine the proxy settings automatically
+#' #' @param endpoint The SPARQL endpoint (URL)
+#' autoproxyconfig <- function(endpoint) {
+#'   message("Trying to determine proxy parameters")
+#'   proxy_url <- tryCatch(
+#'     {
+#'       curl::ie_get_proxy_for_url(endpoint)
+#'     },
+#'     error = function(e) {
+#'       message("Automatic proxy detection with curl::curl::ie_get_proxy_for_url() failed.")
+#'       return(NULL)
+#'     }
+#'   )
+#'   if (!is.null(proxy_url)) {
+#'     message(paste("Using proxy:", proxy_url))
+#'   } else {
+#'     message(paste("No proxy found or needed to access the endpoint", endpoint))
+#'   }
+#'   return(httr::use_proxy(url = proxy_url))
+#' }
+#' 
+#' #' Get the content from the endpoint
+#' #' @param endpoint The SPARQL endpoint (URL)
+#' #' @param query The SPARQL query (character)
+#' #' @param acceptype 'text/csv' or 'text/xml' (character)
+#' #' @param proxy_config Detected proxy configuration (list)
+#' #' @param auth Authentication Information (httr-authenticate-object)
+#' get_outcontent <- function(endpoint, query, acceptype, proxy_config, auth = NULL) {
+#'   qm <- paste(endpoint, "?", "query", "=",
+#'               gsub("\\+", "%2B", utils::URLencode(query, reserved = TRUE)), "",
+#'               sep = ""
+#'   )
+#'   
+#'   outcontent <- tryCatch(
+#'     {
+#'       out <- httr::GET(
+#'         qm,
+#'         proxy_config, auth,
+#'         httr::timeout(60),
+#'         httr::add_headers(c(Accept = acceptype))
+#'       )
+#'       httr::content(out, "text", encoding = "UTF-8")
+#'     },
+#'     error = function(e) {
+#'       # @see https://github.com/r-lib/httr/issues/417 The download.file function in base R uses IE settings, including proxy password, when you use download
+#'       # method wininet which is now the default on windows.
+#'       if (.Platform$OS.type == "windows") {
+#'         tempfile <- file.path(tempdir(), "temp.txt")
+#'         utils::download.file(qm,
+#'                              method = "wininet",
+#'                              headers = c(Accept = acceptype),
+#'                              tempfile
+#'         )
+#'         temp <- paste(readLines(tempfile), collapse = "\n")
+#'         unlink(tempfile)
+#'         return(temp)
+#'       }
+#'     }
+#'   )
+#'   if (nchar(outcontent) < 1) {
+#'     warning(paste0(
+#'       "First query attempt result is empty. Trying without '",
+#'       acceptype,
+#'       "' header. The result is not guaranteed to be a list."
+#'     ))
+#'     outcontent <- tryCatch(
+#'       {
+#'         out <- httr::GET(
+#'           qm,
+#'           proxy_config, auth,
+#'           httr::timeout(60)
+#'         )
+#'         if (out$status == 401) {
+#'           warning("Authentication required. Provide valid authentication with the auth parameter")
+#'         } else {
+#'           httr::warn_for_status(out)
+#'         }
+#'         httr::content(out, "text", encoding = "UTF-8")
+#'       },
+#'       error = function(e) {
+#'         if (.Platform$OS.type == "windows") {
+#'           tempfile <- file.path(tempdir(), "temp.txt")
+#'           utils::download.file(qm, method = "wininet", tempfile)
+#'           temp <- paste(readLines(tempfile), collapse = "\n")
+#'           unlink(tempfile)
+#'           return(temp)
+#'         }
+#'       }
+#'     )
+#'     if (nchar(outcontent) < 1) {
+#'       warning("The query result is still empty")
+#'     }
+#'   }
+#'   return(outcontent)
+#' }
+
 
 ## ARRRGHHH. 
 ## run into an unexpected issue with the sparqldf function: 
@@ -62,6 +191,8 @@ suppressPackageStartupMessages(library(SPARQLchunks) ) # can't get chunks workin
 ## it should be a rare problem and if so it can be fixed by hacking the sparql query to add a prefix string.
 ## in where: BIND(concat("idstr:", ?id) as ?id_str ) or in select:  (concat("idstr:", ?id) as ?id_str )
 ## followed by a str_remove
+
+
 
 library(WikidataQueryServiceR) 
 
@@ -78,10 +209,6 @@ library(WikipediR)
 
 
 
-## may also need at some point... 
-#library(jsonlite)
-#library(listviewer)
-## xml2? httr?
 
 
 ## functions (general purpose) ####
@@ -148,9 +275,8 @@ make_display_date <-
     )) 
 }
 
-## to get stuff in shared data folder... 
+## to get stuff in shared data folder
 
-# this might be slightly different in _site project ?
 get_folder_one_above_root <- function(ext_folder){
   file.path(dirname(here::here()), ext_folder)  ## nb creates absolute path
 }
@@ -209,7 +335,7 @@ bn_ppa_buckets <-
   read_csv(here::here("_data/bn_ppa_buckets_v1_240212.csv"), show_col_types = F)
 
 
-## moved from std-queries.r
+
 ## Sorted Properties (needs WikipediR)
 ## https://beyond-notability.wikibase.cloud/wiki/MediaWiki:Wikibase-SortedProperties
 ## this is simpler structure than the queries page and query shouldn't break...
@@ -314,6 +440,7 @@ organisations_abbr <-
 # get rows in required order before using this (this sorts by frequency; could make another version for random/uncounted etc) and then add rowid
 # grpname is the name of the group or bucket in the group col
 # **grpcols has to be a vector of colour codes** - sthg like viridis_pal()(16)  will work, just have to have enough colours. may need to reverse direction to stop the first one being white grr.
+
 make_named_colours <- function(df, grpname, grpcols){
   df |>
     filter(group==grpname) |>

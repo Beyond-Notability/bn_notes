@@ -34,6 +34,7 @@
       "/notes/women-summary-browser.html",
       "/notes/bn-presentation-20230425.html",
       "/notes/excavations-browser.html",
+      "/notes/workflow.html",
       "/notes/women-summary-main-dates.html",
       "/notes/notes-on-dates.html"
     ]
@@ -41,6 +42,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/notes/workflow.html",
       "/posts/sal-2024-07-23/index.html",
       "/posts/excavations-2024-07-10/index.html",
       "/notes/excavations-browser.html",

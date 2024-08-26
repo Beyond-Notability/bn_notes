@@ -1,6 +1,4 @@
-## getting this has to go AFTER std_query r.
-
-
+## this has to be AFTER std_query r.
 
 ## fetch all dates for women from wikibase ####
 
