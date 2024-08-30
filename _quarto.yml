@@ -6,6 +6,7 @@ project:
 website:
   title: BN Notes
   site-url: https://beyond-notability.github.io/bn_notes/
+  favicon: profile.jpg
   navbar:
     left:
       - text: Posts
@@ -35,7 +36,5 @@ date-format: "D MMMM YYYY"
 # freeze computational output
 # (see https://quarto.org/docs/projects/code-execution.html#freeze)
 
-# change this back to auto when you're in less of a hurry...?
-# if i set this to false, will it try to update everything every time i render a single post? is false even an option?
 freeze: auto
 
