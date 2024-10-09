@@ -1,0 +1,366 @@
+---
+title: "Higher education overviews"
+description: "Summarising BN women's higher education"
+author: "Sharon Howard"
+date: "2024-10-09"
+date-modified: today
+categories: 
+  - education
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+## Notes
+
+Includes universities, colleges, extension centres etc, but not any completely informal alternative provision
+
+Other summaries that I've overlooked can be added on request. (I did some work for academic degrees but apparently not very much for educated at.)
+
+[Wikibase queries on education](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Education)
+
+```{r}
+
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+#library(reactable)
+#library(ggbeeswarm)
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+
+
+```{r educated-at}
+## query used for Obs educated/degree age timelines but make dates optional
+bn_women_educated_dates_sparql <-
+'SELECT ?personLabel ?collegeLabel ?universityLabel ?organisedLabel ?subjectLabel ?date ?date_prop ?s ?college ?university ?subject ?organised ?person
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  ?person bnp:P94 ?s .  # educated at
+    ?s bnps:P94 ?college .
+      ?college bnwdt:P12 bnwd:Q2914 .   # tertiary ed inst
+      optional {?college bnwdt:P4 ?university . } # a few college arent part of a university
+      optional {?s bnpq:P109 ?organised . } # some extension centres
+      optional {?s bnpq:P60 ?subject . } 
+   
+  # dates. changed to simple dates. 
+         # pit/start/end. there are a few earliest/latest as well.
+     optional { ?s (bnpq:P1 | bnpq:P27 | bnpq:P28  ) ?date . 
+                ?s ?date_prop ?date .
+                } 
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}
+order by ?personLabel ?collegeLabel ?date'
+
+bn_women_educated_dates_query <-
+  bn_std_query(bn_women_educated_dates_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(college, university, subject, date_prop, organised, s)) |>
+  mutate(across(c(university, organised, subject, universityLabel, organisedLabel, subjectLabel), ~na_if(., ""))) |>
+  mutate(date_label = date_property_labels(date_prop)) |>
+  make_date_year() |>
+  # parsed posixct date. this may need to handle uvs
+  # mutate(date = parse_date_time(date_qual, "ymdHMS"))  |>
+  # mutate(year = year(date)) |>
+  relocate(person, s, .after = last_col())
+
+
+
+## various changes from timeline
+bn_women_educated_dates_wide <-
+bn_women_educated_dates_query |>
+  # drop alternative provision except
+  # use BM filter instead that keeps ext centres
+  # but might be more than one in a year? i think it's ok if you're dropping subject...
+  filter(college != "Q2485" | !is.na(organised)) |>
+  # distinct fixes dups caused by subjects. 
+  distinct(bn_id, personLabel, collegeLabel, college, universityLabel, university, organisedLabel, organised, date, year, date_label, s) |>
+  # c() in values_from. that's all folks
+  pivot_wider(names_from = date_label, values_from = c(date, year)) |>
+  clean_names("snake") |>
+  # create by_label - in obs this is to match degrees - may need tidying up; but then might not use it at all.
+    mutate(by = case_when(
+    college=="Q2485" ~ organised,
+    !is.na(university) ~ university,
+    !is.na(college) ~ college
+  )) |>
+  mutate(by_label = case_when(
+  college=="Q2485" ~ organised_label,
+    !is.na(university_label) ~ university_label,
+    !is.na(college_label) ~ college_label
+  )) |> 
+  mutate(year = case_when(
+    !is.na(year_start_time) ~ year_start_time,
+    !is.na(year_point_in_time) ~ year_point_in_time,
+    !is.na(year_end_time) ~ year_end_time
+  )) |>
+  left_join(
+    bn_women_dob_dod |> select(bn_id, bn_dob, bn_dob_yr), by="bn_id"
+  ) |> 
+  select(bn_id, person_label, by_label, by, year, bn_dob_yr, s)
+
+```
+
+
+```{r academic-degrees}
+
+
+bn_academic_degrees_sparql <-
+'SELECT distinct ?person ?personLabel ?degreeLabel ?byLabel ?subjectLabel ?date ?date_prop ?s ?by ?degree ?subject
+
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  # academic degree = P59. 
+  ?person bnp:P59 ?s .  
+    ?s bnps:P59 ?degree . # type of degree
+  
+  # P61 conferred by
+    optional { ?s bnpq:P61 ?by . }
+  
+  # p60 subject
+    optional { ?s bnpq:P60 ?subject . }
+  
+  # dates. CHANGES drop precision. make optional again
+     optional {
+      ?s (bnpq:P1 | bnpq:P28 |  bnpq:P51  ) ?date .
+      ?s ?date_prop ?date .
+     }
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}
+order by ?personLabel'
+
+
+bn_academic_degrees_query <-
+  bn_std_query(bn_academic_degrees_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(degree, by, subject, date_prop, s)) |>
+  mutate(across(c(by, subject, byLabel, subjectLabel, date, date_prop), ~na_if(., ""))) |>
+  make_date_year() |>
+  mutate(date_propLabel = date_property_labels(date_prop)) |>
+  relocate(s, person, .after = last_col())
+
+
+
+bn_academic_degrees <-
+bn_academic_degrees_query |>
+  # convert uv by/subject to NA
+  mutate(across(c(by, subject, byLabel, subjectLabel),  ~if_else( str_detect(., "^(_:)?t\\d+$"), NA, . ))) |>
+  # drop latest date if there is a more precise date available, otherwise keep them for now
+  add_count(s) |> 
+  filter(date_prop !="P51" | n==1  ) |> # seems to be ok for NAs
+  select(-n) |>
+  # make a year type for latest v others (all = pit)
+  mutate(year_type = case_when(
+    is.na(date_prop) ~ NA,
+    date_prop=="P51"~ "latest date", 
+    .default = "point in time")) |>
+  relocate(year_type, .after = date) |>
+  left_join(bn_women_dob_dod |> select(bn_id, bn_dob_yr), by="bn_id") 
+# might still be the odd dup at this stage. yes there's one. looks like same degree but one with year and one undated??
+
+
+bn_fsa_sparql <-
+'SELECT ?person 
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  ?person bnwdt:P75 bnwd:Q8. # ?fellow_of . 
+}'
+
+bn_fsa_query <-
+  bn_std_query(bn_fsa_sparql) |>
+  make_bn_item_id(person)
+
+# shouldn't be any dup now... 
+# bn_academic_degrees |>
+#   add_count(s) |> filter(n>1)
+
+bn_women_education_summary <-
+bn_women_list |>
+  left_join(bn_fsa_query |> distinct(bn_id) |> mutate(is_fsa="yes"), by="bn_id") |>
+  left_join(bn_women_educated_dates_wide |> distinct(bn_id) |> mutate(has_education="yes"), by="bn_id") |>
+  left_join(bn_academic_degrees |> distinct(bn_id) |> mutate(has_degree="yes"), by="bn_id") |>
+  mutate(has_either = if_else( !is.na(has_education) | !is.na(has_degree), "yes", "no" )) |>
+  mutate(statements_group = if_else(statements >20, ">20", "<=20")) |>
+  mutate(across(c(has_degree, has_education, is_fsa), ~if_else(is.na(.), "no", .)))
+```
+
+```{r}
+bn_reactable <-
+bn_women_educated_dates_wide |>
+  distinct(bn_id,  name=person_label, year, where=by_label) |> mutate(type="educated at") |>
+  bind_rows(
+    bn_academic_degrees |>
+      distinct(bn_id, name=personLabel, degree=degreeLabel, where=byLabel, year) |> mutate(type="academic degree")
+  ) |>
+  arrange(name, year) |>
+  relocate(type, .after = name) |>
+  left_join(bn_women_list |> distinct(bn_id, person), by="bn_id")
+```
+
+
+
+## Pie charts of educational information
+
+```{r}
+# https://r-graph-gallery.com/piechart-ggplot2.html but added position= to geom_text.
+# this is a lot simpler than previous lolpie...
+bn_women_education_summary |>
+  count(has_degree) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_degree} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_degree)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("All women: academic degree")  
+```
+
+
+
+```{r}
+bn_women_education_summary |>
+  count(has_education) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_education} ({prop}%)")) |>
+  ggplot(aes(x="", y=prop, fill=has_education)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("All women: educated at")  
+```
+
+
+
+
+
+```{r}
+bn_women_education_summary |>
+  count(has_either) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_either} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_either)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("All women: educated at or academic degree")  
+```
+
+
+
+```{r}
+bn_women_education_summary |>
+  filter(is_fsa=="yes") |>
+  count(has_either) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_either} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_either)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("FSAs only: educated at or academic degree")  
+```
+
+
+```{r}
+bn_women_education_summary |>
+  filter(statements>=20) |>
+  count(has_either) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_either} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_either)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("At least 20 statements: educated at or academic degree")  
+```
+```{r}
+bn_women_education_summary |>
+  filter(statements<20) |>
+  count(has_either) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_either} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_either)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("Less than 20 statements: educated at or academic degree")  
+```
+
+A note: how often the wikibase has information about degree but no information about educated at (and vice versa).
+
+```{r}
+bn_women_education_summary |>
+  count(has_education, has_degree, name="count") |>
+  mutate(percent =  round(count/sum(count)*100,1 )) |>
+  kable() |>
+  kable_styling()
+```
+
+## Table
+
+```{r}
+
+reactable(
+  bn_reactable |> select(-person) ,
+  filterable = TRUE,
+  searchable = TRUE,
+  bordered = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 130,
+  #groupBy = "personLabel",
+  defaultExpanded = TRUE,
+  defaultColDef = colDef(maxWidth = 60),  # , headerClass = "sticky" but i think it has to be fixed height to use this
+  columns = list(
+    bn_id = colDef(name="id", maxWidth = 80),
+    name =colDef(maxWidth = 220, name="name",
+      html = TRUE,
+      cell = function(value, index) {
+        sprintf('<a href="%s#P59" target="_blank">%s</a>', bn_reactable$person[index], value)
+      })   ,
+   year = colDef(maxWidth = 75),
+   type = colDef(maxWidth = 100),
+   where = colDef(maxWidth = 200),
+   degree = colDef(maxWidth = 180)   
+    
+  )
+)
+```
+
+
+
+
+
