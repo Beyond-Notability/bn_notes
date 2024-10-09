@@ -13,13 +13,13 @@ execute:
   echo: false 
 ---
 
-An experimental interactive visualisation; this uses a package with a limited set of D3.js features but is quite quick and easy to set up; I wanted to see what it would look like before deciding how much time to spend wrestling directly with d3 in the Observable! 
-
-Uses the same data as the [Events analysis](https://beyond-notability.github.io/bn_notes/posts/events-2024-02-26/) (about 1360 distinct and dated event attendances). Links between women who attended the same event instance (there are notes about methods for that in the original post); about 150 women have at least one link. Women without any links have been filtered out.
-
-Node colours represent groups detected by R (using [edge betweenness](https://r.igraph.org/reference/cluster_edge_betweenness.html) clustering). Size of nodes reflects number of event attendances.
+An experimental interactive visualisation; this uses a package with a limited set of D3.js features but is quite quick and easy to set up; I wanted to see what it would look like before deciding how much time to spend wrestling directly with d3 in the Observable! It's intended as a qualitative tool for exploring associations in a way that's hard to do with the static R visualisations.
 
 You can zoom in and out and drag the whole network around; or hover over nodes for name labels and pick up the nodes to drag them around in order to see their connections better.
+
+Uses the same data as the [Events analysis](https://beyond-notability.github.io/bn_notes/posts/events-2024-02-26/) (about 1360 distinct and dated event attendances). Links between women who attended the same event instance (there are notes about methods for that in the original post); about 150 women have at least one link. Margaret Murray has the most links with (iirc) about 8, but most only have one or two. Women without any links at all have been filtered out.
+
+Node colours represent groups detected by R (using [edge betweenness](https://r.igraph.org/reference/cluster_edge_betweenness.html) clustering; I may need a better algorithm for this). Size of nodes reflects number of event attendances. Apart from being grouped by colour, the force-directed layout should push more connected individuals closer together and pull less connected ones apart.
 
 ```{r libraries-etc}
 # shared libraries, functions etc ####

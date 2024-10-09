@@ -23,6 +23,7 @@ link to...
 - LOC dataset on zenodo
 - ADS data as excel?
 
+nb put _data/ads/ in gitignore while this is in draft. will need to remove it again before posting!
 
 ```{r libraries-etc}
 # shared libraries, functions etc ####
