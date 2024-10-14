@@ -499,11 +499,15 @@ bn_events_nodes_js <-
 #bn_women_events_nodes |>
 bn_women_events_network  |>
   filter(!node_is_isolated()) |>
-  mutate(groups = as.factor(group_edge_betweenness(directed=FALSE, n_groups = 20))) |>
+#  mutate(groups = as.factor(group_edge_betweenness(directed=FALSE, n_groups = 20))) |>
+  mutate(grp1 = as.factor(group_edge_betweenness(directed=FALSE))) |> # 44 groups. g1 only 25. but still big disparities.
+  mutate(grp2 = as.factor(group_infomap())) |>  # 29 groups. g1 30.
+  mutate(grp3 = as.factor(group_leading_eigen())) |> # 26 groups. g1=27
+  mutate(grp4 = as.factor(group_louvain())) |> # 25 groups. g1=27
   as_tibble() |>
   rowid_to_column("id") |>
   mutate(id=id-1) |>
-  select(id, label=personLabel, person, n_event, groups)
+  select(id, label=personLabel, person, n_event, starts_with("grp"))
 
 
 bn_events_edges_js <-
@@ -516,7 +520,7 @@ bn_women_events_edges |>
 ```{r}
 forceNetwork(Links = bn_events_edges_js, Nodes = bn_events_nodes_js,
              Source = "from", Target = "to", 
-             NodeID = "label", Group = "groups", #Value = "weight", 
+             NodeID = "label", Group = "grp3", #Value = "weight", 
              width = 900,
              height = 1500,
              Nodesize = 4,
