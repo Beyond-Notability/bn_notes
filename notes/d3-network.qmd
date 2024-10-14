@@ -29,7 +29,6 @@ source(here::here("_R/shared.R"))
 # any extra libraries will usually go here 
 
 library(networkD3)
-library(widyr)
 
 # standard query strings and queries ####
 source(here::here("_R/std_queries.R"))

@@ -1,8 +1,8 @@
 ---
-title: "Bibliographical"
-description: "Analysis of publications"
+title: "BN women publishing activity"
+description: "Analysis of bibliographic data"
 author: "Sharon Howard"
-date: "2024-09-30"
+date: "2024-10-13"
 date-modified: today
 categories: 
   - ppa
@@ -11,21 +11,19 @@ execute:
   warning: false
   message: false
   echo: false 
-draft: true
 ---
 
 ## Data
 
-This analysis largely uses data that is not included in the wikibase (at present).
+This analysis mainly uses data that is not currently included in the BN wikibase.
 
-link to...
+- [Library of Congress (LOC) books data on zenodo](https://zenodo.org/records/13684929)
+- [Archaeology Data Service (ADS)](https://archaeologydataservice.ac.uk/) articles data to be added to the wikibase
 
-- LOC dataset on zenodo
-- ADS data as excel?
-
-nb put _data/ads/ in gitignore while this is in draft. will need to remove it again before posting!
 
 ```{r libraries-etc}
+##nb put _data/ads/ in gitignore while this is in draft. will need to remove it again before posting!
+
 # shared libraries, functions etc ####
 
 source(here::here("_R/shared.R"))
@@ -39,206 +37,10 @@ library(ggridges)
 
 source(here::here("_R/std_queries.R"))
 
-
 ```
 
 
-
-```{r ads-data}
-ads_journals_csv <-
-  read_csv(here::here("_data/ads/ads_journals_20240925.csv"))
-
-
-## supplementary dates
-ads_women_titles_dates <-
-  read_csv(here::here("_data/ads/ads_women_titles_extra_dates_20241001.csv"))
-
-ads_men_titles_dates <-
-  read_csv(here::here("_data/ads/ads_men_titles_extra_dates_20241001.csv"))
-
-## women
-ads_titles_csv <-
-  read_csv(here::here("_data/ads/ads_women_titles_href_20240916.csv"))
-
-ads_titles <-
-ads_titles_csv |>
-  mutate(ads_record_id = str_match(href, "recordId=([^&]+)")[,2])  |>
-  mutate(ads_record_id=parse_number(ads_record_id)) |>
-  mutate(record_type = str_match(href, "recordType=(.+$)")[,2]) |>
-  select(record_id, person, person_label, title, year_of_publication, role, record_type, ads_record_id, ads_id, rowid) |>
-  #filter(author!="Russell") |> bn_ids q1038, q1039
-  filter(!person %in% c("Q1038", "Q1039"))   |> 
-  # keep NA years for the moment
-  filter(is.na(year_of_publication) | between(year_of_publication, 1860, 1960)) |>
-  filter(record_type=="Journal") |>
-  # multiples here (not many) could be multi-part articles rather than duplicates. but i think do top_n for the moment
-  #add_count(person, title, year_of_publication) |> filter(n>1) |> arrange(person, title)
-  mutate(title1 = str_to_lower(str_remove_all(title, "[:punct:]"))) |>
-  group_by(person, title1, year_of_publication) |> 
-  top_n(1, row_number())|>
-  ungroup() |>
-  select(-title1) |>
-  # add extra dates
-  left_join(ads_women_titles_dates, by="ads_record_id") |>
-  mutate(year = if_else(!is.na(year), year, year_of_publication))
-
-
-## men. 
-ads_men_titles_csv <-
-  read_csv(here::here("_data/ads/ads_men_titles_href_20240925.csv"))
-
-
-ads_men_titles <-
-ads_men_titles_csv |>
-  mutate(ads_record_id = str_match(href, "recordId=([^&]+)")[,2])  |>
-  mutate(ads_record_id=parse_number(ads_record_id)) |>
-  mutate(record_type = str_match(href, "recordType=(.+$)")[,2]) |>
-  filter(person != "Q3947") |> # duplicated. need to check wikibase
-  # keep NA years for the moment
-  filter(is.na(year_of_publication) | between(year_of_publication, 1860, 1960)) |>
-  filter(record_type=="Journal") |>
-  select(record_id, person, person_label, title, year_of_publication, role, record_type, ads_record_id, ads_id, rowid) |>
-  # multis.
-  #add_count(person, title, year_of_publication) |> filter(n>1) |> arrange(person, title)
-  mutate(title1 = str_to_lower(str_remove_all(title, "[:punct:]"))) |>
-  group_by(person, title1, year_of_publication) |> 
-  top_n(1, row_number())|>
-  ungroup() |>
-  select(-title1)  |>
-  # add extra dates
-  left_join(ads_men_titles_dates, by="ads_record_id") |>
-  mutate(year = if_else(!is.na(year), year, year_of_publication))
-
-ads_all_titles <-
-bind_rows(
-  ads_titles |> mutate(gender="women"), 
-  ads_men_titles |> mutate(gender="men"))
-
-
-ads_women_titles_details_csv <-
-  read_csv(here::here("_data/ads/ads_women_titles_details_20240930.csv"))
-
-ads_women_titles_details <-
-ads_women_titles_details_csv |> 
-  semi_join(ads_titles, by=c("ads_record_id", "person")) |>
-  select(ads_record_id, ads_id, person, person_label, title, year_of_publication, series, volume, author, editor, issue_editor) |>
-  inner_join(ads_journals_csv, by=c("series")) |>
-  left_join(ads_women_titles_dates, by="ads_record_id") |>
-  mutate(year = if_else(!is.na(year), year, year_of_publication)) |>
-  select(-series, -bn_id)
-```
-
-
-
-```{r loc-data}
-loc_csv <-
-  read_csv(here::here("_data/loc/loc_bn_names_records.csv"))
-
-loc_json <-
-  jsonlite::fromJSON(here::here("_data/loc/loc_bn_records.json"))
-
-# unpack to one row per creator per work including bn_id etc.
-loc_creators_works <-
-loc_json |>
-  select(-creators, -keywords, -permalink, -publisher) |>
-  bind_cols(
-    loc_json$creators |>
-      enframe(name="row", value = "names") 
-  ) |>
-  unnest(names)
-```
-
-
-
-## ADS journal articles 
-
-### Women and Men
-
-For comparison of men and women I'm using the limited data available on ADS person pages, which gives article title and date but not journal or co-authors; it would take several hours to do a second run fetching the fuller articles data and I've only done that for women at the moment. 
-
-There appear to be some duplicated articles in the ADS data (perhaps because of slight variations in article or journal titles or dates when data has come from different sources) and this is more difficult to deal with in the absence of journal info. I've reduced the data to *one distinct title per person per year* but this still leaves a few potential duplicates (for example where one record is dated and another is undated). On the other hand, I've seen some definite instances of the same person publishing articles with identical titles in the same year in different journals (I don't know if they're recycling the same article or just being unimaginative with titles!), so this strategy may also sometimes drop distinct publications. 
-
-So bear in mind that exact numbers here may be slightly off, but it shouldn't significantly affect patterns and comparisons between women and men.
-
-
-```{r}
-ads_women_ave <-
-ads_titles |> 
-  count(person, sort = T) |>
-  summarise(n=n(), mn = mean(n), med= median(n))
-
-ads_men_ave <-
-ads_men_titles |> 
-  count(person, sort = T) |>
-  summarise(n=n(), mn = mean(n), med= median(n))
-```
-
-First, the men published far more than women; this is not particularly surprising but the scale of the difference is striking. `r ads_women_ave$n` women averaged `r ads_women_ave$mn` (mean) and `r ads_women_ave$med` (median) articles, compared to `r ads_men_ave$mn` (mean) and `r ads_men_ave$med` (median) for the `r ads_men_ave$n` men.
-
-Second, there is a major difference in the distribution of publishing. 151 women published only one article (47%), but only 23 men (12%). A violin plot captures the differences particularly well.
-
-```{r}
-# ads_men_titles |>
-#   count(person) |> filter(n==1)
-#151/321
-#23/196
-```
-
-
-
-```{r}
-ads_all_titles |>
-  count(person, gender) |>
-  ggplot(aes(gender, n)) +
-  geom_violin() +
-  labs(title = "ADS publications: violin plot of articles per person, by gender", y="number of articles")
-```
-
-
-Who are the most prolific?
-
-```{r}
-ads_titles |>
-  count(person_label, sort = T) |>
-  filter(n>=15) |>
-  mutate(person_label = fct_reorder(person_label, n)) |>
-  ggplot(aes(n, person_label)) +
-  geom_col() +
-  labs(y=NULL, x="number of articles", title = "BN women with at least 15 articles")
-```
-
-
-
-```{r}
-ads_men_titles |>
-  count(person_label, sort = T) |>
-  filter(n>=50) |>
-  mutate(person_label = fct_reorder(person_label, n)) |>
-  ggplot(aes(n, person_label)) +
-  geom_col() +
-  labs(y=NULL, x="number of articles", title = "BN men with at least 50 articles")
-```
-
-
-I've done chronological comparisons as well because they look interesting, but they're problematic for several reasons.
-
-Firstly, 550 articles of the total of 6589 are undated, and the missing data may not be randomly distributed; some journals definitely have more missing dates than others. I've tried to fill in some particularly big gaps for a few important journals (including Folklore for all of 1910-1949!). 
-
-But a bigger problem: the extent to which they may simply reflect the active dates of people who happen to be in the database, given that there are different selection criteria for men and women and we've recorded far fewer dates for most men. So for example, men's publications after WW1 at first sight seem to grow much faster than women's. But I think that might just be a mirror of all the male SAL proposers and signatories added to the database from 1920 onwards.
-
-
-
-```{r}
-# use year instead of year_of_publication for the updated dates.
-# ads_all_titles |>
-#   count(gender, year_of_publication) |>
-#   filter(!is.na(year_of_publication))
-
-#ads_all_titles |> filter(is.na(year_of_publication))
-```
-
-
-```{r}
+```{r dates}
 
 bn_simple_main_date_sparql <-
 'SELECT distinct   ?person ?personLabel ?propLabel ?genderLabel  ?date_value ?s   ?prop 
@@ -325,283 +127,414 @@ bind_rows(bn_simple_main_date_query,
 
 ```
 
+```{r fsas}
+# 1. men who proposed/signed for women FSAs and therefore must be FSAs
+fsa_men_sparql <-
+  'SELECT distinct ?person 
+WHERE
+{
+  ?fsa bnwdt:P3 bnwd:Q3 .
+  ?fsa bnp:P16 ?s .
+  {
+  ?s bnps:P16 ?person . ?person bnwdt:P3 bnwd:Q10 .
+  }
+  union
+  {
+    ?s bnps:P16 ?supporter_ .
+    ?s ( bnpq:P32 | bnpq:P82 ) ?person . ?person bnwdt:P3 bnwd:Q10 .
+   }
+}'
+
+fsa_men_query <-
+  bn_std_query(fsa_men_sparql) |>
+  make_bn_ids(person)
+
+# 2. BN men who were FSAs according to wikidata
+fsa_men_wd_sparql <-
+  'SELECT distinct ?person  
+
+WHERE {
+    ?person bnwdt:P3 bnwd:Q10 . #select men   
+    ?person bnwdt:P117 ?wikidata_ID . #get wikidata ID
+    bind(iri(concat("http://www.wikidata.org/entity/", str(?wikidata_ID))) as ?wikidata) .
+    SERVICE <https://query.wikidata.org/sparql> {   
+         # P166 / Q26196499  FSA
+        ?wikidata wdt:P166 wd:Q26196499 .  
+     }  #/ wikidata
+}'
+fsa_men_wd_query <-
+  bn_std_query(fsa_men_wd_sparql) |>
+  make_bn_ids(person)
+
+# female fsas. actually women proposed for election rather than fellow of, so a few unsuccessful, but it's near enough.
+
+fsa_women_sparql <-
+  'SELECT distinct ?person 
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person bnwdt:P16 ?whatever . # FSAs
+}'
+
+fsa_women_query <-
+  bn_std_query(fsa_women_sparql) |>
+  make_bn_ids(person)
+
+
+fsas <-
+  bind_rows(fsa_women_query, fsa_men_query, fsa_men_wd_query) |>
+  distinct(person)
+```
 
 
 
+
+
+```{r ads-data}
+
+ads_women_titles_details <-
+  read_csv(here::here("_data/ads_bn_women_journal_articles.csv"))
+
+ads_men_titles <-
+  read_csv(here::here("_data/ads_bn_men_journal_articles.csv"))
+
+ads_all_titles <-
+  bind_rows(
+    ads_women_titles_details |> mutate(gender="women"),
+    ads_men_titles |> mutate(gender="men")
+  )
+```
+
+
+
+```{r loc-data}
+# copy of zenodo data
+
+loc_csv <-
+  read_csv(here::here("_data/loc/loc_bn_names_records.csv"))
+
+loc_json <-
+  jsonlite::fromJSON(here::here("_data/loc/loc_bn_records.json"))
+
+# unpack to one row per creator per work including bn_id etc.
+loc_creators_works <-
+loc_json |>
+  select(-creators, -keywords, -permalink, -publisher) |>
+  bind_cols(
+    loc_json$creators |>
+      enframe(name="row", value = "names") 
+  ) |>
+  unnest(names)
+
+loc <-
+loc_csv |>
+  select(record_id, person=bn_id, person_label=bn_name, creator_type, year=year_n, names_n, names, bn_pos, lccnID) |>
+  filter(between(year, 1856, 1955))
+```
+
+
+
+
+## Library of Congress books
+
+- filtered to 1856-1955 for a round century (drops about half a dozen books between 1843 and 1855)
+- "role" data may be incomplete; the catalogue quite often records roles like editor, translator and so on but almost never explicitly states "author", so I've made the assumption that if there's no explicit role it's an author... which may be dubious. 
+- reminders
+  - this data ended at 1955 so that we could focus on activity during the period covered by the project, and only included dated publications (there weren't very many undated)
+  - where death date was known, we also removed publications more than 10 years after death
+
+This slightly filtered set contains data about **223 women** and **876 books**.
+
+### numbers
+
+Many women published only one book. Having said that, the singletons are actually a lower proportion (35.9%) than in the ADS data coming up soon, and the 2-5 books group was the largest (99 women; 24 published 6-10 and 20 published 11 or more). The mean number of books per person is 4 and the median 2. 
 
 ```{r}
-# ads_all_titles |>
-#   count(person, year, gender) |>
-#   group_by(year, gender) |>
-#   summarise(mn = mean(n), med=median(n), max=max(n), .groups = "drop_last") |>
-#   ungroup()
+# loc |>
+#   add_count(person, name = "n_person") |> 
+#   mutate(group = case_when(
+#     n_person==1 ~ "1. 1 book",
+#     n_person<=5 ~ "2. 2-5 books",
+#     n_person<=10 ~ "3. 6-10 books",
+#     .default = "4. 11+ books"
+#   )) |>
+#   distinct(person, group) |>
+#   count(group)
 ```
 
 
 ```{r}
-ads_all_titles |>
-  count(gender, year, sort = T) |> #filter(gender=="women")
-  filter(!is.na(year)) |>
-  ggplot(aes(year, n)) +
+loc |>
+  count(person) |> ## 223  #filter(n==1) 80
+  #summarise(m=median(n))
+  ggplot(aes(n)) +
+  geom_histogram(binwidth = 1) +
+  labs(x="number of books", title = "Histogram of LOC books per person")
+```
+
+
+```{r}
+##a violin plot for LOC
+# loc |>
+#   count(person) |>
+#   ggplot(aes("", n)) +
+#   geom_violin() +
+#   labs(title = "LOC publications: violin plot of books per person", y="number of books")
+```
+
+
+Who are the most prolific?
+
+```{r}
+loc |>
+  add_count(person_label, sort = T) |>
+  filter(n>=10) |>
+  count(person_label, creator_type, n, name="nn") |>
+  mutate(person_label = fct_reorder(person_label, n)) |>
+  ggplot(aes(nn, person_label, fill = creator_type)) +
   geom_col() +
-  facet_wrap(~gender, scales = "free_y", ncol = 1) +
-  labs(title = "Annual counts of ADS publications, 1860-1960")
+  scale_fill_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y=NULL, x="number of books", fill="role", title = "BN women with at least 10 LOC books")
 ```
 
+
+
+```{r}
+# Roles are more varied than in articles, although I'm not always certain how reliable/consistent the LOC data is.
+# 
+# 1. I've kept information about the order of multiple creator names, especially the first name.
+# 2. There is sometimes explicit information about editors and translators, but almost never about *authors*, so I took this as implied when there's no other information but I don't know for sure.
+# loc_csv |>
+#   count(creator_type)
+```
+
+
+```{r}
+#loc_csv |> count(bn_pos)
+```
+
+
+### chronology
+
+I've done this since the data is consistently available, but it's very difficult to interpret. It largely reflects the dates in the database as a whole (provided for reference). That may suggest that the search strategy was effective at finding BN women in the catalogue. If so, it can't simultaneously be used to say much about publishing trends. 
+
+```{r}
+loc |>
+  count(year, creator_type) |>
+  ggplot(aes(year, n, fill = creator_type)) +
+  geom_col() +
+  scale_fill_tableau() +
+  theme(legend.position = "bottom") +
+  labs(y="number of books", x="year", fill="role", title = "BN women's LOC books per year, 1856-1955")
+```
 
 
 ```{r}
 bn_simple_dates |> 
   count(year, genderLabel) |>
-  filter(between(year, 1860, 1960)) |>
+  filter(genderLabel=="woman") |>
+  filter(between(year, 1856, 1955)) |>
   ggplot(aes(year, n)) +
   geom_col() +
-  facet_wrap(~genderLabel, scales = "free_y", ncol = 1) +
-  labs(title = "Annual counts of all dates in the wikibase, 1860-1960")
+  #facet_wrap(~genderLabel, scales = "free_y", ncol = 1) +
+  labs(title = "All the dates for women in the BN wikibase, 1856-1955")
+```
+
+The similarities between the two data sources are even more pronounced with a ridgeline plot (which shows proportions rather than numbers). The all-BN dates skew slightly more before 1920 and LOC dates after that, but there's not much in it. 
+
+```{r}
+bind_rows(
+  loc |> mutate(src="LOC dates"),
+  bn_simple_dates |>
+    #filter(is.na(qual_dateLabel) | qual_dateLabel %in% c("point in time", "start time")) |>
+    select(person, person_label=personLabel, year) |> mutate(src="BN dates")
+)  |>
+ filter(between(year, 1856, 1955)) |>
+ ggplot(aes(x = year, y = src, fill=src, group=src)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1860, 1950, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x=NULL, y=NULL)
 ```
 
 
 ```{r}
-# A density+beeswarm chart showing each year as a (smoothed) proportion of the whole rather than as counts highlights the much faster growth of men's publications in the 1920s, but also the subsequent dip.
-# ads_all_titles  |> 
-#   filter(!is.na(year)) |>
-#  mutate(gender = fct_rev(gender)) |>
-#  ggplot(aes(x = year, y = gender, fill=gender, group=gender)) +   ##, height=after_stat(density))) +  
-#   geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
-#   coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
-#   # will generally have to set the `expand` option for both axes to remove unneeded padding 
-#   scale_y_discrete(expand = c(0, 0)) +     
-#   scale_x_continuous(expand = c(0, 0), breaks = seq(1860, 1960, 20) ) +   
-#   theme_ridges(font_size=12) +
-#   theme(axis.text.y = element_text(vjust = 0), legend.position = "none", 
-#         panel.grid.minor.x=element_blank(),
-#         panel.grid.major.x=element_blank()
-#         ) +
-#   labs(x=NULL, y=NULL)
+# averages per person? but how would that work?
+# 
+# mean is 4 books per person and median is 2 (again!). 0.04 books per year which is just ridiculous. you can't do anything with that.
+# 
+# what if you only look at women with >1 publication? doesn't make that much different wut?
+# loc |>
+#   filter(between(year, 1860, 1955)) |>
+#   group_by(person) |>
+#   summarise(n=n()) |>
+#   ungroup() |>
+#   summarise(m = mean(n)) |>
+#   mutate(mm = m/(1955-1860))
 ```
 
 
-### Journals
-
-Which journals did women publish in?
-
-Using the more detailed ADS articles data. (I've done some work to standardise journal titles, so eg the various names of the Folklore Society's publications are grouped together as "Folklore".)
-
-I think there are probably also interesting gendered differences in choices of journals (eg it looks as though women published more in *Folklore*; men probably published more in journals like *Archaeologia* and possibly the *Journal of Hellenic Studies*). 
-
+On the other hand, it is possible to compare dates for groups of women within the data; so for example, are there differences between women who publish only one book and those who publish larger numbers? Maybe not much, though the 2-5 books group have a bump 1900-20 and the 6-10 a bigger one 1920-40.
 
 ```{r}
-journal_abbrevs <- c(
-    "Transactions"="Tr", "Journal"="Jnl", "Proceedings"="Pr", "Magazine"="Mag",
-    "Cumberland and Westmorland"="Cumb & West",
-    "Antiquarian"="Antiq", "Archaeological|Archaeology"="Arch", "Natural"="Nat", "History|Historical"="Hist", "Architectural"="Archt",
-    "Society"="Soc", "Association"="Ass",
-    "of the "="of ",  "hire\\b"="", "\\band\\b"="&")
-
-ads_women_titles_details |>
-  distinct(ads_record_id, journal_std_grp) |>
-  count(journal_std_grp, sort = T) |>
-  filter(n>=15) |>
-  mutate(journal_std_grp = str_replace_all(journal_std_grp, journal_abbrevs)) |>
-  #mutate(journal_std_grp= fct_reorder(journal_std_grp, n)) |>
-  mutate(journal=fct_reorder(journal_std_grp, n)) |>
-  ggplot(aes(n, journal)) +
-  geom_col() +
-  labs(y=NULL, x="number of articles")
-```
-
-
-### Collaboration
-
-```{r}
-# 199  articles with more than one creator in BN
-# ads_all_titles |>
-#   add_count(ads_record_id) |> 
-#   relocate(ads_record_id, n) |>
-#   arrange(ads_record_id, person) |>
-#   filter(n>1)  #distinct(ads_record_id)
-```
-
-Of the 6589 articles, only 199 had multiple creators who were in the BN database. 
-
-```{r}
-#(statistics only for articles with more than one BN person)
-# ads_all_titles |>
-#   add_count(ads_record_id, name="n_ppl") |>
-#   filter(n_ppl>1) |>
-#   summarise(mean = mean(n_ppl), median=median(n_ppl), max=max(n_ppl))
-```
-
-
-Gender of BN collaborators
-
-```{r}
-# ads_all_titles |>
-#   add_count(ads_record_id, name="n_ppl") |>
-#   filter(n_ppl>1) |>
-#   count(ads_record_id, n_ppl, gender, name="n_gender") |>
-#   pivot_wider(names_from = gender, values_from = n_gender, values_fill = 0) |>
-#   mutate(gender = case_when(
-#     men==0 ~ "women",
-#     women==0 ~ "men",
-#     .default = "both"
+# loc |>
+#   add_count(person, name = "n_person") |> 
+#   mutate(group = case_when(
+#     n_person==1 ~ "1. 1 book",
+#     n_person<=5 ~ "2. 2-5 books",
+#     n_person<=10 ~ "3. 6-10 books",
+#     .default = "4. 11+ books"
 #   )) |>
-#   count(gender) 
-  
-```
-
-Top BN-BN collaborators (by gender)
-
-
-```{r}
-ads_all_titles |>
-  add_count(ads_record_id, name="n_ppl") |>
-  filter(n_ppl>1) |>
-  count(person_label, person, gender, sort = T) |>
-  filter(n>1) |>
-  group_by(gender) |>
-  top_n(15, n) |>
-  ungroup() |>
-  mutate(person_label=reorder_within(person_label, n, gender)) %>%
-  ggplot(aes(x=person_label, y=n)) +
-  geom_col() +
-  coord_flip() +
-  facet_wrap(~gender, scales = "free", ncol = 1) +
-  scale_x_reordered() +
-  labs(x=NULL, y="number of multi-BN articles")
-```
-
-
-However, the more detailed ADS titles data, which includes information on author names, gives a fuller picture of collaboration (though to do more with it would likely involve a lot of name cleaning). Of 1439 articles, 177 involved more than one author.
-
-```{r}
-# (statistics only for articles with more than one author)
-# # distinct articles: 177 n>1 of total 1439
-# ads_women_titles_details |> 
-#   unnest_regex(author_name, author, pattern = "(\n *)+") |>
-#   add_count(ads_record_id, person, sort = T, name="n_ppl") |>
-#   filter(n_ppl>1)  |>
-#   summarise(mean = mean(n_ppl), median=median(n_ppl), max=max(n_ppl)) 
-```
-
-
-Top collaborators, women only
-
-```{r}
-ads_women_titles_details |> 
-  unnest_regex(author_name, author, pattern = "(\n *)+") |>
-  add_count(ads_record_id, person, sort = T, name="n_ppl") |>
-  filter(n_ppl>1)  |>
-  count(person_label, person, sort = T) |>
-  filter(n>5) |>
-  mutate(person_label = fct_reorder(person_label, n)) |>
-  ggplot(aes(n, person_label)) +
-  geom_col() +
-  labs(y=NULL, x="number of multi-author articles", title = "BN women: all collaboration")
-```
-
-
-## Library of Congress books
-
-
-There is less to say about this data, since I don't have men for comparison.
-
-
-### chronology
-
-Some similarities in the chronological trends. Again there are two distinct periods, split by the First World War. As with articles, the peak year is 1904 (21 books) - but only just. Here, growth after the WW1 dip was much more rapid.
-
-```{r}
-loc_csv |>
-  count(year_n, sort = T) |>
-  ggplot(aes(year_n, n)) +
-  geom_col() +
-  labs(y="number of books", x="year", title = "BN women's books in the Library of Congress catalogue, by year published")
-```
-
-### activity
-
-Who are the most prolific?
-
-Some very different names here (even allowing for the archaeology-specific emphasis of ADS?). 
-
-```{r}
-loc_csv |>
-  count(bn_name, sort = T) |>
-  filter(n>=10) |>
-  mutate(bn_name = fct_reorder(bn_name, n)) |>
-  ggplot(aes(n, bn_name)) +
-  geom_col() +
-  labs(y=NULL, x="number of books", title = "BN women in LOC with at least 10 books")
-```
-
-
-
-Roles are more varied than in articles, although I'm not always certain how reliable/consistent the LOC data is.
-
-1. I've kept information about the order of multiple creator names, especially the first name.
-2. There is sometimes explicit information about editors and translators, but almost never about *authors*, so I took this as implied when there's no other information but I don't know for sure.
-
-```{r}
-loc_csv |>
-  count(creator_type)
+#   count(year, group) |>
+#   ggplot(aes(year, n)) +
+#   geom_col() +
+#   facet_wrap(~group) +
+#   labs(y="number per year", x="year", title = "BN women's books by year published, 1856-1955")
 ```
 
 
 ```{r}
-loc_csv |> count(bn_pos)
+loc |>
+  add_count(person, name = "n_person") |> 
+  mutate(group = case_when(
+    n_person==1 ~ "1. 1 book",
+    n_person<=5 ~ "2. 2-5 books",
+    n_person<=10 ~ "3. 6-10 books",
+    .default = "4. 11+ books"
+  )) |>
+  mutate(group=fct_rev(group)) |>
+ ggplot(aes(x = year, y = group, fill=group, group=group)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1860, 1950, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x="year of publication", y="books group")
+```
+
+
+Or we can look at age profiles for publishing. (855 women have a year of birth. Split into four fairly equal size groups.) 
+
+(But bear in mind that the last age group get cut off by the 1955 end date for pubs.)
+
+```{r}
+loc |>
+  inner_join(bn_women_dob_dod |> select(bn_id, bn_dob_yr), by=c("person"="bn_id")) |>
+  #count(bn_dob_yr) |>
+  filter(!is.na(bn_dob_yr)) |>
+  mutate(age = year- bn_dob_yr) |>
+  mutate(group = case_when(
+    bn_dob_yr <= 1850 ~ "1. up to 1850",
+    between(bn_dob_yr, 1851, 1870) ~ "2. 1851-1870",
+    between(bn_dob_yr, 1871, 1890) ~ "3. 1871-1890",
+    bn_dob_yr>1890 ~ "4. after 1890"
+  )) |>
+  mutate(group=fct_rev(group)) |>
+ ggplot(aes(x = age, y = group, fill=group, group=group)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(0, 100, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(y="birth group", x="age at publication")
 ```
 
 
 ### collaboration
 
-Again collaboration between BN women seems relatively limited; only 11 books of 886 record the involvement of multiple women in the database representing 17 women 
-
-(this is a *minimum* and may well be an underestimate due to the method of data collection)
-
-BN-BN collaborators
+Collaboration between BN women seems very limited; only 11 books of 886 record the involvement of more than woman who are in the database (17 women). This was a small proportion of collaborative works as a whole, so this is just to highlight the BN-BN connections.
 
 ```{r}
 # 11 / 886
-loc_csv |> 
-  #distinct(lccnID)
-  relocate(lccnID, bn_id) |>
-  add_count(lccnID) |> filter(n>1) |>
-  count(bn_name, sort = T) |>
-  mutate(bn_name=fct_reorder(bn_name, n)) |>
-  ggplot(aes(n, bn_name)) +
-  geom_col() +
-  labs(y=NULL, x="number of books", title = "BN women who collaborate with BN women in LOC books")
-```
-
-
-```{r}
-loc_csv |> 
-  #distinct(lccnID)
-  relocate(lccnID, bn_id) |>
-  add_count(lccnID) |> filter(n>1) |>
-  select(lccnID, bn_name, bn_id, creator_type, title) |>
-  arrange(lccnID) |>
-  widyr::pairwise_count(bn_name, lccnID)
-```
-
-
-
-Again, there is a broader picture of collaborative work; 132 women involved in 294 books that had multiple creators. The picture here is quite complex, however; for example, being a solo *editor* of a long deceased author's work(s) wouldn't be the same kind of activity as co-authoring. I need to think about ways to tease out these differences.
-
-```{r}
-# 294 books
-loc_csv |>
-  filter(names_n>1)  |>
-  add_count(bn_name, bn_id, sort = T) |>
-  filter(n>=4)|>
-  count(bn_name, bn_id, creator_type, n, name="nn") |>
-  mutate(bn_name=fct_reorder(bn_name, n)) |>
-  ggplot(aes(nn, bn_name, fill = creator_type)) +
+loc |> 
+  #select(lccnID, person, person_label, creator_type) |>
+  add_count(lccnID) |> filter(n>1) |> 
+  add_count(person_label, name="n_books") |>
+  count(person_label, creator_type, n_books, name="nn") |>
+  mutate(person_label=fct_reorder(person_label, n_books)) |>
+  ggplot(aes(nn, person_label, fill = creator_type)) +
   geom_col() +
   scale_fill_tableau() +
-  labs(y=NULL, x="number of books", title = "BN women: LOC books with multiple creators", caption = "at least 4 books")
+  labs(y=NULL, x="number of collaborative books", fill="role", title = "BN women who collaborate with BN women in LOC books")
 ```
+
+
+```{r}
+loc_bn_pairs <-
+loc |> 
+  add_count(lccnID) |> filter(n>1) |>
+  select(lccnID, person, person_label, creator_type) |>
+  mutate(person_label = glue("{person_label} ({person})")) |>
+  arrange(lccnID) |>
+  widyr::pairwise_count(person_label, lccnID) |>
+  arrange(item1, item2) |>
+  rename(person=item1, with=item2, books=n)
+
+reactable(loc_bn_pairs,
+          groupBy = "person",
+          defaultExpanded = TRUE,
+          pagination = FALSE)
+```
+
+
+
+```{r}
+# loc_bn_bn <-
+# loc |> 
+#   distinct(lccnID, person, person_label) |>
+#   add_count(lccnID) |> filter(n>1)
+# 
+# loc_bn_tab <-
+#   with(loc_bn_bn, table(lccnID, person_label))
+
+```
+
+
+In the broader picture of collaborative work, 132 women (59%) were involved in 294 books with multiple creators. 
+
+The picture here is quite complex; for example, being a solo editor/translator of a deceased author's work(s) would hardly be the same kind of activity as co-authoring. I'd need to think about ways to tease out these differences and not sure I have time to do that now!
+
+
+The most collaborative women
+
+```{r}
+loc |>
+  filter(names_n>1) |>
+  add_count(person_label, name="n_books") |>
+  count(person_label, creator_type, n_books, name="nn", sort = T) |>
+  filter(n_books>3) |>
+  mutate(person_label=fct_reorder(person_label, n_books)) |>
+  ggplot(aes(nn, person_label, fill = creator_type)) +
+  geom_col() +
+  scale_fill_tableau() +
+  labs(y=NULL, x="collaborative books", fill="role", title = "BN women collaborating with anyone in LOC books", caption = "at least 4 collaborations")
+```
+
+
+
 
 
 ```{r}
@@ -632,5 +565,530 @@ loc_csv |>
 
 
 
+
+
+
+## ADS journal articles 
+
+- covers 1861-1960 [with 544 undated articles in analysis not requiring dates; a few of these might be later than 1960]
+- 6357 articles
+  - 320 women (in 1438 articles)
+  - 196 men (in 4973 articles)
+
+```{r}
+
+# 6357 distinct articles. 516 people. 320 women (in 1440 distinct articles). 196 men (4980).
+#ads_all_titles |> count(ads_record_id)
+#ads_all_titles |> distinct(person, gender) |> count(gender)
+#ads_all_titles |> filter(gender=="women") |> distinct(ads_record_id)
+#ads_all_titles |> distinct(ads_record_id, year) |> count(year)
+```
+
+I decided to try some comparison of women and men since we have ADS IDs for plenty of the men. There have to be some caveats about exactly what's being compared, given the differences between inclusion of women and men in the database; male FSAs are presumably overrepresented, for example. 
+
+For men I'm using the limited data available on ADS person profile pages, which gives article title and date but not journals or co-authors; it would take several hours to do a second run fetching the fuller articles data for men so I've only done that for women. 
+
+
+### numbers
+
+```{r}
+# There appear to be some duplicated articles in the ADS data (perhaps because of slight variations in article/journal titles or dates when data has come from different sources) and this can be difficult to fix in the absence of journal info. I've reduced the data to *one distinct title per person per year* but this still leaves a few potential duplicates (for example where one record is dated and another is undated). On the other hand, I've seen some instances of the same person publishing articles with identical titles in the same year in different journals (I don't know if they're recycling the same article or just being unimaginative with titles), so this strategy may also sometimes drop distinct publications. 
+ads_women_ave <-
+ads_women_titles_details |> 
+  count(person, sort = T) |>
+  summarise(mn = mean(n), med= median(n))
+
+ads_men_ave <-
+ads_men_titles |> 
+  count(person, sort = T) |>
+  summarise(mn = mean(n), med= median(n))
+```
+
+First, the men published far more than women; this is probably not particularly surprising but the scale of the difference is striking. The 321 women in the data averaged 4.5 articles each, compared to 26.2 for the 196 men.
+
+```{r}
+ads_all_titles |>
+  count(person, gender) |>
+  ggplot(aes(n)) +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~gender, ncol = 1, scales = "free")
+```
+
+
+Second, there is a substantial difference in the distribution of publishing. 150 women published only one article (47% of the women), compared to only 23 men (12%). A violin plot captures the differences particularly nicely.
+
+```{r}
+# ads_men_titles |>
+#   count(person) |> filter(n==1)
+#150/320
+#23/196
+```
+
+
+```{r}
+ads_all_titles |>
+  count(person, gender) |>
+  ggplot(aes(gender, n)) +
+  geom_violin() +
+  labs(title = "ADS publications: violin plot of articles per person, by gender", y="number of articles")
+```
+
+But... since it's possible that a preponderance of male FSAs (people who are likely to publish a lot) is skewing the data somewhat, what happens if the comparison is restricted to male and female FSAs?
+
+133 male/62 female (male FSAs are identified by a) proposers/signers for female FSAs; b) wikidata).
+
+```{r}
+# ads_all_titles |>
+#   semi_join(fsas, by="person") |>
+#   distinct(person, gender) |> count(gender)
+```
+
+The difference is still there though considerably less pronounced.
+
+```{r}
+ads_all_titles |>
+  semi_join(fsas, by="person" ) |>
+  count(person, gender) |>
+  ggplot(aes(n)) +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~gender, ncol = 1, scales = "free")
+```
+
+
+
+```{r}
+ads_all_titles |>
+  semi_join(fsas, by="person") |>
+  count(person, gender) |>
+  ggplot(aes(gender, n)) +
+  geom_violin() +
+  labs(title = "ADS publications: violin plot of articles per FSA, by gender", y="number of articles")
+```
+
+
+
+Who are the most prolific?
+
+```{r}
+ads_women_titles_details |>
+  count(person_label, sort = T) |>
+  filter(n>=15) |>
+  mutate(person_label = fct_reorder(person_label, n)) |>
+  ggplot(aes(n, person_label)) +
+  geom_col() +
+  labs(y=NULL, x="number of articles", title = "BN women with at least 15 articles")
+```
+
+
+
+```{r}
+ads_men_titles |>
+  count(person_label, sort = T) |>
+  filter(n>=50) |>
+  mutate(person_label = fct_reorder(person_label, n)) |>
+  ggplot(aes(n, person_label)) +
+  geom_col() +
+  labs(y=NULL, x="number of articles", title = "BN men with at least 50 articles")
+```
+
+
+### chronology
+
+The chronological pattern has some similarities to that of dates overall and LOC dates, at least for women. I've left out the men here because I don't think much can be read into their numbers at all; there's an apparent post-WW1 bulge in their publications but I'm pretty certain this simply reflects the addition of large numbers of men for SAL elections after 1920.
+
+There are other problems with dates. A lot of publications are undated, and the missing data may not be randomly distributed. Some journals definitely have more missing dates than others. I've tried to fill in some particularly big gaps for a few important journals (including Folklore, for which ADS claims to have no dates for 1910-1949!). (It's theoretically feasible to date all journal articles as long as you have volume number (and most do), but frustratingly hard to get hold of this information in a readily usable form.)
+
+
+```{r}
+# use year instead of year_of_publication for the updated dates.
+# ads_all_titles |>
+#   count(gender, year_of_publication) |>
+#   filter(!is.na(year_of_publication))
+
+#ads_all_titles |> filter(is.na(year_of_publication))
+```
+
+
+```{r}
+# ads_all_titles |>
+#   count(person, year, gender) |>
+#   group_by(year, gender) |>
+#   summarise(mn = mean(n), med=median(n), max=max(n), .groups = "drop_last") |>
+#   ungroup()
+```
+
+
+```{r}
+ads_all_titles |>
+  filter(gender=="women") |>
+  count(year, sort = T) |> #
+  filter(!is.na(year)) |>
+  ggplot(aes(year, n)) +
+  geom_col() +
+  #facet_wrap(~gender, scales = "free_y", ncol = 1) +
+  labs(title = "BN women's ADS publications per year, 1861-1960")
+```
+
+
+```{r}
+# All the dates again, for men as well as women this time. Apart from the SAL election participants, very few men in the wikibase have any dates data at all, so . 
+# bn_simple_dates |> 
+#   count(year, genderLabel) |>
+#   filter(between(year, 1860, 1960)) |>
+#   ggplot(aes(year, n)) +
+#   geom_col() +
+#   facet_wrap(~genderLabel, scales = "free_y", ncol = 1) +
+#   labs(title = "Annual counts of all dates in the wikibase, 1860-1960")
+```
+
+
+Comparison of the shape of the ADS dates with all BN dates does show more difference than with the LOC books set. in each set for women: specifically, that growth after WW1 seems much slower and never really gets near to the early 20th-century peak (which I think is 1904 or 1905 [check] in both ADS and LOC). 
+
+[Also stands out because it feels counterintuitive? I didn't expect to find the women apparently publishing much less in the second half of the project period than the first.]
+
+```{r}
+bind_rows(
+  ads_all_titles |> filter(!is.na(year) & gender=="women") |>
+    select(person, person_label, year) |> mutate(src="ADS dates") ,
+  bn_simple_dates |>
+    #filter(is.na(qual_dateLabel) | qual_dateLabel %in% c("point in time", "start time")) |>
+    select(person, person_label=personLabel, year) |> mutate(src="BN dates")
+)  |>
+ filter(between(year, 1861, 1960)) |>
+ #mutate(gender = fct_rev(gender)) |>
+ ggplot(aes(x = year, y = src, fill=src, group=src)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1860, 1960, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x=NULL, y=NULL)
+```
+
+
+
+```{r}
+ads_women_titles_details |>
+  filter(!is.na(year)) |>
+  add_count(person, name = "n_person") |> 
+  mutate(group = case_when(
+    n_person<=4 ~ "1. 1-4 articles",
+    n_person<=10 ~ "2. 5-10 articles",
+    n_person<=20 ~ "3. 11-20 articles",
+    n_person>20 ~ "4. 21+ articles"
+  )) |>
+  #count(group)
+  mutate(group=fct_rev(group)) |>
+ ggplot(aes(x = year, y = group, fill=group, group=group)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1861, 1960, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x="year of publication", y="articles group")
+```
+
+
+
+```{r}
+ads_women_titles_details |>
+  inner_join(bn_women_dob_dod |> select(bn_id, bn_dob_yr), by=c("person"="bn_id")) |>
+  #count(bn_dob_yr) |>
+  filter(!is.na(bn_dob_yr)) |>
+  filter(!is.na(year)) |>
+  mutate(age = year- bn_dob_yr) |> 
+  # oops
+  filter(age > 0) |>
+  mutate(group = case_when(
+    bn_dob_yr <= 1855 ~ "1. up to 1855",
+    between(bn_dob_yr, 1851, 1870) ~ "2. 1856-1870",
+    between(bn_dob_yr, 1871, 1895) ~ "3. 1871-1895",
+    bn_dob_yr>1890 ~ "4. after 1895"
+  )) |>
+  #count(group)
+  mutate(group=fct_rev(group)) |>
+ ggplot(aes(x = age, y = group, fill=group, group=group)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(0, 100, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(y="birth group", x="age at publication")
+```
+
+
+
+```{r}
+# A density+beeswarm chart showing each year as a (smoothed) proportion of the whole rather than as counts highlights the much faster growth of men's publications in the 1920s, but also the subsequent dip.
+# ads_all_titles  |> 
+#   filter(!is.na(year)) |>
+#  mutate(gender = fct_rev(gender)) |>
+#  ggplot(aes(x = year, y = gender, fill=gender, group=gender)) +   ##, height=after_stat(density))) +  
+#   geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#   coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+#   # will generally have to set the `expand` option for both axes to remove unneeded padding 
+#   scale_y_discrete(expand = c(0, 0)) +     
+#   scale_x_continuous(expand = c(0, 0), breaks = seq(1860, 1960, 20) ) +   
+#   theme_ridges(font_size=12) +
+#   theme(axis.text.y = element_text(vjust = 0), legend.position = "none", 
+#         panel.grid.minor.x=element_blank(),
+#         panel.grid.major.x=element_blank()
+#         ) +
+#   labs(x=NULL, y=NULL)
+```
+
+
+### collaboration
+
+First, where co-authors are both/all in the BN database, including men.
+
+```{r}
+# 199  articles with more than one creator in BN
+# ads_all_titles |>
+#   add_count(ads_record_id) |> 
+#   relocate(ads_record_id, n) |>
+#   arrange(ads_record_id, person) |>
+#   filter(n>1)  #distinct(ads_record_id)
+
+```
+```{r}
+#(statistics only for articles with more than one BN person)
+# ads_all_titles |>
+#   add_count(ads_record_id, name="n_ppl") |>
+#   filter(n_ppl>1) |>
+#   summarise(mean = mean(n_ppl), median=median(n_ppl), max=max(n_ppl))
+```
+
+
+```{r}
+ads_all_bn_people <-
+ads_all_titles |>
+  count(person, person_label, gender, name = "n_pubs")
+
+ads_collab_bn_titles <-
+ads_all_titles |>
+  add_count(ads_record_id, name="n_ppl") |>
+  filter(n_ppl>1)
+
+# collaborator subset (421 rows). 
+ads_collab_bn_people <-
+ads_collab_bn_titles |>
+  select(person, person_label, gender, ads_record_id) |>
+  count(person, name="n_collab") 
+  
+ads_bn_collaboration <-
+ads_all_bn_people |>
+  left_join(ads_collab_bn_people |> mutate(is_collab="y"), by=c("person")) |>
+  mutate(is_collab = if_else(is.na(is_collab), "n", is_collab)) |>
+  mutate(n_collab = if_else(is.na(n_collab), 0, n_collab)) |>
+  mutate(p_collab = if_else( n_collab==0, 0, n_collab/n_pubs*100  )) 
+
+
+# (statistics only for articles with more than one author)
+# # distinct articles: 177 n>1 of total 1439. but only 188 rows afterwards.?
+
+## NB titles are listed per BN name. so you have to be careful to avoid duplication when summarising.
+ads_women_collab_details <-
+ads_women_titles_details |>
+  unnest_regex(author_name, author, pattern = "(\n *)+", to_lower = F) |>
+  #add_count(ads_record_id, name="n_ppl") |>  don't do this, it'll duplicate where multiple BNs
+  count(ads_record_id, person, person_label, name= "n_ppl") |>  # 1450
+  filter(n_ppl>1) |>
+  # how many bn names for the title
+  inner_join(
+    ads_all_titles |>
+      add_count(ads_record_id, name="n_bn") |>
+      select(person, ads_record_id, n_bn), by=c("person", "ads_record_id"))
+#  mutate(n_co = n_ppl-1) 
+
+```
+
+
+
+```{r}
+# ads_bn_collaboration |>
+#   filter(p_collab>0) |>
+#   group_by(gender) |>
+#   summarise(mean = mean(p_collab), med=median(p_collab) ) |>
+#   ungroup()
+```
+
+It's again a small subset. Only 199 articles had multiple BN authors, with 104 people involved. Within these, the largest number of people involved in one publication was 5; the mean was 2.2 and the median 2.
+
+Overall, men were more likely to appear as co-authors: 74 of 196 male authors (37.8%), compared to 30 women out of 320 (9.4%). Much of women's BN co-authoring was with men rather than with other women.
+
+
+```{r}
+ads_collab_bn_titles |>
+  group_by(ads_record_id) |>
+  arrange(gender, .by_group = T) |>
+  summarise(n_ppl=n(), nd_gender=n_distinct(gender), collab_authors=paste(unique(gender), collapse = " ")) |>
+  ungroup() |>
+  group_by(collab_authors) |>
+  summarise(n_articles=n()) |>
+  ungroup() |>
+  kable() |>
+  kable_styling()
+  
+```
+
+
+On the other hand, this small group of 30 women tended to be *very* collaborative. One third of all their articles were collaborative (33.8%) compared to less than a fifth of the men's articles (17.7%).
+
+
+Female BN-BN collaboration
+
+```{r}
+ads_collab_bn_titles |>
+  filter(gender=="women") |>
+  select(person, person_label, ads_record_id, n_ppl) |>
+  inner_join(
+    ads_collab_bn_titles |>
+      group_by(ads_record_id) |>
+      arrange(gender, .by_group = T) |>
+      # need to drop unique for this to work
+      summarise(nd_gender=n_distinct(gender), genders=paste(gender, collapse = " ")) |>
+      ungroup() , by="ads_record_id"
+  ) |> 
+  # remove one "women" so you only have the other authors. 
+  mutate(with = str_trim(str_remove(genders, "women *"))) |>
+  mutate(with = case_when(
+    !str_detect(with, "women") ~ "men",
+    str_detect(with, "\\bmen") ~ "both",
+    !str_detect(with, "\\bmen") ~ "women"
+  )) |>
+  add_count(person, name = "n_person") |>
+  count(person, person_label, with, n_person) |>
+  mutate(person_label = fct_reorder(person_label, n_person)) |>
+  ggplot(aes(x=person_label, y=n, fill = with)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_colorblind() +
+  labs(x=NULL, y="number of collaborative articles", title="Women")
+```
+
+Top male BN-BN collaborators.
+
+```{r}
+ads_collab_bn_titles |>
+  filter(gender=="men") |>
+  select(person, person_label, ads_record_id, n_ppl) |>
+  inner_join(
+    ads_collab_bn_titles |>
+      group_by(ads_record_id) |>
+      arrange(gender, .by_group = T) |>
+      summarise(nd_gender=n_distinct(gender), genders=paste(gender, collapse = " ")) |>
+      ungroup() , by="ads_record_id"
+  ) |> 
+  # remove one "\\bmen" so you only have the other authors.
+  mutate(with = str_trim(str_remove(genders, "\\bmen *"))) |>
+  mutate(with = case_when(
+    !str_detect(with, "\\bmen") ~ "women",
+    str_detect(with, "women") ~ "both",
+    !str_detect(with, "women") ~ "men"
+  )) |>
+  #mutate(genders = if_else(genders=="men women", "mixed", "men"))|>
+  add_count(person, name = "n_person") |>
+  filter(n_person>=5) |>
+  #doing top_n gets harder after add_count. just filter on n
+  count(person, person_label, with, n_person) |>
+  mutate(person_label = fct_reorder(person_label, n_person)) |>
+  ggplot(aes(x=person_label, y=n, fill = with)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_colorblind() +
+  labs(x=NULL, y="number of collaborative articles", title="Men", caption="at least 5 articles")
+```
+
+
+
+
+
+
+Turning to the fuller women's data for multi-authored publications, 72 women (22.4%) were involved in 177 multi-authored articles (12% of 1439 articles). 
+
+
+Top collaborators
+
+```{r}
+ads_women_titles_details |> 
+  unnest_regex(author_name, author, pattern = "(\n *)+") |>
+  add_count(ads_record_id, person, sort = T, name="n_ppl") |>
+  filter(n_ppl>1)  |>
+  count(person_label, person, sort = T) |>
+  filter(n>=5) |>
+  mutate(person_label = fct_reorder(person_label, n)) |>
+  ggplot(aes(n, person_label)) +
+  geom_col() +
+  labs(y=NULL, x="number of collaborative articles", title = "BN women: all collaboration", caption = "at least 5 articles")
+```
+
+
+Returning briefly to the most prolific women, how collaborative were they? It varies *a lot*.
+
+```{r}
+ads_women_titles_details |>
+  add_count(person_label, sort = T) |>
+  filter(n>=15) |>
+  select(record_id, person, person_label, ads_record_id, n) |>
+  left_join(
+    ads_women_collab_details |> select(ads_record_id, person, n_ppl), by=c("ads_record_id", "person")
+  ) |>
+  mutate(collaborative = if_else(!is.na(n_ppl), "yes", "no")) |>
+  mutate(person_label = fct_reorder(person_label, n)) |>
+  ggplot(aes(n, person_label, fill = collaborative)) +
+  geom_col(position = "fill") +
+  scale_fill_tableau() +
+  labs(y=NULL, x="number of articles", title = "BN women with at least 15 articles")
+```
+
+
+### journals
+
+Which journals did women publish in most? Again with the more detailed ADS articles data for women only. (I've done some work to standardise journal titles, so eg the various names of the Folklore Society's publications are grouped together as "Folklore".)
+
+I think there might be interesting gendered differences in choices of journals (eg it looks possible that women published much more in *Folklore*), but that can't be tested without the full data.  
+
+
+```{r}
+journal_abbrevs <- c(
+    "Transactions"="Tr", "Journal"="J", "Proceedings"="Pr", "Magazine"="Mag",
+    "Cumberland and Westmorland"="Cumb & West",
+    "Antiquarian"="Antiq", "Archaeological|Archaeology"="Arch", "Natural"="Nat", "History|Historical"="Hist", "Architectural"="Archt",
+    "Society"="Soc", "Association"="Ass",
+    "of the "="of ",  "hire\\b"="", "\\band\\b"="&")
+
+ads_women_titles_details |>
+  distinct(ads_record_id, journal_std_grp) |>
+  count(journal_std_grp, sort = T) |>
+  filter(n>=15) |>
+  mutate(journal_std_grp = str_replace_all(journal_std_grp, journal_abbrevs)) |>
+  #mutate(journal_std_grp= fct_reorder(journal_std_grp, n)) |>
+  mutate(journal=fct_reorder(journal_std_grp, n)) |>
+  ggplot(aes(n, journal)) +
+  geom_col() +
+  labs(y=NULL, x="number of articles")
+```
 
 

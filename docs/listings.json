@@ -2,6 +2,7 @@
   {
     "listing": "/blog.html",
     "items": [
+      "/posts/bibliographic-2024-09-30/index.html",
       "/posts/education-overview-2024-10-09/index.html",
       "/posts/sal-2024-07-23/index.html",
       "/posts/excavations-2024-07-10/index.html",
@@ -32,6 +33,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/bibliographic-2024-09-30/index.html",
       "/notes/d3-network.html",
       "/posts/education-overview-2024-10-09/index.html",
       "/notes/workflow.html",

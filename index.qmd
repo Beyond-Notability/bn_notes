@@ -73,10 +73,6 @@ Caveats:
 
 This is all work in progress, provisional, generally handle with caution, etc. But, because the wikibase itself is continually evolving, updates may sometimes break things without me noticing, so if you see anything that really looks *strange*, let me know.
 
-Known issues:
-
-As of December 2023, "The Bug" (recent edits *are* in the wikibase but for some reason the query service fails to index them) has been fixed. This means, in particular, dates of birth and death should now be all up to date. The problem may well recur in the future and I'll be checking from time to time. 
-
 
 ## Posts and Notes
 
