@@ -1,6 +1,6 @@
 ---
-title: "BN women publishing activity"
-description: "Analysis of bibliographic data"
+title: "Publishing activity"
+description: "Analysis of BN bibliographic data"
 author: "Sharon Howard"
 date: "2024-10-13"
 date-modified: today
@@ -18,7 +18,7 @@ execute:
 This analysis mainly uses data that is not currently included in the BN wikibase.
 
 - [Library of Congress (LOC) books data on zenodo](https://zenodo.org/records/13684929)
-- [Archaeology Data Service (ADS)](https://archaeologydataservice.ac.uk/) articles data to be added to the wikibase
+- [Archaeology Data Service (ADS)](https://archaeologydataservice.ac.uk/) articles data (to be added to the wikibase)
 
 
 ```{r libraries-etc}
@@ -246,7 +246,7 @@ This slightly filtered set contains data about **223 women** and **876 books**.
 
 ### numbers
 
-Many women published only one book. Having said that, the singletons are actually a lower proportion (35.9%) than in the ADS data coming up soon, and the 2-5 books group was the largest (99 women; 24 published 6-10 and 20 published 11 or more). The mean number of books per person is 4 and the median 2. 
+Many women (80) published just one book. Having said that, the singletons are actually a lower proportion (35.9%) than in the ADS data below, and the 2-5 books group was the largest (99 women) (24 published 6-10 and 20 published 11 or more). The mean number of books per person is 4 and the median 2. 
 
 ```{r}
 # loc |>
@@ -264,7 +264,8 @@ Many women published only one book. Having said that, the singletons are actuall
 
 ```{r}
 loc |>
-  count(person) |> ## 223  #filter(n==1) 80
+  count(person) |> ## 223  
+  ##filter(n==1)  ##80
   #summarise(m=median(n))
   ggplot(aes(n)) +
   geom_histogram(binwidth = 1) +
@@ -328,6 +329,7 @@ loc |>
   labs(y="number of books", x="year", fill="role", title = "BN women's LOC books per year, 1856-1955")
 ```
 
+For comparison:
 
 ```{r}
 bn_simple_dates |> 
@@ -340,7 +342,7 @@ bn_simple_dates |>
   labs(title = "All the dates for women in the BN wikibase, 1856-1955")
 ```
 
-The similarities between the two data sources are even more pronounced with a ridgeline plot (which shows proportions rather than numbers). The all-BN dates skew slightly more before 1920 and LOC dates after that, but there's not much in it. 
+The similarities between the two data sources are even more pronounced with a ridgeline plot (which shows proportions rather than numbers). The all-BN dates skew slightly more before 1920 and the LOC dates after that, but there's not much in it. 
 
 ```{r}
 bind_rows(
@@ -383,7 +385,7 @@ bind_rows(
 ```
 
 
-On the other hand, it is possible to compare dates for groups of women within the data; so for example, are there differences between women who publish only one book and those who publish larger numbers? Maybe not much, though the 2-5 books group have a bump 1900-20 and the 6-10 a bigger one 1920-40.
+On the other hand, it is more meaningful to compare dates for groups of women within the dataset; so for example, are there differences in chronology between women who publish only one book and those who publish larger numbers? Maybe not much, though the 2-5 books group have a bump 1900-20 and the 6-10 a bigger one 1920-40.
 
 ```{r}
 # loc |>
@@ -429,7 +431,7 @@ loc |>
 ```
 
 
-Or we can look at age profiles for publishing. (855 women have a year of birth. Split into four fairly equal size groups.) 
+Or we can look at age profiles for publishing. (855 women have a year of birth; they've been split into four fairly balanced size groups.) 
 
 (But bear in mind that the last age group get cut off by the 1955 end date for pubs.)
 
@@ -465,7 +467,7 @@ loc |>
 
 ### collaboration
 
-Collaboration between BN women seems very limited; only 11 books of 886 record the involvement of more than woman who are in the database (17 women). This was a small proportion of collaborative works as a whole, so this is just to highlight the BN-BN connections.
+Collaboration between BN women seems very limited; only 11 books of 886 record the involvement of more than one BN woman (17 women in all). But this was a small proportion of collaborative works as a whole, so this is just to highlight the BN-BN connections.
 
 ```{r}
 # 11 / 886
@@ -478,25 +480,8 @@ loc |>
   ggplot(aes(nn, person_label, fill = creator_type)) +
   geom_col() +
   scale_fill_tableau() +
-  labs(y=NULL, x="number of collaborative books", fill="role", title = "BN women who collaborate with BN women in LOC books")
-```
-
-
-```{r}
-loc_bn_pairs <-
-loc |> 
-  add_count(lccnID) |> filter(n>1) |>
-  select(lccnID, person, person_label, creator_type) |>
-  mutate(person_label = glue("{person_label} ({person})")) |>
-  arrange(lccnID) |>
-  widyr::pairwise_count(person_label, lccnID) |>
-  arrange(item1, item2) |>
-  rename(person=item1, with=item2, books=n)
-
-reactable(loc_bn_pairs,
-          groupBy = "person",
-          defaultExpanded = TRUE,
-          pagination = FALSE)
+  theme(legend.position = "bottom") +
+  labs(y=NULL, x="number of collaborative books", fill="role", title = "BN women who publish with BN women in LOC books")
 ```
 
 
@@ -515,7 +500,7 @@ reactable(loc_bn_pairs,
 
 In the broader picture of collaborative work, 132 women (59%) were involved in 294 books with multiple creators. 
 
-The picture here is quite complex; for example, being a solo editor/translator of a deceased author's work(s) would hardly be the same kind of activity as co-authoring. I'd need to think about ways to tease out these differences and not sure I have time to do that now!
+The picture here is quite complex; for example, being a solo editor/translator of a deceased author's work(s) would hardly be the same kind of activity as co-authoring. I'd need to think about ways to tease out these differences and not sure I have time to do that now! (Especially as it would probably require some work cleaning up names.)
 
 
 The most collaborative women
@@ -584,9 +569,11 @@ loc |>
 #ads_all_titles |> distinct(ads_record_id, year) |> count(year)
 ```
 
-I decided to try some comparison of women and men since we have ADS IDs for plenty of the men. There have to be some caveats about exactly what's being compared, given the differences between inclusion of women and men in the database; male FSAs are presumably overrepresented, for example. 
+I decided to try some comparison of women and men since we have ADS IDs for plenty of the men. 
+For men I'm using the limited data available on ADS person profile pages (which gives article title and date but not journals or co-authors); it would take several hours to do a second run fetching the fuller articles data for men so I've only done that for women. 
 
-For men I'm using the limited data available on ADS person profile pages, which gives article title and date but not journals or co-authors; it would take several hours to do a second run fetching the fuller articles data for men so I've only done that for women. 
+There have to be some caveats about exactly what's being compared, given the differences between inclusion of women and men in the database; male FSAs are presumably overrepresented, for example. 
+
 
 
 ### numbers
@@ -633,9 +620,10 @@ ads_all_titles |>
   labs(title = "ADS publications: violin plot of articles per person, by gender", y="number of articles")
 ```
 
-But... since it's possible that a preponderance of male FSAs (people who are likely to publish a lot) is skewing the data somewhat, what happens if the comparison is restricted to male and female FSAs?
+But... since it's possible that a preponderance of male FSAs (people who might be expected to be prolific authors) is skewing the data somewhat, what happens if the comparison is restricted to male and female FSAs?
 
-133 male/62 female (male FSAs are identified by a) proposers/signers for female FSAs; b) wikidata).
+- 133 male and 62 female 
+- male FSAs have been identified by a) being proposers/signers for female FSAs; b) listed as FSAs in wikidata
 
 ```{r}
 # ads_all_titles |>
@@ -744,7 +732,6 @@ ads_all_titles |>
 
 Comparison of the shape of the ADS dates with all BN dates does show more difference than with the LOC books set. in each set for women: specifically, that growth after WW1 seems much slower and never really gets near to the early 20th-century peak (which I think is 1904 or 1905 [check] in both ADS and LOC). 
 
-[Also stands out because it feels counterintuitive? I didn't expect to find the women apparently publishing much less in the second half of the project period than the first.]
 
 ```{r}
 bind_rows(
@@ -838,6 +825,34 @@ ads_women_titles_details |>
 ```
 
 
+Comparison of ADS articles with LOC books. 
+
+```{r}
+bind_rows(
+  ads_all_titles |> filter(!is.na(year) & gender=="women") |>
+    select(person, person_label, year) |> mutate(src="ADS dates") ,
+  loc |>
+  #bn_simple_dates |>
+    #filter(is.na(qual_dateLabel) | qual_dateLabel %in% c("point in time", "start time")) |>
+    select(person, person_label, year) |> mutate(src="LOC dates")
+)  |>
+ filter(between(year, 1856, 1960)) |>
+ #mutate(gender = fct_rev(gender)) |>
+ ggplot(aes(x = year, y = src, fill=src, group=src)) +   ##, height=after_stat(density))) +
+  geom_density_ridges(jittered_points = TRUE, position = "points_sina",scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+#  geom_density_ridges(scale = 0.95, alpha=0.6, point_size=.5, bandwidth=4) +
+  coord_cartesian(clip = "off") +  #clip = "off" to avoid clipping of the very top of the top ridgeline
+  # will generally have to set the `expand` option for both axes to remove unneeded padding
+  scale_y_discrete(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0, 0), breaks = seq(1860, 1960, 20) ) +
+  scale_fill_ptol() +
+  theme_ridges(font_size=12) +
+  theme(axis.text.y = element_text(vjust = 0), legend.position = "none",
+        panel.grid.minor.x=element_blank(),
+        panel.grid.major.x=element_blank()
+        ) +
+  labs(x=NULL, y=NULL)
+```
 
 ```{r}
 # A density+beeswarm chart showing each year as a (smoothed) proportion of the whole rather than as counts highlights the much faster growth of men's publications in the 1920s, but also the subsequent dip.
@@ -954,10 +969,10 @@ ads_collab_bn_titles |>
 ```
 
 
-On the other hand, this small group of 30 women tended to be *very* collaborative. One third of all their articles were collaborative (33.8%) compared to less than a fifth of the men's articles (17.7%).
+On the other hand, this group of 30 women tended to be *very* collaborative. One third of all their articles were collaborative (33.8%) compared to less than a fifth of the men's articles (17.7%).
 
 
-Female BN-BN collaboration
+Female BN-BN collaboration in ADS
 
 ```{r}
 ads_collab_bn_titles |>
@@ -988,7 +1003,7 @@ ads_collab_bn_titles |>
   labs(x=NULL, y="number of collaborative articles", title="Women")
 ```
 
-Top male BN-BN collaborators.
+Top male BN-BN collaborators
 
 ```{r}
 ads_collab_bn_titles |>
@@ -1024,9 +1039,7 @@ ads_collab_bn_titles |>
 
 
 
-
-
-Turning to the fuller women's data for multi-authored publications, 72 women (22.4%) were involved in 177 multi-authored articles (12% of 1439 articles). 
+Turning to the fuller women's data for multi-authored publications, 72 women (22.4%) were involved in 177 multi-author articles (12% of 1439 articles). 
 
 
 Top collaborators
@@ -1066,9 +1079,11 @@ ads_women_titles_details |>
 
 ### journals
 
-Which journals did women publish in most? Again with the more detailed ADS articles data for women only. (I've done some work to standardise journal titles, so eg the various names of the Folklore Society's publications are grouped together as "Folklore".)
+Which journals did women publish in most? Again with the more detailed ADS articles data for women only. 
 
-I think there might be interesting gendered differences in choices of journals (eg it looks possible that women published much more in *Folklore*), but that can't be tested without the full data.  
+(I've done some work to standardise journals where there is a single series but the name could change over time.)
+
+I think there might be interesting gendered differences in choices of journals (eg it looks possible that women published more than men in *Folklore*), but that can't be tested without the full data.  
 
 
 ```{r}
@@ -1090,5 +1105,65 @@ ads_women_titles_details |>
   geom_col() +
   labs(y=NULL, x="number of articles")
 ```
+
+
+```{r}
+ads_women_top_journals <-
+ads_women_titles_details |>
+  count(journal_std_grp, person_label, name="n_articles") |>
+  #filter(n_articles>1) |>
+  inner_join(
+    ads_women_titles_details |>
+      distinct(ads_record_id, journal_std_grp) |>
+      count(journal_std_grp, sort = T, name="n_journal") |>
+      filter(n_journal>=15) , by="journal_std_grp"
+  ) |>
+  arrange(-n_journal, -n_articles) |>
+  select(-n_journal)
+
+reactable(ads_women_top_journals,
+          groupBy = "journal_std_grp",
+          defaultExpanded = TRUE,
+          defaultPageSize = 80
+          #pagination = FALSE
+          )
+```
+
+
+
+
+```{r}
+#There is apparently no direct overlap between LOC and ADS BN collaboration (ie no identical pairs, which surrprises me slightly), and not much indirect overlap either. Do they form distinct networks?
+# ads_bn_pairs <-
+# ads_women_titles_details |>
+#   add_count(ads_record_id) |> filter(n>1) |>
+#   select(person, person_label, year, journal_std_grp, ads_record_id) |>
+#   widyr::pairwise_count(person_label, ads_record_id, upper=F) |>
+#   arrange(item1, item2) |>
+#   rename(from=item1, to=item2, publications=n) |>
+#   mutate(src="ADS")
+# 
+# 
+# loc_bn_pairs <-
+# loc |> 
+#   add_count(lccnID) |> filter(n>1) |>
+#   select(lccnID, person, person_label, creator_type) |>
+#   #mutate(person_label = glue("{person_label} ({person})")) |>
+#   arrange(lccnID) |>
+#   widyr::pairwise_count(person_label, lccnID) |>
+#   arrange(item1, item2) |>
+#   rename(from=item1, to=item2, publications=n) |>
+#   mutate(src="LOC")
+```
+
+```{r}
+# bind_rows(
+#   ads_bn_pairs,
+#   loc_bn_pairs
+# ) |>
+#   arrange(from, to) 
+## distinct(from, to) - without upper=F no change - really no identical pairs between the two set??? but there's not a lot of obvious overlap either. i think skip this for now.
+```
+
 
 
