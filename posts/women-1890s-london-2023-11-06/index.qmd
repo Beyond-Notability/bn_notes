@@ -13,9 +13,6 @@ execute:
   echo: false 
 ---
 
-TODO:
-
-- add Booth colour coding!
 
 ## Wikibase query 
 
@@ -55,7 +52,7 @@ source(here::here("_R/std_queries.R"))
 
 ```{r}
 bn_booth_sparql <-
-  'SELECT distinct ?personLabel ?date_label ?date ?person ?address ?address_item ?londonLabel ?geo ?long ?lat
+  'SELECT distinct ?personLabel ?date_label ?date ?person ?address ?address_item ?londonLabel ?boothLabel ?booth ?geo ?long ?lat
 
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 . # women
@@ -72,6 +69,9 @@ WHERE {
     ?s bnpq:P100 ?address_item .
     }    
 
+  # optional booth colour. drop <uv>
+  optional { ?s bnpq:P160 ?booth . FILTER( !isBLANK(?booth)  ) . }
+  
   # dates. About 30? not dated.
     #optional {
     ?s ?pq ?date . 
@@ -95,7 +95,6 @@ WHERE {
          BIND(geof:latitude(?geo)  AS ?lat)
              }
 
-  # todo booth codes
 
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }
@@ -107,7 +106,7 @@ bn_booth_query <-
   bn_std_query(bn_booth_sparql) |>
   make_bn_item_id(person)  |>
   make_bn_ids(c(address_item)) |>
-  mutate(across(c(address_item, address, geo), ~na_if(., ""))) |>
+  mutate(across(c(address_item, address, geo, booth, boothLabel), ~na_if(., ""))) |>
   mutate(address = case_when(
     is.na(address) & address_item=="Q1205" ~ "College Hall, Byng Place",
     .default = address
@@ -120,7 +119,18 @@ bn_booth_map <-
 bn_booth_query |>
   filter(!is.na(geo)) |>
   mutate(year=year(date)) |>
-  mutate(label = paste(personLabel, address, londonLabel, year, sep="<br>")) |>
+  mutate(boothLabel = case_when(
+    !is.na(boothLabel) ~ boothLabel,
+    .default = "no booth colour"
+  )) |>
+  mutate(boothColour = case_when(
+    boothLabel=="Booth Red" ~ "red",
+    boothLabel=="Booth Yellow"~ "#edb228",
+    boothLabel=="Booth Pink"~ "magenta",
+    boothLabel=="Booth Purple"~"purple",
+    .default = "grey"
+  )) |>
+  mutate(label = paste(personLabel, address, londonLabel, year, boothLabel, sep="<br>")) |>
   # drop extra rows at the same address (long lat)
   # specific issue two people at Chenie Chambers, but should work mroe generally. 
   # one has number and one doesn't, so arrange by address to keep the numbered one.
@@ -136,7 +146,7 @@ bn_booth_query |>
 # allegedly reactable *is* usable with crosstalk...
 bn_booth_reactable <-
 bn_booth_map |>
-  select(rowid, bn_id, personLabel, year, address, londonLabel, person, long, lat, label) |>
+  select(rowid, bn_id, personLabel, year, address, londonLabel, boothLabel, boothColour, person, long, lat, label) |>
   arrange(personLabel, year, londonLabel)
 
 ## for crosstalk
@@ -227,6 +237,8 @@ bn_booth_map |>
 ## Map
         
 ```{r}
+
+
   leaflet(bn_booth_reactable, width = "100%") |>
     addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
   # finally! how to use addTiles urlTemplate with an api key.
@@ -242,7 +254,8 @@ bn_booth_map |>
   # problem of multi people at same address...
   # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
      addCircleMarkers(lat = ~lat, lng=~long, popup = ~label,
-                stroke = FALSE, fillOpacity = 0.5,
+                stroke = TRUE, fillOpacity = 0.5,
+                color = ~boothColour,
                 labelOptions = labelOptions(noHide = F, direction = 'auto'),
                 options = markerOptions(riseOnHover = TRUE) , clusterOptions = markerClusterOptions(freezeAtZoom = 18)
              )
@@ -255,7 +268,7 @@ bn_booth_map |>
 
 reactable(
   bn_booth_reactable |>
-  select(-person, -long, -lat, -label, -rowid) ,
+  select(-person, -long, -lat, -label, -rowid, -boothColour) ,
   filterable = TRUE,
   searchable = TRUE,
   bordered = TRUE,
@@ -274,7 +287,8 @@ reactable(
       })   ,
     address = colDef(maxWidth = 300, name="address"),
     londonLabel = colDef(maxWidth = 120, name = "area"),
-    year = colDef(maxWidth = 100)
+    year = colDef(maxWidth = 100),
+    boothLabel = colDef(name="booth")
   )
 )
 ```
