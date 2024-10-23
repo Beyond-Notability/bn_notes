@@ -235,11 +235,18 @@ bn_booth_map |>
 
 
 ## Map
-        
+
+- What do the colours mean? They're based on the categories in [Charles Booth's poverty maps](https://booth.lse.ac.uk/learn-more/what-were-the-poverty-maps)
+  - Yellow for the wealthiest areas
+  - Red for well-to-do middle class
+  - Pink for "fairly comfortable"
+  - Purple for "mixed" comfortable and poor
+
+Exact positioning of a few of the points may be slightly inaccurate.
+
 ```{r}
 
-
-  leaflet(bn_booth_reactable, width = "100%") |>
+leaflet(bn_booth_reactable, width = "100%") |>
     addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
   # finally! how to use addTiles urlTemplate with an api key.
   # https://github.com/rstudio/leaflet/issues/410#issuecomment-290471333
