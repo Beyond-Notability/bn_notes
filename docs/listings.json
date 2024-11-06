@@ -31,8 +31,22 @@
     ]
   },
   {
+    "listing": "/notes/index.html",
+    "items": [
+      "/notes/women-summary-browser.html",
+      "/notes/bn-presentation-20230425.html",
+      "/notes/excavations-browser.html",
+      "/notes/d3-network.html",
+      "/notes/narratives-from-data.html",
+      "/notes/workflow.html",
+      "/notes/women-summary-main-dates.html",
+      "/notes/notes-on-dates.html"
+    ]
+  },
+  {
     "listing": "/index.html",
     "items": [
+      "/notes/narratives-from-data.html",
       "/posts/bibliographic-2024-09-30/index.html",
       "/notes/d3-network.html",
       "/posts/education-overview-2024-10-09/index.html",
@@ -66,18 +80,6 @@
       "/notes/women-summary-browser.html",
       "/posts/work-queries/index.html",
       "/notes/bn-presentation-20230425.html"
-    ]
-  },
-  {
-    "listing": "/notes/index.html",
-    "items": [
-      "/notes/women-summary-browser.html",
-      "/notes/bn-presentation-20230425.html",
-      "/notes/excavations-browser.html",
-      "/notes/d3-network.html",
-      "/notes/workflow.html",
-      "/notes/women-summary-main-dates.html",
-      "/notes/notes-on-dates.html"
     ]
   }
 ]
