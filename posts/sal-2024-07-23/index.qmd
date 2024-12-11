@@ -507,7 +507,8 @@ bn_sal_election_network_filtered <-
 bn_sal_election_network |>
   mutate(name=personLabel) |>
   filter(degree>1) |> # the node ids you made will no longer match from-to...
-  mutate(id = row_number())  # fixes it
+  filter(!node_is_isolated()) |> # and there'll be a few isolated nodes
+  mutate(id = row_number())  # fixes numbering
 
 bn_edges_vn <-
 bn_sal_election_network_filtered |>
@@ -546,13 +547,21 @@ bn_sal_election_network_filtered |>
 
 
 
+
 ```{r}
 #| fig-height: 9
 visNetwork(bn_nodes_vn, bn_edges_vn , height = "900px", width = "100%")  |> 
-  visOptions(highlightNearest = list(enabled = T, hideColor = 'rgba(200,200,200,0)') ) |>
+  visOptions(highlightNearest = list(enabled = T, hideColor = 'rgba(200,60,60,0)') ) |> # what does hidColor do? changing it doesn't seem to make any difference. do any of the options work?
   visOptions(selectedBy = "name") |>
   #visNodes(color = list(border = "darkblue") ) |> # not doing anything?
-  visIgraphLayout(randomSeed = 123) 
-
+  visIgraphLayout(randomSeed = 1234, layout = "layout_with_graphopt") 
+  #visPhysics(stabilization = FALSE)
+  #visPhysics(solver = "repulsion", stabilization = FALSE, repulsion = list(centralGravity=2))
+  #visPhysics(solver = "barnesHut", barnesHut = list(gravitationalConstant = -1000, springConstant=0.01, damping=1), stabilization=FALSE, maxVelocity = 1 )
+             #, stabilization = list(iterations=20))
 ```
+
+
+
+
 

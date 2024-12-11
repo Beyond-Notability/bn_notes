@@ -17,34 +17,35 @@ hcp_credit <- "This mapping made use of data provided by the [Historic County Bo
 hcp_uk_historic_counties_big <-
   st_read(here::here("shp/hcp_uk_counties/UKDefinitionA.shp"), quiet = TRUE)
 
-# the HCP map needs simplification and transform to CRS coords. sf::simplify might work
-hcp_uk_historic_counties_spl <-
-  rmapshaper::ms_simplify(hcp_uk_historic_counties_big) |>
-  st_as_sf() |>
-  st_transform(crs = 4326) |>
-  clean_names("snake")
-
-# bn_name for differences in naming; work in progress
-hcp_uk_historic_counties_names <-
-  hcp_uk_historic_counties_spl$name |>
-  enframe(value = "name", name=NULL)  |>
-  # adjust some names to match BN labels
-  mutate(bn_name = case_match(
-    name,
-    "Cardiganshire" ~ "Ceredigion",
-    "Anglesey" ~ "Isle of Anglesey", 
-    "Durham" ~ "County Durham",
-    "Down" ~ "County Down",
-    "Antrim" ~ "County Antrim",
-    "Armagh" ~ "County Armagh",
-    "Londonderry" ~ "County Londonderry",
-    "Peeblesshire" ~ "Peebleshire",
-    .default = name
-  )) 
-
-hcp_uk_historic_counties_map <-
-  hcp_uk_historic_counties_spl |>
-  inner_join(hcp_uk_historic_counties_names, by="name")
+## PROBLEM 2024.12.11 this map won't load. but actually i don't think it's in use anywhere, so comment it out and see if site will build without it.
+# # the HCP map needs simplification and transform to CRS coords. sf::simplify might work
+# hcp_uk_historic_counties_spl <-
+#   rmapshaper::ms_simplify(hcp_uk_historic_counties_big) |>
+#   st_as_sf() |>
+#   st_transform(crs = 4326) |>
+#   clean_names("snake")
+# 
+# # bn_name for differences in naming; work in progress
+# hcp_uk_historic_counties_names <-
+#   hcp_uk_historic_counties_spl$name |>
+#   enframe(value = "name", name=NULL)  |>
+#   # adjust some names to match BN labels
+#   mutate(bn_name = case_match(
+#     name,
+#     "Cardiganshire" ~ "Ceredigion",
+#     "Anglesey" ~ "Isle of Anglesey", 
+#     "Durham" ~ "County Durham",
+#     "Down" ~ "County Down",
+#     "Antrim" ~ "County Antrim",
+#     "Armagh" ~ "County Armagh",
+#     "Londonderry" ~ "County Londonderry",
+#     "Peeblesshire" ~ "Peebleshire",
+#     .default = name
+#   )) 
+# 
+# hcp_uk_historic_counties_map <-
+#   hcp_uk_historic_counties_spl |>
+#   inner_join(hcp_uk_historic_counties_names, by="name")
 
 
 ## ONS regions (uk)

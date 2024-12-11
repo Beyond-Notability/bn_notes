@@ -116,7 +116,9 @@ bn_women_key_ids_query <-
   bn_std_query(bn_women_key_ids_sparql) |>
   make_bn_item_id(person) |>
   # this should keep viaf ids as char....
-  mutate(viaf_ID = str_remove(viaf_str, "idstr:"))  
+  mutate(viaf_ID = str_remove(viaf_str, "idstr:"))  |>
+  # but now apparently ads id is numeric!! ffs.
+  mutate(ads_ID = as.character(ads_ID))
 
 
 bn_women_key_ids <-

@@ -1,0 +1,888 @@
+---
+title: "Finding Proxies"
+description: "Possible ways to explore social class in BN"
+author: "Sharon Howard"
+date: "2024-12-10"
+date-modified: today
+categories: 
+  - class
+execute: 
+  warning: false
+  message: false
+  echo: false 
+---
+
+
+## Notes
+
+Various different queries have been used in this post.
+
+Experiments with three different proxies:
+
+- at some point resided at a [historic house](https://beyond-notability.wikibase.cloud/wiki/Item:Q2961)
+- in the 1890s lived at an address coded yellow in [Charles Booth's poverty maps of London](https://beyond-notability.wikibase.cloud/wiki/Item:Q4637)
+- recorded in reference works concerning the peerage/landed gentry
+
+
+
+```{r}
+
+# shared libraries, functions etc ####
+
+source(here::here("_R/shared.R"))
+
+# any extra libraries will usually go here 
+
+library(vcd)
+
+
+
+# standard query strings and queries ####
+
+source(here::here("_R/std_queries.R"))
+
+```
+
+```{r proxy-functions}
+## functionify join to other data
+# TIL how to use arg as varname in function: mutate(!! varname := sqrt(a)) https://stackoverflow.com/a/69276257/7281022
+
+# x will need to be quoted 
+# but what are you going to do about dates?
+
+# has_historic house residence (bn_women_has_historic) x another variable
+historic_yn <- function(data, x){
+  # make the variable name
+  v = paste0("is_", x)
+  historic_house |>
+     # but i don't know how to use x in here as well... just make a convenience var and deselect afterwards
+  left_join(data |> select(bn_id) |> mutate(is_x="yes"), by="bn_id") |>
+  mutate(!! v := if_else(is.na(is_x), "no", "yes")) |>
+    select(-is_x)
+}
+
+# same but for booth yellow x a variable
+booth_yn <- function(data, x){
+  # make the variable name. 
+  v = paste0("is_", x)
+  booth_yellow |>
+  left_join(data |> select(bn_id) |> mutate(is_x="yes"), by="bn_id") |>
+  mutate(!! v := if_else(is.na(is_x), "no", "yes")) |>
+    select(-is_x)
+}
+
+# same but for peerage_reference x a group
+peerage_yn <- function(data, x){
+  # make the variable name. 
+  v = paste0("is_", x)
+  peerage_reference |>
+  left_join(data |> select(bn_id) |> mutate(is_x="yes"), by="bn_id") |>
+  mutate(!! v := if_else(is.na(is_x), "no", "yes")) |>
+    select(-is_x)
+}
+```
+
+## Proxies
+
+```{r peerage-references}
+
+posh_ref <- c("Q3429", "Q3493", "Q3430" , "Q4541", "Q3426", "Q3425", "Q3428")
+
+# specific reference info p91 (looks more likely to be p91 than p56)
+
+references_sparql <-
+'SELECT distinct ?personLabel ?person ?statements ?propLabel ?prop   ?ref_itemLabel ?ref_item 
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 ;
+         wikibase:statements ?statements .
+  ?person ?p ?s .
+      ?prop wikibase:claim ?p;      
+         wikibase:statementProperty ?ps.      
+   # references: 
+    ?s prov:wasDerivedFrom ?refnode.
+        ?refnode bnpr:P91 ?ref_item . 
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+order by ?personLabel ?ref_itemLabel'
+
+references_query <-
+  bn_std_query(references_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(prop, ref_item)) |>
+  select(-person)
+
+
+peerage_reference <-
+references_query |>
+  filter(statements >=10) |>
+  distinct(bn_id, personLabel, statements, ref_itemLabel, ref_item) |>
+  mutate(has_peerage_ref = if_else(ref_item %in% posh_ref, "yes", "no")) |>
+  count(bn_id, personLabel, statements, has_peerage_ref, name="x") |>
+  pivot_wider(id_cols = c(bn_id, personLabel, statements), names_from = has_peerage_ref, values_from = x, values_fill = 0) |>
+  # this might be clearer than yes/no
+  mutate(has_peerage_ref = if_else(yes>0, "landed", "other")) |>
+  arrange(bn_id, has_peerage_ref) 
+```
+
+
+
+```{r booth}
+booth_sparql <-
+'SELECT distinct ?personLabel ?person ?londonLabel ?boothLabel ?booth
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . # women
+  ?person bnp:P29 ?s .   # resided at
+    ?s bnps:P29 ?london . 
+      ?london bnwdt:P33+ bnwd:Q322 .  # in Q322 greater london. (dont really need this if you have booth)
+  # booth colour
+   ?s bnpq:P160 ?booth . 
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb, en". } 
+}
+ORDER BY ?person'
+
+booth_query <-
+  bn_std_query(booth_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(booth) |>
+  select(-person) |>
+  filter(!str_detect(boothLabel, "^t\\d"))
+
+booth_yellow <-
+booth_query |>
+  count(bn_id, personLabel, boothLabel, name="x") |>
+  pivot_wider(id_cols = c(bn_id, personLabel), names_from = boothLabel, values_from = x, values_fill = 0) |>
+  clean_names("snake") |>
+  mutate(has_yellow = if_else(booth_yellow>0, "yellow", "other")) |>
+  mutate(n = booth_red+booth_yellow+booth_purple+booth_pink)
+
+```
+
+
+```{r historic-house}
+
+histhouse_sparql <-
+'SELECT distinct ?person ?personLabel ?historicLabel ?historic  ?resided
+WHERE {  
+    ?person bnwdt:P3 bnwd:Q3 .   
+    # resided at - historic house in a qualifier for street address
+    ?person bnp:P29 ?s .
+      ?s bnps:P29 ?resided .
+  
+  #?s (bnpq:P100 | bnpq:P31) ?address .
+  
+  optional {
+      ?s bnpq:P100 ?historic .
+        ?historic bnwdt:P12 bnwd:Q2961 .  # instance of historic house
+  }
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}
+order by ?personLabel'
+
+histhouse_query <-
+  bn_std_query(histhouse_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(historic, resided)) |>
+  mutate(across(c(historic, historicLabel), ~na_if(., ""))) |>
+  select(-person)
+
+historic_house <-
+histhouse_query |>
+  mutate(has_historic = if_else(!is.na(historic), "yes", "no")) |>
+  count(bn_id, personLabel, has_historic, name="x") |>
+  #mutate(x = 1) |>
+  pivot_wider(id_cols = c(bn_id, personLabel), names_from = has_historic, values_from = x, values_fill = 0) |>
+  mutate(has_historic = if_else(yes>0, "historic", "other")) |>
+  arrange(bn_id, has_historic) |>
+  mutate(n = no+yes)
+```
+
+
+**historic house:**
+
+- the reference group for comparisons = all women who have at least one `resided at` statement
+- "historic" - at least one address is an `instance of` historic house
+
+(caveats: what is the definition of "historic house" and how was it applied?)
+
+**Booth yellow:**
+
+- group = women with `resided at` statements whose addresses have been located in the Booth maps (so this is a small subset of the resided at group above)
+- "yellow" - at least one address colour coded yellow (wealthiest) in Booth
+
+(caveats: this is a small group covering a limited geographical and chronological range)
+
+**landed/peerage reference:**
+
+- reference group = all women who have at least 10 statements and at least one `specific reference information` (P91) reference (for any property)
+- "landed" - at least one reference in one of the books relating to peerage/landed gentry etc
+
+  - *Debrett's Peerage, Baronetage, Knightage and Companionage* (Q3429)
+  - *The Peerage and Baronetage of the British Empire* (Q3493)
+  - *The Peerage, Baronetage, and Knightage of Great Britain and Ireland (Dod's)* (Q3430) 
+  - *A Genealogical and Heraldic History of the Peerage and Baronetage* (Q4541)
+  - *A Genealogical and Heraldic History of the Landed Gentry of Great Britain and Ireland* (Q3426)
+  - *Kelly's Handbook to the Titled, Landed and Official Classes* (Q3425) 
+  - *Armorial Families* (Q3428)
+
+(caveats: this is usefully different from the data above that's based on residences, but it's not clear to me if mentions in the peerage reference books were *always* entered as references, if the information had already been collected from another source. If recording wasn't comprehensive then this will not be reliable.)
+
+General caveat: this is a basic yes or no which flattens all sort of potential distinctions (such as people who might have only briefly lived in a posh house).
+
+
+### overall percentages for the reference groups
+
+**Historic house**
+
+(716 women with at least one residence)
+
+```{r}
+# https://r-graph-gallery.com/piechart-ggplot2.html but added position= to geom_text.
+
+historic_house |>
+  count(has_historic) |>
+  mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_historic} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_historic)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("Women with residences data")  
+```
+
+**Booth yellow**
+
+(58 women)
+ 
+```{r}
+booth_yellow |>
+  count(has_yellow) |>
+    mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_yellow} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_yellow)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  ggtitle("Women with residences on the Booth maps")  
+```
+
+**Landed/peerage references**
+
+(544 women with at least one reference and 10 statements)
+
+```{r}
+peerage_reference |>
+  count(has_peerage_ref) |>
+    mutate(prop = round(n / sum(n)*100),1) |>
+  mutate(prop_label = glue("{has_peerage_ref} ({prop}%)")) |>
+  # mutate(ypos = cumsum(prop)- 0.5*prop ) |>
+  ggplot(aes(x="", y=prop, fill=has_peerage_ref)) +
+  geom_col(width = 1, color="white", show.legend = F) +
+  geom_text(aes(label = prop_label), position = position_stack(vjust=0.5), color = "white", size=4) +
+  coord_polar("y", start=0) +
+  #scale_fill_manual(values = c('#fc8d59',  '#74add1','#bdbdbd')) +
+  scale_fill_tableau() +
+  theme_void()  +
+  labs(title="Women with P91 references", caption = "min 10 statements")
+```
+
+
+
+## Comparisons
+
+
+```{r members-fellows}
+## fellows? and members. no P75 RAI.
+# might be the case that all the elected also have membership... but to be on the safe side.
+
+## undated
+# 'select distinct ?person ?personLabel
+# where
+# {
+#   ?person bnwdt:P3 bnwd:Q3 .
+#   ?person bnp:P67 ?s .
+#     ?s bnps:P67 bnwd:Q35. 
+#   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+# }'
+
+## a bit silly to run this and then run virtually the same query again for other orgs...
+## will need top_n.. but probably not till after the elected bind rows.
+bn_rai_members_sparql <-
+  'select distinct ?person ?personLabel  (year(?date) as ?year) 
+where
+{
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P67 ?s .
+    ?s bnps:P67 bnwd:Q35. 
+  optional {  ?s ( bnpq:P1 | bnpq:P27 | bnpq:P28 ) ?date . }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+}'
+  
+# bn_rai_members_query <-
+#   bn_std_query(bn_rai_members_sparql) |>
+#   make_bn_item_id(person)  |>
+#   select(-person)
+
+
+
+# RAI elections - not quite the same as the memberships data
+bn_rai_elected_sparql <-
+'SELECT distinct ?person ?personLabel (year(?date) as ?year)
+WHERE
+{
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P7 ?s .
+  ?s bnps:P7 ?RAIproposed .
+  optional {  ?s ( bnpq:P1 | bnpq:P27 | bnpq:P28 ) ?date . }
+    SERVICE wikibase:label {
+      bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb".
+    }
+}'
+
+bn_rai_elected_query <-
+  bn_std_query(bn_rai_elected_sparql) |>
+  make_bn_item_id(person) |>
+  select(-person) |>
+  # need to add org !
+  mutate(org = "Q35", orgLabel = "Royal Archaeological Institute")
+
+
+bn_members_sparql <-
+'select distinct ?person ?personLabel ?org ?orgLabel (year(?date) as ?year)
+where
+{
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P67 ?s .
+    ?s bnps:P67 ?org .
+  optional {  ?s ( bnpq:P1 | bnpq:P27 | bnpq:P28 ) ?date . }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+}'
+  
+bn_members_query <-
+  bn_std_query(bn_members_sparql) |>
+  make_bn_ids(c(person, org)) |>
+  rename(bn_id=person)
+
+
+#keep earliest year only, for all. 
+#combine rai members and rai elected
+bn_members <-
+bind_rows(
+  bn_members_query, bn_rai_elected_query
+) |>
+  # now you do need distinct.
+  distinct(bn_id, personLabel, org, orgLabel, year) |>
+  group_by(bn_id, org) |>
+  arrange(year, .by_group = TRUE) |>
+  top_n(-1, row_number()) |>
+  ungroup()
+
+# RAI only
+bn_rai_members <-
+  bn_members |>
+  filter(org=="Q35")
+
+
+# not rai.. don't need this?
+# bn_ex_rai_members <-
+# bn_members_dedup |>
+#   filter(org !="Q35") 
+# 
+# bn_ex_rai_members_dated <-
+#   bn_ex_rai_members |>
+#   filter(!is.na(year))
+
+
+# don't think you need this either
+# bn_rai_membership <-
+#   bind_rows(bn_rai_members, bn_rai_elected_query) |>
+#   distinct(bn_id, personLabel, org, orgLabel, year) |> 
+#   # one person with one row has NA year which i think is dropped if you top_n the year. 
+#   # use row_number instead. then filter for doing date stuff.
+#   #add_count(bn_id) |>
+#   group_by(bn_id) |>
+#   arrange(year, .by_group = TRUE) |>
+#   top_n(-1, row_number()) |>
+#   ungroup() 
+
+bn_rai_members_dated <-
+  bn_rai_members |>
+  filter(!is.na(year))
+
+
+
+# FSA elections
+# dates are simpler, and none missing.
+
+bn_fsa_sparql <-
+  'SELECT distinct ?person ?personLabel  (year(?date) as ?year)
+    WHERE { 
+      ?person bnwdt:P3 bnwd:Q3.                          
+      ?person bnp:P16 ?s .
+        ?s bnps:P16 ?SALproposed . 
+        ?s bnpq:P22 bnwd:Q36 .            # was elected
+  
+       ?s  bnpq:P1   ?date . 
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+}
+ORDER BY ?personLabel'
+
+bn_fsa_query <-
+  bn_std_query(bn_fsa_sparql) |>
+  make_bn_item_id(person) 
+```
+
+
+```{r fellows}
+# other fellowships 
+# filter SAL out since you've already done SAL elections
+# but if re- combining you'll need to add org/orgLabel to SAL again
+
+bn_fellows_ex_sal_sparql <-
+'select distinct ?person ?personLabel ?org ?orgLabel (year(?date) as ?year)
+where
+{
+  ?person bnwdt:P3 bnwd:Q3 .
+  ?person bnp:P75 ?s .
+    ?s bnps:P75 ?org
+  filter not exists { ?s bnps:P75 bnwd:Q8. } # not SAL
+  optional {  ?s ( bnpq:P1 | bnpq:P27 | bnpq:P28 ) ?date . }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". }
+}'
+  
+bn_fellows_ex_sal_query <-
+  bn_std_query(bn_fellows_ex_sal_sparql) |>
+  make_bn_ids(c(person, org)) |>
+  rename(bn_id=person)
+
+# earliest year only
+bn_fellows_ex_sal <-
+bn_fellows_ex_sal_query  |>
+  group_by(bn_id) |>
+  arrange(year, .by_group = TRUE) |>
+  top_n(-1, row_number()) |>
+  ungroup() 
+
+
+bn_fellows_ex_sal_dated <-
+  bn_fellows_ex_sal |>
+  filter(!is.na(year))
+```
+
+
+
+```{r}
+# only keep orgs with at least 10 rows, which should = members shouldn't it?
+bn_members_10 <-
+  bn_members |>
+  add_count(org) |> 
+  filter(n>=10) |>
+  select(-n)
+
+# or min 5
+bn_members_5 <-
+  bn_members |>
+  add_count(org) |> 
+  filter(n>=5) |>
+  select(-n)
+
+
+  # semi_join(
+  #   bn_members |>
+  #     count(org, sort = T) |>
+  #     filter(n>=10), by="org"
+  # )
+
+
+
+# memberships renamed to bn_members
+# booth renamed to booth_yellow
+# 
+
+# try 5 for booth since it's smaller
+members_booth <-
+bn_members_5 |>
+  inner_join(booth_yellow, by="bn_id") |>
+  # add_count(member, name="nn") |>
+  # filter(nn>=5) |>
+  count(orgLabel, has_yellow) |>
+  group_by(orgLabel) |>
+  mutate(t = sum(n)) |>
+  mutate(p = n/sum(n)) |>
+  ungroup() 
+
+
+members_historic <-
+bn_members_10 |>
+  inner_join(historic_house |> select(bn_id, has_historic), by="bn_id")  |>
+  count(orgLabel, has_historic) |>
+  group_by(orgLabel) |>
+  mutate(t = sum(n)) |>
+  mutate(p = n/sum(n)) |>
+  ungroup()
+```
+
+
+```{r excavations-data}
+
+## person>excavation participation... dates?
+## 554
+
+# simplify, don't need details. 
+bn_people_excavations_sparql <-
+  'SELECT distinct ?person ?personLabel ?excavation ?role ?s 
+WHERE {  
+   # women only. 
+   ?person bnwdt:P3 bnwd:Q3 .
+     ?person (bnp:P36 | bnp:P37) ?s .
+       ?s (bnps:P36|bnps:P37) ?excavation .
+       ?s ?role ?excavation . # only two roles so dont bother with labels
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
+}'
+
+bn_people_excavations_query <-
+  bn_std_query(bn_people_excavations_sparql) |>
+  make_bn_ids(c(person, excavation, role, s))|>
+  # filter out 1960 excavation
+  filter(excavation !="Q3372") |>
+  mutate(roleLabel = case_when(
+    role=="P36" ~ "director of archaeological fieldwork", 
+    role=="P37" ~ "member of excavation during archaeological fieldwork"
+    )) |>
+  arrange(person, excavation) |>
+  rename(bn_id=person)
+
+
+excavations_roles_summary <-
+bn_people_excavations_query |>
+  count(bn_id, personLabel, role) |>
+  pivot_wider(id_cols = c(bn_id, personLabel), names_from = role, values_from = n, values_fill = 0) |>
+  mutate(is_director = if_else(P36>0, "yes", "no"))
+```
+
+
+
+To be useful for comparison, information needs to be of a type that can be turned into a yes/no or a hierarchy, and to be something that was reasonably consistently recorded. Here I'm experimenting with:
+
+- membership of RAI 
+- elected FSAs
+- excavations hierarchy (people who directed excavations vs people who were only recorded as members)
+- memberships more generally
+
+
+Other possible categories: women who did/didn't go to university, or to specific colleges; possibly other types of engagement with organisations, like committee service. 
+
+
+Mosaic charts ([detailed explanation](https://cran.r-project.org/web/packages/vcdExtra/vignettes/mosaics.html)) are used to compare proportions. They're useful because they *also* indicate relative size of groups, and they highlight statistical significance. If the computation finds a difference is statistically significant, the rectangles are coloured: shades of red for negative association, blue for positive association. Grey indicates that any differences are statistically insignificant. (Statistical significance isn't everything, but it is a warning against making too much of small variations.)
+
+The charts are visualisations of "contingency tables" which look like this:
+
+```{r}
+#  no dates.
+bn_historic_rai <-
+  historic_yn(bn_rai_members, "rai") 
+
+bn_historic_rai_tab <-
+with(bn_historic_rai, table(is_rai, has_historic))
+
+
+
+bn_peerage_rai <-
+  peerage_yn(bn_rai_members, "rai") 
+
+bn_peerage_rai_tab <-
+with(bn_peerage_rai, table(is_rai, has_peerage_ref))
+
+
+
+booth_rai_summary <-
+booth_yellow |>
+  left_join(bn_rai_members |> select(bn_id) |> mutate(is_rai="yes"), by="bn_id") |>
+  mutate(is_rai=if_else(!is.na(is_rai), is_rai, "no"))
+
+booth_rai_tab <-
+  with(booth_rai_summary, table(is_rai, has_yellow))
+
+booth_rai <-
+booth_query |>
+  left_join(bn_rai_members |> select(bn_id) |> mutate(is_rai="yes"), by="bn_id") |>
+  mutate(is_rai=if_else(!is.na(is_rai), is_rai, "no")) |>
+  mutate( boothLabel = str_to_lower(str_remove(boothLabel, "Booth ")))
+
+# booth_rai_tab2 <-
+# with(booth_rai, table(is_rai, boothLabel))
+```
+
+```{r}
+bn_historic_rai_tab
+```
+
+
+### RAI membership
+
+- historic house: women with a historic house residence are slightly *less* likely than others to be RAI members.
+
+
+```{r}
+mosaic(bn_historic_rai_tab, shade=TRUE, legend=FALSE)
+```
+
+
+- Booth: people with yellow residences are *slightly* more likely than others to be RAI members. 
+
+```{r}
+mosaic(booth_rai_tab, shade=TRUE, legend=FALSE)
+```
+
+Landed/peerage references: no visible difference.
+
+```{r}
+mosaic(bn_peerage_rai_tab, shade=TRUE, legend=FALSE)
+```
+
+
+### FSAs
+
+
+```{r}
+bn_historic_fsa <-
+  historic_yn(bn_fsa_query, "fsa") 
+
+bn_historic_fsa_tab <-
+  with(bn_historic_fsa, table(is_fsa, has_historic))
+
+bn_peerage_fsa <-
+  peerage_yn(bn_fsa_query, "fsa")
+
+bn_peerage_fsa_tab <-
+  with(bn_peerage_fsa, table(is_fsa, has_peerage_ref))
+```
+
+
+
+Historic house: still grey... 
+
+```{r}
+mosaic(bn_historic_fsa_tab, shade=TRUE, legend=FALSE)
+```
+
+I haven't done the landed/peerage references chart because only one FSA has one.
+
+```{r}
+#mosaic(bn_peerage_fsa_tab, shade=TRUE, legend=FALSE)
+```
+
+### Excavation directors
+
+Again I haven't done Booth here because the number of pre-WW1 excavations is so small. But I can easily add it if you want.
+
+```{r}
+bn_historic_directors <-
+historic_house |>
+  # an inner join this time because it's not just 'is the person a member' but what kind of excavation person
+  inner_join(excavations_roles_summary |> select(bn_id, is_director), by="bn_id") 
+
+bn_historic_directors_tab <-
+with(bn_historic_directors, table(is_director, has_historic))
+
+
+bn_peerage_directors <-
+peerage_reference |>
+  inner_join(excavations_roles_summary |> select(bn_id, is_director), by="bn_id")
+
+bn_peerage_directors_tab <-
+  with(bn_peerage_directors, table(is_director, has_peerage_ref))
+```
+
+Historic house: finally, an association between a proxy and a higher status role. 
+
+```{r}
+mosaic(bn_historic_directors_tab, shade=TRUE, legend=FALSE)
+```
+
+
+Landed/peerage reference: very very slight positive association with directors. 
+
+```{r}
+mosaic(bn_peerage_directors_tab, shade=TRUE, legend=FALSE)
+```
+
+
+## Societies and clubs members
+
+It seems that RAI membership is less posh than was expected. But how does its membership compare to other organisations?
+
+(Charts restricted to organisations that have at least 10 members.)
+
+```{r}
+members_historic <-
+bn_members_10 |>
+  inner_join(historic_house |> select(bn_id, has_historic), by="bn_id")  |>
+  # # why on earth have i done this instead of add_count...
+  # semi_join(
+  #   memberships |>
+  #     count(member, sort = T) |>
+  #     filter(n>=10), by="member"
+  # ) |>
+  count(orgLabel, has_historic) |>
+  group_by(orgLabel) |>
+  mutate(t = sum(n)) |>
+  mutate(p = n/sum(n)) |>
+  ungroup()
+
+members_booth <-
+bn_members_10 |>
+  inner_join(booth_yellow, by="bn_id") |>
+  # add_count(member, name="nn") |>
+  # filter(nn>=5) |>
+  count(orgLabel, has_yellow) |>
+  group_by(orgLabel) |>
+  mutate(t = sum(n)) |>
+  mutate(p = n/sum(n)) |>
+  ungroup() 
+
+members_peerage <-
+bn_members_10 |>
+  inner_join(peerage_reference, by="bn_id") |>
+  count(orgLabel, has_peerage_ref) |>
+  group_by(orgLabel) |>
+  mutate(t = sum(n)) |>
+  mutate(p = n/sum(n)) |>
+  ungroup() 
+```
+
+
+Historic house
+
+RAI is ranked 12 out of 20 (and just under 15% of RAI members=historic).
+
+```{r}
+members_historic |>
+  left_join(
+    members_historic |>
+      filter(has_historic=="other") |>
+      select(orgLabel, r = p), by="orgLabel"
+  ) |> 
+  mutate(r = if_else(is.na(r), 0, r)) |>
+  mutate(orgLabel = fct_reorder(orgLabel, r, .desc=TRUE)) |>
+  mutate(has_historic = fct_rev(has_historic)) |>
+  ggplot(aes(y=orgLabel, x=p, fill=has_historic)) +
+  geom_col() +
+  theme(legend.position = "bottom") +
+  scale_fill_tableau() +
+  scale_x_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL)
+```
+
+Booth 
+
+RAI is ranked higher here, at 5 of 15 (and 45% members=yellow). 
+
+```{r}
+members_booth |>
+  left_join(
+    members_booth |>
+      filter(has_yellow=="other") |>
+      select(orgLabel, r = p), by="orgLabel"
+  ) |>
+  mutate(r = if_else(is.na(r), 0, r)) |>
+  mutate(orgLabel = fct_reorder(orgLabel, r, .desc=TRUE)) |>
+  ggplot(aes(y=orgLabel, x=p, fill=has_yellow)) +
+  geom_col() +
+  theme(legend.position = "bottom") +
+  scale_fill_tableau() +
+  scale_x_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL)
+```
+
+Landed reference.
+
+RAI is again in the top five. 
+
+```{r}
+members_peerage |>
+  left_join(
+    members_peerage |>
+      filter(has_peerage_ref=="other") |>
+      select(orgLabel, r = p), by="orgLabel"
+  ) |>
+  mutate(r = if_else(is.na(r), 0, r)) |>
+  mutate(orgLabel = fct_reorder(orgLabel, r, .desc=TRUE)) |>
+  mutate(has_peerage_ref = fct_rev(has_peerage_ref)) |>
+  ggplot(aes(y=orgLabel, x=p, fill=has_peerage_ref)) +
+  geom_col() +
+  theme(legend.position = "bottom") +
+  scale_fill_tableau() +
+  scale_x_continuous(labels = percent_format()) +
+  labs(y=NULL, x=NULL)
+```
+
+
+## Change over time?
+
+Membership data is mostly dated (even if often only point in time data), so it's possible to look at whether there are any chronological trends in membership. Here I'm using the earliest recorded date per person per organisation and working on the assumption that's at least a rough reflection of when people joined (and grouping by decade). 
+
+(I'm ignoring dates associated with the proxies.)
+
+RAI members 
+
+not a perfectly consistent pattern but clear that a higher proportion of 19th-century members had historic house connections than those with 20th-century dates. 
+
+```{r}
+historic_house |>
+  inner_join(bn_rai_members_dated |> select(bn_id, year) |> mutate(is_rai="yes"), by="bn_id")  |>
+  make_decade(year) |>
+  count(decade, has_historic) |>
+  filter(decade < 1940) |> # only one
+  ggplot(aes(decade, n, fill = has_historic)) +
+  geom_col(position = "fill") +
+  scale_fill_colorblind() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y=NULL)
+#  semi_join(bn_women_dob_dod |> filter(!is.na(bn_dob_yr)), by="bn_id")
+```
+
+
+```{r}
+## for comparison with landed references - this one's a bit all over the place.
+# peerage_reference |>
+#   inner_join(bn_rai_members_dated |> select(bn_id, year) |> mutate(is_rai="yes"), by="bn_id")  |>
+#   make_decade(year) |>
+#   count(decade, has_peerage_ref) |>
+#   filter(decade < 1940) |> # only one
+#   ggplot(aes(decade, n, fill = has_peerage_ref)) +
+#   geom_col(position = "fill") +
+#   scale_fill_colorblind() +
+#   scale_y_continuous(labels = percent_format()) +
+#   labs(y=NULL)
+```
+
+
+FSAs 
+
+no real pattern visible here. Having said that, the 1940s have the largest numbers by some distance, accounting for about half of the elections, so it's interesting that the % historic is so much lower than the two decades either side. (Also NB: the 1950s only cover 1950-52 and there are only 7 elections in the 1920s.)
+
+```{r}
+historic_house |>
+  inner_join(bn_fsa_query |> select(bn_id, year) |> mutate(is_fsa="yes"), by="bn_id")  |> 
+  make_decade(year) |>
+  count(decade, has_historic) |>
+  ggplot(aes(decade, n, fill = has_historic)) +
+  geom_col(position = "fill") +
+  scale_fill_colorblind() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y=NULL)
+
+```
+
+
+I haven't done the dates for excavation directors because the query would be more complex; if you think it'd be useful I can add it.
+

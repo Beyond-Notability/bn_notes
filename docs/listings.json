@@ -2,6 +2,7 @@
   {
     "listing": "/blog.html",
     "items": [
+      "/posts/proxies-2024-12-10/index.html",
       "/posts/bibliographic-2024-09-30/index.html",
       "/posts/education-overview-2024-10-09/index.html",
       "/posts/sal-2024-07-23/index.html",
@@ -46,6 +47,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/proxies-2024-12-10/index.html",
       "/notes/narratives-from-data.html",
       "/posts/bibliographic-2024-09-30/index.html",
       "/notes/d3-network.html",

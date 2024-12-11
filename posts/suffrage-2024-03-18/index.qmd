@@ -173,7 +173,9 @@ bn_suffrage_query |>
   )) |>
   # a `recorded in` has appeared which is unlikely to be relevant. 
   # might need to keep an eye on any other unexpected NAs though!
+  # where the f has this chartiable thing come from?
   filter(!is.na(bucket)) |>
+  filter(!bucket %in% c("charitable/organisational")) |> 
   relocate(sub_type, org, bucket, .after = ofLabel) |>
   rename(activity=mainLabel) |>
   left_join(bn_women_dob_dod |> select(-person, -personLabel), by="bn_id")
@@ -282,10 +284,10 @@ grouped_colours <-
 
 
 
-```{r}
+```{r warning=FALSE}
 bn_suffrage |>
   # drop publishing
-  filter(!bucket %in% c("publishing")) |>
+  filter(!bucket %in% c("publishing", "charitable/organisational")) |> 
   left_join(
     enframe(grouped_colours, name="activity") |>
       left_join(bn_suffrage |> distinct(bucket, activity), by="activity") |>
