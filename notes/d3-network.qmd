@@ -13,6 +13,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 An experimental interactive visualisation; this uses a package with a limited set of D3.js features but is quite quick and easy to set up; I wanted to see what it would look like before deciding how much time to spend wrestling directly with d3 in the Observable! It's intended as a qualitative tool for exploring associations in a way that's hard to do with the static R visualisations.
 
 You can zoom in and out and drag the whole network around; or hover over nodes for name labels and pick up the nodes to drag them around in order to see their connections better.

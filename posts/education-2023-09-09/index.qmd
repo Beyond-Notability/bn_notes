@@ -12,6 +12,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 ## Wikibase query
 
 [Education](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Education) - [which women FSAs went to Oxford or Cambridge colleges](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Women_who_were_FSAs_who_went_to_Oxford_or_Cambridge_colleges)

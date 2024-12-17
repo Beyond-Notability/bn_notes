@@ -12,6 +12,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 ## Wikibase queries
 
 See the [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section of the example queries.
@@ -345,7 +349,7 @@ bn_women_dates_birth_death_subcat |>
 
 Usage:
 
-- hover over points for more info in tooltips (todo: other info in the tooltips)
+- hover over points for more info in tooltips
 - single-click items in the legend to toggle them off and on individually
 - double-click items in the legend to toggle off/on *all the others* (this one seems a bit temperamental sometimes but it does work) 
 

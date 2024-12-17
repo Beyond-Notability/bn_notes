@@ -13,6 +13,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 Update: 
 
 - Some improvements to the elections query to capture a few women who were being omitted. 

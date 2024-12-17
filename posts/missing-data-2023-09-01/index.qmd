@@ -13,6 +13,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 ## Wikibase queries
 
 This brings together a number of different queries which are also used in [the summary table for all women](../../notes/women-summary-browser.html).

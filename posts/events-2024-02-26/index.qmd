@@ -1,19 +1,25 @@
 ---
-title: "PPA events"
+title: "PPA: events"
 description: "Analysis of events participation"
 author: "Sharon Howard"
 date: "2024-03-04"
 date-modified: today
 categories: 
   - ppa
+  - events
 execute: 
   warning: false
   message: false
   echo: false 
 ---
-```{r}
-# this needs a Table?
+
+```{r finishing-up}
+# TODO finishing-up ugh this is a bit of a mess.
+# checked 14/12/24 and it looks ok but.
+# other/misc category is jeez.
+# some charts have got very tall and squished.
 ```
+
 
 
 ## Wikibase queries
@@ -41,29 +47,6 @@ source(here::here("_R/std_queries.R"))
 
 
 
-```{r}
-##for beeswarms you only need dob not dod as well... unless you want to reconstruct missing dobs from dods? hmm.
-## this is a quick query so i think just run it.
-# bn_women_dob_sparql <-
-# 'SELECT distinct ?person ?date 
-# WHERE {
-#    ?person bnwdt:P3 bnwd:Q3 .
-#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}
-#   ?person bnwdt:P26 ?date .   
-# }'
-# 
-# bn_women_dob_query <-
-#   bn_std_query(bn_women_dob_sparql) |>
-#   make_bn_item_id(person) |>
-#   select(-person) |>
-#   make_date_year() |>
-#   rename(dob=date, yob=year) |>
-#   group_by(bn_id) |>
-#   top_n(1, dob) |>
-#   ungroup() 
-# top_n for a few women with >1 dob...
-# some of these look like a year + more specific date. you only need year for this anyway... use top_n. if that's not enough, will need distinct(bn_id, yob) and top_n(yob)
-```
 
 
 ```{r}
@@ -170,18 +153,14 @@ bn_women_events_query |>
               top_n(1, row_number()) |>
               ungroup() |>
               select(s, organised_by, organised_byLabel), by="s") |>
-  #renaming to match original
   rename(event=ppaLabel, event_id=ppa) |>
   rename(ppa=prop, ppa_label=propLabel) |>
   relocate(ppa, .after = ppa_label) |>
-  relocate(s, .after = last_col())
+  relocate(s, .after = last_col()) |>
+  # drop a handful of <uv> ppas.
+  filter(!str_detect(ppa, "^_:t"))
 
-# propLabel was ppa_label
-# ppaLabel was ppa_valueLabel
-# ppa was ppa_value
-# prop was ppa
 
-# bn_women_ppa_events_qualifiers <-
 bn_women_events_qualifiers <-
 bn_women_events_query |>
   #renaming to match original
@@ -191,15 +170,10 @@ bn_women_events_query |>
   relocate(ppa, .after = ppa_label) |>
   relocate(event_id, .after = event)
 
-# qualifiers 
-# qual_propLabel (eg point in time) was qual_label
-# qual_prop unchanged
-# qual_valueLabel (timestamps, text (incl society names)) unchanged?
-# qual_value (timestamps, Qs, text) unchanged?
 
 
 
-
+# TODO?
 # get instance of for qualifiers
 # i think it's better to get them separately esp as there are multis etc
 # problems adapting the query for events only... just get all for ppa for now and get moving
@@ -233,11 +207,10 @@ bn_women_ppa_qual_inst_query <-
   select(-person) |>
   semi_join(bn_women_events, by="s")
 
-# probably best not to use this if some events don't have i/o; go the other way and do left join
-# bn_women_events_qual_io <-
-# bn_women_ppa_qual_inst_query |>
-#   semi_join(bn_women_events, by="s")
 ```
+
+
+
 
 
 
@@ -245,7 +218,7 @@ bn_women_ppa_qual_inst_query <-
 # bn_events_time_precision_csv_file <- 
 #   paste(bn_fetched_data, "bn_ppa_events_time_precision.csv", sep="/")
 
-
+# TODO?
 # this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
 # fetching date_prop makes the query a *lot* slower, so get R to turn the prop IDs into labels instead.
 
@@ -297,6 +270,7 @@ bn_women_events_time_precision_query <-
   )) |>
   rename(date_prop=pq) |>
   select(-person)
+
 
 # read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
 #bn_std_query(bn_women_events_time_precision_sparql) # not converted
@@ -363,27 +337,6 @@ bn_women_events_of_dates <-
   bn_women_events_of |>
   left_join(bn_women_events_dates, by="s")  |>
   relocate(s, .after = last_col())
-
-
-
-# before adding organised_by
-# # watch out for manytomany warning. caused by multiple orgs in of. top_n as a quick hack to get rid. there are only a handful.
-# bn_women_events_of_dates <-
-# bn_women_events |> 
-#   left_join(bn_women_events_qualifiers |>
-#               # of (item/free text)
-#               filter(qual_p %in% c("P78", "P66")) |>
-#               anti_join(bn_women_events |> filter(event_id=="Q3644"), by="s") |> # exclude CAS AGM of 
-#               distinct(s, qual_p, qual_label, qual_value, qual_valueLabel) |> # do i need distinct? possibly not.
-#               # ensure you have only 1 per stmt. 
-#               group_by(s) |>
-#               top_n(1, row_number()) |>
-#               ungroup() |>
-#               rename(of_label=qual_label, of=qual_p, of_id=qual_value, of_value=qual_valueLabel) 
-#               , by="s") |>
-#   left_join(bn_women_events_dates, by="s")  |>
-#   relocate(s, .after = last_col())
-# 
 
 
 
@@ -528,6 +481,7 @@ bn_women_events_of_dates_types_all |>
 
 ```{r}
 
+## ugh.
 ## of course this is more complicated than you wanted it to be.
 
 source(here::here("_R/mapping.R"))
@@ -832,6 +786,8 @@ In a few cases, there's more than one possible way to structure a record of what
 - Look into adding text annotations for data points of interest
 
 
+
+
 ## Event types
 
 - meeting: meeting Q31, Annual Meeting Q682 or a named event which has `instance of` Q31 or Q682
@@ -920,22 +876,7 @@ bn_women_events_of_dates_types |>
   labs(y=NULL, x="event attendances", title="Exhibitions")
 ```
 
-```{r}
-## original
-# organisations_abbr for shorter labels in shared.r
-# bn_women_events_of_dates_types |>
-#   distinct(bn_id, event_title, event, event_id, of_value, of_id, event_type, event_of_id, event_instance_date, event_instance_id) |>
-#   filter(event_type=="exhibition") |>
-#   mutate(event_title=str_replace_all(event_title, organisations_abbr)) |>
-#   add_count(event_title, name="n_bn") |>
-#   count(event_title, event, of_value, event_of_id, n_bn, sort = T) |>
-#   filter(n>1) |>
-# #  top_n(20, n) |>
-#   mutate(event_title = fct_reorder(event_title, n_bn)) |>
-#   ggplot(aes(x=n, y=event_title)) +
-#   geom_col() +
-#   labs(y=NULL, x="event attendances", title="Exhibitions")
-```
+
 
 other (more than 1 attendance)
 
@@ -984,6 +925,7 @@ Jessie MacGregor is at the top because she exhibited at the RA Summer Exhibition
 
 
 ```{r}
+# TODO? another very tall chart...
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id) |>
  
@@ -1006,6 +948,7 @@ at least 8 attendances
 - but in the 8-12 attendances range the numbers in each group are actually very similar 
 
 ```{r}
+# TODO? height of chart
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, yob) |>
   
@@ -1033,18 +976,7 @@ bn_women_events_of_dates_types |>
 ```
 
 
-```{r}
-# bn_women_events_of_dates_types |>
-#   distinct(bn_id, personLabel, event_title, event, of_value, event_type, event_of_id, event_instance_date, event_instance_id, year) |>
-#   add_count(bn_id, name="n_bn") |>
-#   filter(n_bn>=8) |>
-#   count(bn_id, personLabel, event_type, n_bn) |>
-#   mutate(personLabel=fct_reorder(personLabel, n_bn)) |>
-#   ggplot(aes(y=personLabel, x=n, fill=event_type)) +
-#   geom_col() +
-#   scale_fill_ptol() +
-#   labs(y=NULL, x="attendances")
-```
+
 
 But overall counts can obscure interesting differences in patterns of participation. Some women, like Jessie MacGregor, might tend to attend just one or a few events; others might be spread more or less evenly across a wider range of events and/or organisations. 
 
@@ -1095,7 +1027,6 @@ bn_women_events_of_dates_types |>
 
 
 
-
 This colour codes the segments by event type; it's kinda cute but I'm not sure if it's useful
 
 ```{r}
@@ -1125,7 +1056,6 @@ bn_women_events_of_dates_types |>
 
 
 The chart can be flipped around, to look at patterns of participation by event rather than by person.
-
 
 Conferences, as they're all (or nearly all) one-off events aren't very interesting except to show what a uniform one person per event pattern looks like.
 

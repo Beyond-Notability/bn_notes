@@ -1,5 +1,5 @@
 ---
-title: "Work activities (P17/P48/P105)"
+title: "Work (P17/P48/P105)"
 description: "A look at work activities with the properties `held position` and `employed as`"
 author: "Sharon Howard"
 date: "2023-08-22"
@@ -14,6 +14,9 @@ execute:
 page-layout: full
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
 
 ```{r libraries-etc}
 # shared libraries, functions etc ####
@@ -51,7 +54,7 @@ WHERE {
     
     # more about the position
     ?s ( bnps:P17|bnps:P48|bnps:P105 ) ?position .  
-    # employer / organised by / of (incl free text). TODO: check whether these are mutually exclusive; could make this a union.
+    # employer / organised by / of (incl free text).
     OPTIONAL { ?s bnpq:P18 ?employer .}  
     OPTIONAL { ?s bnpq:P109 ?organised .}
     OPTIONAL { ?s ( bnpq:P78 | bnpq:P66 ) ?of .}

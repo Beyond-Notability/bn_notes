@@ -12,6 +12,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 Experimental dumbbell plots, restricted to women for whom we have at least one date, and for colleges with at least six students. If one of start/end is missing I've inferred it using a likely maximum attendance of 4 years (the majority of known durations are 1-4 years): these are highlighted in orange.
 
 A few women attended the same college on more than one separate occasion and in these cases each attendance is shown on a separate bar.

@@ -12,10 +12,14 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# checked 14/12/24; no obvious problems.
+```
+
 ## Notes
 
 - Universities and colleges only (eg university extension excluded)
-- Wikibase start dates only
+- Using wikibase start dates only
 - Ages are calculated by subtracting year of birth from starting year, so could be +/- 1 year out
 
 ```{r}
@@ -123,7 +127,6 @@ bn_women_educated_dates_ages_first|>
   mutate(decade=paste0(decade, "s")) |>
   ggplot(aes(decade, mean_age)) +
   geom_lollipop() +
-#  geom_col() +
   labs(title="Average age at first entry to university, by decade", y="mean age")
 ```
 

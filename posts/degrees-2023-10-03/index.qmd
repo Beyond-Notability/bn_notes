@@ -12,9 +12,15 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# checked 14/12/24
+# tidy old code; clean up degree categories a bit.
+# tweaked appearance of a chart that's got very tall.
+```
+
+
 
 ```{r}
-
 # shared libraries, functions etc ####
 
 source(here::here("_R/shared.R"))
@@ -25,12 +31,55 @@ library(reactable)
 # standard query strings and queries ####
 
 source(here::here("_R/std_queries.R"))
+```
+
+
+```{r}
+
+
+## fsas
+
+bn_fsa_sparql <-
+'SELECT ?person 
+WHERE {  
+  ?person bnwdt:P3 bnwd:Q3 . #select women
+  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
+  
+  ?person bnwdt:P75 bnwd:Q8. # only BN subjects having a FSA 
+  
+  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
+}'  
+
+bn_fsa_query <-
+  bn_std_query(bn_fsa_sparql) |>
+  make_bn_item_id(person)
+
+
+
+## how many of the women ahve a birth date?
+## only used in the table, and only year.
+
+bn_women_dobs_sparql <-
+    glue("select distinct ?person ?dateOfBirth (year(?dateOfBirth) as ?year_of_birth)
+        where {{
+         {bn_triple_woman}
+        {bn_filter_project}
+         ?person bnwdt:P26  ?dateOfBirth.
+         {wb_service_label}
+        }}") 
+
+bn_women_dobs <-
+  bn_std_query(bn_women_dobs_sparql) |>
+  make_bn_item_id(person) |>
+  #mutate(date_of_birth = parse_date_time(dateOfBirth, "ymdHMS")) |>
+  #mutate(year_of_birth = year(date_of_birth)) |>
+  relocate(bn_id, year_of_birth)
 
 
 
 # for reference maybe, get educated query again ####
 bn_educated_sparql <-
-  "SELECT DISTINCT ?person ?personLabel ?college ?collegeLabel ?university ?universityLabel ?date ?date_label ?s
+  "SELECT DISTINCT ?person ?personLabel ?college ?collegeLabel ?university ?universityLabel ?date ?qual_propLabel ?s
 
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 . #select women
@@ -46,8 +95,8 @@ WHERE {
     optional {
     ?s ?pq ?date .       
       ?qual_prop wikibase:qualifier ?pq;
-              wikibase:propertyType wikibase:Time ; # nb excludes edtf dates
-              rdfs:label ?date_label . filter(lang(?date_label)='en-gb') . # what kind of date is it.
+              wikibase:propertyType wikibase:Time. # ; # nb excludes edtf dates
+             # rdfs:label ?date_label . filter(lang(?date_label)='en-gb') . # what kind of date is it.
       } # /dates
   
   SERVICE wikibase:label {bd:serviceParam wikibase:language '[AUTO_LANGUAGE],en-gb,en'.}
@@ -58,6 +107,7 @@ order by ?personLabel ?collegeLabel ?date
 bn_educated_query <-
 bn_std_query(bn_educated_sparql) |>
    make_bn_item_id(person)  |>
+  rename(date_label= qual_propLabel) |>
   # tidy up
   mutate(across(c(college, collegeLabel, university, universityLabel, date, date_label), ~na_if(., ""))) |>
   # get the last bit of a /path/?
@@ -70,60 +120,12 @@ bn_std_query(bn_educated_sparql) |>
 
 
 
-# 38 no date/uv
-# initially let's just go with people who have at least a start date... 178
-# quite a lot don't have an end date :-/ 51
-# what is the usual sort of duration from the start date where both exist?
-
-## a few people had more than 1 point in time date for the same statement, which i think was the source of problem with pivot wider
-## this should be getting fixed... one has been changed to start/end dates and hopefully the others will be turned into separate stmts.
-
-# bn_educated_start_end <-
-# bn_educated_query |>
-#   filter(!is.na(date)) |>
-#   distinct(bn_id, personLabel, college, collegeLabel, year, date_label, s) |>
-#   filter(!date_label %in% c("latest date", "point in time")) |>
-#   pivot_wider(names_from = date_label, values_from = year) |>
-#   clean_names("snake") |>
-#   filter(!is.na(start_time) | !is.na(end_time) )  |>
-#   mutate(date_type = if_else( is.na(end_time) | is.na(start_time) , "estim", "actual")) |>
-# ## Q825 23 years... "The LSE Register notes that Chapman was full time at LSE 1903-14, and thereafter an occasional student." 
-# ## vast majority with both start and end= 1-4 years. so add 4 years to NA end plus type column to differentiate
-#   mutate(end_time_n = case_when(
-#     bn_id=="Q825" & college=="Q1162" & end_time==1923 ~ 1914,
-#     is.na(end_time) & !is.na(start_time) ~ start_time+4,
-#     .default = end_time
-#   )) |>
-#   mutate(start_time_n = case_when(
-#     bn_id=="Q825" & college=="Q1162" & start_time==1900 ~ 1903,
-#     is.na(start_time) & !is.na(end_time) ~ end_time-4,
-#     .default = start_time
-#   )) |>
-#   #mutate(dur = end_time_n - start_time_n) |>
-#   add_count(college_label, name="college_n") |>
-#   rename(name=person_label) |>
-#   relocate(s, .after = last_col())  |>
-# # make a unique row id for the y axis as some women might appear more than once. might as well order by time
-#   arrange(start_time, end_time) |>
-#   mutate(name_y = paste(row_number(),name))
-
-
-# # for when you need the two colours, force text to be black or dark grey and add the scale to the bits you do separately
-# bn_college_dumbbell <- function(data){
-#   data |>
-#   mutate(name_y = fct_rev(fct_reorder(name_y, start_time_n))) |>
-#   ggplot(aes(x=start_time_n, xend=end_time_n, y=name_y, colour=date_type)) +
-#   geom_dumbbell(show.legend = F) +
-#   geom_text(aes(label=name), size=3, hjust = 0, nudge_x = 5, show.legend = FALSE, colour="#525252") +
-#   theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) 
-# }
-
 
 
 # academic degrees queries ####
 
 bn_academic_degree_sparql <-
-'SELECT distinct ?person ?personLabel ?degree ?degreeLabel ?by ?byLabel ?university ?universityLabel ?subject ?subjectLabel ?date ?date_label  ?s
+'SELECT distinct ?person ?personLabel ?degree ?degreeLabel ?by ?byLabel ?university ?universityLabel ?subject ?subjectLabel ?date ?qual_propLabel  ?s
 
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 . #select women
@@ -148,8 +150,8 @@ WHERE {
     optional {
     ?s ?pq ?date .       
       ?qual_prop wikibase:qualifier ?pq;
-              wikibase:propertyType wikibase:Time ; # nb excludes edtf dates
-              rdfs:label ?date_label . filter(lang(?date_label)="en-gb") . # what kind of date is it.
+              wikibase:propertyType wikibase:Time .  # nb excludes edtf dates
+            #  rdfs:label ?date_label . filter(lang(?date_label)="en-gb") . # what kind of date is it.
       } # /dates
       
   SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
@@ -160,10 +162,9 @@ order by ?personLabel ?date ?degreeLabel'
 bn_academic_degree_query <-
   bn_std_query(bn_academic_degree_sparql) |>
   make_bn_item_id(person)  |>
+  rename(date_label = qual_propLabel) |>
   # tidy up
   mutate(across(c(degree, degreeLabel, by, byLabel, university, universityLabel, subject, subjectLabel, date, date_label), ~na_if(., ""))) |>
-  # get the last bit of a /path/ for an ID
-  #mutate(across(c(degree, by, university, subject, s), ~str_extract(., "([^/]*$)") ))  |>
   make_bn_ids(across_cols = c(degree, by, university, subject, s)) |>
   mutate(date_std = if_else(str_detect(date, "^_:t"), NA, date))  |>
   mutate(date_std = parse_date_time(date_std, "ymdHMS")) |>
@@ -172,6 +173,8 @@ bn_academic_degree_query <-
   make_decade(year) |>
   mutate(by = if_else(str_detect(by, "^_:t"), "uv", by)) |>
   relocate(person, date, .after = last_col())
+
+
 
 # get degree levels info separately as postgrad degrees have 2 instances
 # instance of P12 either academic degree or postgraduate degree
@@ -226,15 +229,16 @@ bn_academic_degree <-
   )) |>
   mutate(degree_label = case_when(
     ma_type %in% c("Oxbridge", "Scottish", "unknown") ~ "master's degree*",
+    str_detect(degreeLabel, "icence|icencie|icentiate") ~  "licence",
     .default = degreeLabel
   ))  |>
   mutate(degree_cat = case_when(
     #ma_type=="unknown" ~ "uncertain",
     #ma_type=="Oxbridge" ~ "undergraduate",
     str_detect(degree_label, "iploma|Lady Literate") ~ "diploma", # LLA seems to be conventionally characterised as a diploma
-    str_detect(degree_label, "ertificate|icence") ~ NA,
+    str_detect(degree_label, "ertificate|icence|icencie|icentiate") ~ NA,
     str_detect(degree_label, "octor") ~ "doctorate",
-    str_detect(degree_label, "achelor") ~ "bachelor's degree",
+    str_detect(degree_label, "achelor|accalaureate") ~ "bachelor's degree",
     #degree_label=="master's degree" ~ "master's",
     .default = degree_label
   ))
@@ -245,58 +249,18 @@ bn_academic_degree_n_women <-
   bn_academic_degree |> distinct(bn_id) |> tally()
 
 
-## fsas
-
-bn_fsa_sparql <-
-'SELECT ?person 
-WHERE {  
-  ?person bnwdt:P3 bnwd:Q3 . #select women
-  FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
-  
-  ?person bnwdt:P75 bnwd:Q8. # only BN subjects having a FSA 
-  
-  SERVICE wikibase:label {bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb,en".}
-}'  
-
-bn_fsa_query <-
-  bn_std_query(bn_fsa_sparql) |>
-  make_bn_item_id(person)
-
-
-
-
-## how many of the women ahve a birth date?
-## could just incorporate this into the sparql query... though you need to handle multis
-
-bn_women_dobs <-
-  c(
-    glue(bn_prefixes,
-        "select distinct ?person ?dateOfBirth
-        where {{
-         {bn_triple_woman}
-        {bn_filter_project}
-         ?person bnwdt:P26  ?dateOfBirth.
-         {wb_service_label}
-        }}") 
-  ) |>
-  sparql2df(endpoint=bn_endpoint) |>
-  make_bn_item_id(person) |>
-  mutate(date_of_birth = parse_date_time(dateOfBirth, "ymdHMS")) |>
-  mutate(year_of_birth = year(date_of_birth)) |>
-  relocate(bn_id, date_of_birth, year_of_birth)
-
-
-# a few women with >1 dob, but they're just different precision levels, so distinct year will be fine
-#bn_women_dobs |>
-#  add_count(bn_id) |> filter(n>1)
-
-
-
-# 109 join! 63 have degree year which is p.i.t.
-  # group_by(bn_id, levelLabel) |>
-  # top_n(1, year) |>
-  # ungroup()
 ```
+
+```{r}
+#bn_academic_degree |> count(degree_cat, degree_label)
+
+# bn_academic_degree |>
+#   filter(ma_type=="unknown")
+#   count(levelLabel, ma_type, level_type, degree_cat)
+```
+
+
+
 
 `r bn_academic_degree_n_women$n` women in the BN database are recorded as having at least one academic qualification.
 
@@ -339,10 +303,7 @@ Thinking about ways to reduce unknowns, on a more probabilistic basis...
 
 - other qualifications: a few women with unknown MAs have a U of London *BA* (Q1101 Q1423 Q1439), which makes it extremely unlikely (though from what I've read not impossible) that they would have an Oxbridge/TCD MA. I think it would be reasonable to add them to the postgrad masters category.
 
-```{r}
-## moved this bit out of text because the linkage turned out to be much harder than I hoped, so probably this is best avoided
-# - correlation with educated at information: some women with an unknown provenance MA were educated at Oxford or Cambridge colleges. If they have neither educated at nor academic degree data from any other instition it seems quite likely that their MAs are also from Oxbridge, and for the purposes of this kind of analysis I would be fairly comfortable with that assumption. But they could have studied for a MA somewhere else that we don't have any information about. 
-```
+
 
 
 
@@ -358,20 +319,6 @@ Thinking about ways to reduce unknowns, on a more probabilistic basis...
 # > the M.A. (Dubl.) may also be awarded in special cases, such as honoris causa, jure officii, and ad eundem gradum.
 # > At Dublin, the rank of MA may be conferred to anyone who has held a Dublin BA degree (or another bachelor's degree after at least nine terms' residence) for at least three years. 
 
-# 54 individuals have at least 1 masters... 27 with unknown by.
-# UoL bachelor and unknown ma: Q1101 Q1423 Q1439. one UoL diploma + unknown ma Q3076
-# also one Oxford ba and unknown ma Q109
-# and one with a TCD MA *and* an unknown MA (20 years later) Q1030
-
-# bn_academic_degree |>
-#   filter(degree=="Q359" & ma_type=="unknown") |>
-#   distinct(bn_id) |>
-#   inner_join(bn_academic_degree, by="bn_id") |>
-#   # only people with more than one...
-#   add_count(bn_id) |> filter(n>1) |>
-#   arrange(bn_id, date_std, degreeLabel) |>
-#   relocate(date_std, .after = personLabel) |>
-#   View()
 ```
 
  
@@ -428,7 +375,7 @@ bn_academic_degree |>
   labs(y="count", fill="type", title="Degrees awarded per decade")
 ```
 
-Update: Now there are more precise dates filled in; latest date still clusters a bit towards the end, but nowhere near as much as it did. 
+Update: Now there are more precise dates filled in; latest date still clusters towards the end, but nowhere near as much as it did. 
 
 ```{r}
 bn_academic_degree |>
@@ -443,10 +390,10 @@ bn_academic_degree |>
   labs(fill="date type", y="count")
 ```
 
-Update: About 3/4 of degrees now have a point in time date, and the pattern is much closer to the overall.
+Update: Most degrees now have a point in time date, and the pattern is much closer to the overall.
 
 ```{r}
-# 149/195
+# 
 bn_academic_degree |>
   filter(!is.na(decade)) |>
   filter(date_label=="point in time") |>
@@ -466,23 +413,6 @@ bn_academic_degree |>
 All women
 
 (Restricted to institutions that awarded at least two degrees to make it more manageable.)
-
-```{r}
-# waht about a waffle? hmm too many thins i think... could work for
-# bn_academic_degree |> #count(degreeLabel)
-#   filter(!is.na(byLabel) & !str_detect(byLabel, "^t\\d")) |>
-#   add_count(byLabel, name="nBy") |>
-#   count(byLabel, by, degreeLabel, nBy) |>
-#   filter(nBy>1) |>
-#   mutate(byLabel = fct_reorder(byLabel, nBy)) |>
-#   ggplot(aes(x=byLabel, y=n, fill=degreeLabel)) +
-#   geom_col() +
-#   coord_flip() +
-#   #scale_fill_brewer(palette = "Paired") +
-#   scale_fill_ptol() +
-#   labs(x=NULL, fill="degree", title="Degrees awarded, by institution", y="count")
-```
-
 
 
 ```{r}
@@ -508,7 +438,7 @@ bn_academic_degree |> #count(degreeLabel)
 
 ### University of London
 
-(UoL is really the only institution with enough degree holders for this chart to work.)
+(Few individual institutions have enough degree holders for this chart to work.)
 
 ```{r}
 bn_academic_degree |>
@@ -520,9 +450,24 @@ bn_academic_degree |>
   geom_col() +
   coord_flip() +
   scale_fill_ptol() +
-  labs(x=NULL, y="count", fill="degree", "Women with degrees from the University of London")
+  labs(x=NULL, y="count", fill="degree", title= "Women with degrees from the University of London")
 ```
 
+
+(Maybe Oxford.)
+
+```{r}
+bn_academic_degree |>
+  filter(by=="Q364") |>
+  add_count(bn_id, personLabel, name="n_deg") |>
+  count(bn_id, personLabel, degree_cat, n_deg) |>
+  mutate(personLabel = fct_reorder(personLabel, n_deg)) |>
+  ggplot(aes(x=personLabel, y=n, fill=degree_cat)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_ptol() +
+  labs(x=NULL, y="count", fill="degree", title= "Women with degrees from the University of Oxford")
+```
 
 ### FSAs 
 
@@ -547,59 +492,13 @@ bn_academic_degree |>
   labs(title="FSAs' degrees, by institution")
 ```
 
-```{r}
-### University of Oxford
-# bn_academic_degree |>
-#   filter(by=="Q364") |>
-#   add_count(bn_id, personLabel, name="n_deg") |>
-#   count(bn_id, personLabel, degreeLabel, levelLabel, n_deg) |>
-#   mutate(personLabel = fct_rev(personLabel)) |>
-#   ggplot(aes(x=personLabel, y=n, fill=degreeLabel)) +
-#   geom_col() +
-#   coord_flip() +
-#   scale_fill_ptol() +
-#   scale_y_continuous(breaks = c(0,1)) +
-#   labs(x=NULL, y="count", fill="degree", "Women with degrees from the University of Oxford")
-```
-
-
-```{r}
-# bn_academic_degree |>
-#   filter(by=="Q625") |>
-#   add_count(bn_id, personLabel, name="n_deg") |>
-#   count(bn_id, personLabel, degreeLabel, levelLabel, n_deg) |>
-#   mutate(personLabel = fct_reorder(personLabel, n_deg)) |>
-#   ggplot(aes(x=personLabel, y=n, fill=degreeLabel)) +
-#   geom_col() +
-#   coord_flip() +
-#   scale_fill_ptol() +
-#   scale_y_continuous(breaks = c(0,1,2)) +
-#   labs(x=NULL, y="count", fill="degree", "Women with degrees from Trinity College Dublin")
-```
-
-
-```{r}
-# bn_academic_degree |> #count(by)
-#   filter(by %in% c("Q364", "Q625", "Q2632")) |>
-#   add_count(bn_id, personLabel, name="n_deg") |>
-#   count(bn_id, personLabel, levelLabel, byLabel, n_deg) |>
-#   mutate(personLabel = fct_rev(personLabel)) |>
-#   ggplot(aes(x=personLabel, y=n, fill=levelLabel)) +
-#   geom_col() +
-#   coord_flip() +
-#   scale_fill_ptol() +
-#   facet_wrap(~byLabel) +
-#   theme(legend.position = "bottom") +
-#   labs(x=NULL, y="count", fill="degree")
-```
-
-
 
 
 ## Multiple degrees
 
 
-```{r}
+```{r fig.height=9}
+# this has got very tall; tweaked to improve appearance
 bn_academic_degree |>
   filter(!is.na(degree_cat)) |>
   add_count(bn_id, personLabel, name="n_deg") |>
@@ -609,7 +508,8 @@ bn_academic_degree |>
   ggplot(aes(x=personLabel, y=n, fill=degree_cat)) +
   geom_col() +
   coord_flip() +
-  scale_fill_ptol() +
+  scale_fill_ptol()  +
+  theme(aspect.ratio = 9/4)  +
   labs(x=NULL, fill="degree", y="count", title = "Women who held more than one degree")
 ```
 

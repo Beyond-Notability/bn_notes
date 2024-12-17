@@ -12,6 +12,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 ## Wikibase queries
 
 The buckets are not part of the wikibase, but as the number is quite small they can be hand-coded into a query. The query below is a starting point for this.

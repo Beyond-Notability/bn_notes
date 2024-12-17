@@ -13,6 +13,11 @@ categories:
   - dates
 ---
 
+```{r finishing-up}
+# checked 14/12/24
+# old code: redo labels (prop and qual_prop), use bn_std_query.
+```
+
 ## Wikibase queries
 
 See the [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section of the example queries. (The query used here is similar to [All the Dates for Women FSAs](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#All_the_Dates_for_Women_FSAs) but for all women.)
@@ -33,18 +38,15 @@ source(here::here("_R/std_queries.R"))
 
 
 ```{r}
-bn_women_datable_query <-
-c(paste(
-  bn_prefixes, '
-SELECT distinct ?prop_label ?qdate_label ?mdate ?qdate ?prop ?prop_type  ?s ?person
+bn_women_datable_sparql <- 
+'SELECT distinct ?propLabel ?qual_propLabel ?mdate ?qdate ?prop ?qual_prop ?prop_type ?p  ?s ?person
 WHERE {
   ?person bnwdt:P3 bnwd:Q3 . # women
 # (this is based on work activities query but take out the work activities constraints)  
   ?person ?p ?s . # for property label
   ?prop wikibase:claim ?p;       
          wikibase:statementValue ?psv ;  
-        wikibase:propertyType ?prop_type ;  
-         rdfs:label ?prop_label. filter(lang(?prop_label)="en-gb") .  
+        wikibase:propertyType ?prop_type.     
     
   # main dates as well! :-)
     optional {
@@ -60,22 +62,25 @@ WHERE {
       
      ?qual_prop wikibase:qualifier ?pq;      
               #wikibase:propertyType ?date_prop_type; # 
-              wikibase:propertyType wikibase:Time ; # 4658  well pretty close! 
-              rdfs:label ?qdate_label . filter(lang(?qdate_label)="en-gb") . # what kind of date is it.
+              wikibase:propertyType wikibase:Time . 
+              #rdfs:label ?qdate_label . filter(lang(?qdate_label)="en-gb") . # what kind of date is it.
       } # /dates
    
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en-gb". } 
   
 } # /where
 
-ORDER BY ?prop_label
-')) |>
-  sparql2df(endpoint=bn_endpoint) |>
-  mutate(s = str_remove(s, "https://beyond-notability.wikibase.cloud/entity/statement/")) |>
-  mutate(p = str_remove(prop, "https://beyond-notability.wikibase.cloud/entity/")) |>
+ORDER BY ?propLabel
+'
+
+bn_women_datable_query <-
+  bn_std_query(bn_women_datable_sparql) |>
+  make_bn_item_id(person) |>
+  make_bn_ids(c(s, p, prop, qual_prop)) |>
+  # mutate(s = str_remove(s, "https://beyond-notability.wikibase.cloud/entity/statement/")) |>
+  # mutate(p = str_remove(prop, "https://beyond-notability.wikibase.cloud/entity/")) |>
   mutate(prop_type = str_remove(prop_type, "http://wikiba.se/ontology#")) |>
-  relocate(p) |>
-  make_bn_item_id(person) 
+  relocate(p) 
 
 # because you might need to be able to get at the latest version without internet access...
 # perhaps you should just write to csv/r data and then read back in?
@@ -98,7 +103,7 @@ bn_women_datable_query |>
   # remove unknown value. at some point need to highlight these but it can wait
   mutate(across(c(qdate, mdate), ~str_remove(., "^_:t.*$"))) |>
   # make "" NA
-  mutate(across(c(qdate_label, mdate, qdate), ~na_if(., ""))) |>
+  mutate(across(c(qual_propLabel, mdate, qdate), ~na_if(., ""))) |>
   mutate(across(c(qdate,mdate), ~parse_date_time(., "ymdHMS"))) |>
       mutate(myear = year(mdate), qyear=year(qdate))
 
@@ -108,9 +113,9 @@ bn_women_datable_query |>
 ##main never dates
 bn_women_props_never_mdates <-
 bn_women_datable |>
-  count(p, prop_label, is.na(mdate)) |>
+  count(prop, propLabel, is.na(mdate)) |>
   rename(m_notdated = `is.na(mdate)`) |>
-  group_by(p) |>
+  group_by(prop) |>
   mutate(pc = n/sum(n)) |>
   ungroup() |>
   filter(m_notdated==TRUE & pc==1)
@@ -119,15 +124,15 @@ bn_women_datable |>
 ## datable main
 bn_women_datable_main <-
 bn_women_datable |>
-  anti_join(bn_women_props_never_mdates, by="p")
+  anti_join(bn_women_props_never_mdates, by="prop")
 
 
 ##qualifier never dates
 bn_women_props_never_qdates <-
 bn_women_datable |>
-  count(p, prop_label, is.na(qdate)) |>
+  count(prop, propLabel, is.na(qdate)) |>
   rename(q_notdated = `is.na(qdate)`) |>
-  group_by(p) |>
+  group_by(prop) |>
   mutate(pc = n/sum(n)) |>
   ungroup() |>
   filter(pc==1 & q_notdated==TRUE)
@@ -137,7 +142,7 @@ bn_women_datable |>
 ## datable qualifiers
 bn_women_datable_qualifiers <-
 bn_women_datable |>
-  anti_join(bn_women_props_never_qdates, by="p")
+  anti_join(bn_women_props_never_qdates, by="prop")
 
 ```
 
@@ -159,14 +164,14 @@ TODO:
 ```{r}
 bn_women_datable_main_summary <-
 bn_women_datable_main |>
-  count(p, prop, prop_label, is.na(mdate)) |>
+  count(prop, propLabel, is.na(mdate)) |>
   rename(m_notdated = `is.na(mdate)`) |>
-  group_by(p) |>
+  group_by(prop) |>
   mutate(pc_dated = round(n/sum(n)*100, 2)) |>
   ungroup() |>
   # might not always be able to assume that there will always be FALSE for all props...
   filter(m_notdated==FALSE) |>
-  arrange(prop_label) |>
+  arrange(propLabel) |>
   select(-m_notdated)
 
 ```
@@ -175,7 +180,6 @@ Here the undated should be all &lt;unknown value&gt; as the query doesn't includ
 
 ```{r}
 bn_women_datable_main_summary |>
-  select(-prop) |>
   kable(
     col.names = c('property', 'name', 'count', '% dated')
   ) |>
@@ -195,16 +199,16 @@ The query for qualifiers works slightly differently from that for main dates, an
 # the married in dates are real, they're end dates, maybe divorces or ?widowing? before a subsequent marriage.
 # though are they used consistently?
 bn_women_datable_qualifiers |>
-  count(p, prop_label, is.na(qdate)) |>
+  count(prop, propLabel, is.na(qdate)) |>
   rename(q_notdated = `is.na(qdate)`) |>
   filter(n>1) |>
-  group_by(p) |>
+  group_by(prop) |>
   mutate(pc = n/sum(n)) |>
   ungroup() |> 
   filter(q_notdated==FALSE) |>
-  mutate(prop_label = fct_reorder(prop_label, pc)) |>
-#  mutate(prop_label = fct_rev(prop_label)) |>
-  ggplot(aes(prop_label, pc)) +
+  mutate(propLabel = fct_reorder(propLabel, pc)) |>
+#  mutate(propLabel = fct_rev(propLabel)) |>
+  ggplot(aes(propLabel, pc)) +
   #geom_col() +
   geom_point(aes(size=n)) +
   coord_flip() +
@@ -217,16 +221,16 @@ The full list of datable qualifiers including single instances.
 
 ```{r}
 bn_women_datable_qualifiers |>
-  count(p, prop_label, is.na(qdate)) |>
+  count(prop, propLabel, is.na(qdate)) |>
   rename(q_notdated = `is.na(qdate)`) |>
-  group_by(p) |>
+  group_by(prop) |>
   mutate(pc = round(n/sum(n)*100, 2)) |>
   ungroup() |> 
-  #count(p)  #49
-  #add_count(p, name="n_p") |>
+  #count(prop)  #49
+  #add_count(prop, name="n_p") |>
   # looks like this filter is safe too. all n_p=1 are FALSE. and counts match. but could it change?
   filter(q_notdated==FALSE) |>
-  arrange(str_to_lower(prop_label)) |>
+  arrange(str_to_lower(propLabel)) |>
   select(-q_notdated) |>
   kable(col.names = c('property', 'name', 'count', '% dated')) |>
   kable_styling()

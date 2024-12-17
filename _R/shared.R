@@ -248,6 +248,10 @@ date_property_labels <- function(v) {
 #  left_join(bn_properties |> select(date_qual_prop= bn_prop_id, date_qual_label= propertyLabel), by="date_qual_prop") |>
 
 
+# turn NAs into "other" string inside a mutate
+na_to_other <- function(v, other="other") {
+  if_else(is.na({{v}}), other, v)
+}
 
 # turn standard ymdHMS or ymd dates with precision levels into EDTF format. works with posixct dates as well as strings.
 # use inside a mutate.

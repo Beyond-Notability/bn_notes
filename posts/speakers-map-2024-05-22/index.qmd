@@ -14,6 +14,10 @@ execute:
 toc: false
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 This is adapted from the maps for lecturers. 
 
 filters:
@@ -585,16 +589,7 @@ bn_event_p2_c_query <-
 #     bind_rows(bn_event_p2_c_query, bn_event_p2_loc_query, bn_event_p33_loc_query) , by=c("link_p2_id"="item") )
 ```
 
-```{r}
-# TODO ???
-# several items have >1 location. probably dated changes but that's tricky to handle, will need some working out.
-# ## RHS Q432 has 5 or 6 different addresses in two PCAs... similarly Q1760
-# so for now just fudge it with top_n
-# bn_event_p2_loc_query |>
-#   add_count(item) |>
-#   filter(n>1)
 
-```
 
 
 

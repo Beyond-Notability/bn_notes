@@ -13,6 +13,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 ## Wikibase queries
 
 * [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section

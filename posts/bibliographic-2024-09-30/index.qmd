@@ -7,18 +7,26 @@ date-modified: today
 categories: 
   - ppa
   - publishing
+  - men
 execute: 
   warning: false
   message: false
   echo: false 
 ---
 
+```{r finishing-up}
+## checked 14/12/24, no problems noted.
+## most of the data is static and code is recent, so unlike to be problematic.
+## maybe: could add a table of individuals but low priority.
+```
+
+
 ## Data
 
 This analysis mainly uses data that is not currently included in the BN wikibase.
 
 - [Library of Congress (LOC) books data on zenodo](https://zenodo.org/records/13684929)
-- [Archaeology Data Service (ADS)](https://archaeologydataservice.ac.uk/) articles data (to be added to the wikibase)
+- [Archaeology Data Service (ADS)](https://archaeologydataservice.ac.uk/) articles data (the information has been added to the wikibase but in a different format)
 
 
 ```{r libraries-etc}
@@ -68,9 +76,6 @@ ORDER BY ?person'
 bn_simple_main_date_query <-
   bn_std_query(bn_simple_main_date_sparql) |>
   make_bn_ids(c(person, prop, s))
-
-# TODO need to add named child/widowed...
-
 
 
 bn_simple_qual_date_sparql <-

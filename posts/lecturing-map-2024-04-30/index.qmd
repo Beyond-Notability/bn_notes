@@ -15,7 +15,9 @@ toc: false
 ---
 
 
-
+```{r finishing-up}
+# TODO finishing-up 
+```
 
 
 ```{r libraries-etc}
@@ -198,37 +200,9 @@ bn_work_loc_id <-
 ```
 
 
-```{r}
-# todo maybe; but for now use original method
-# multi locs?
-# when you include date type, only a few; 
-# eugenie bm/chelsea/whitechapel you already know. but for once, location before org is a problem.
-# hadn't noticed the MM before; 2 org centres. both in Kent so not losing a lot if you drop one... but should probably work out how to keep both for this.
-# EB has no org/loc so unlikely to be locatable anyway.
-
-# bn_lecturers_query |>
-#   add_count(s, locationLabel, location, date_propLabel) |>
-#   filter(n>1)
-```
 
 
 
-```{r}
-# several undated do have location so worth keeping.
-# bn_lecturers_query |>
-#   filter(is.na(date))  
-
-
-
-# haven't done this. don't think i'll need it here.
-  # mutate(across(c(organisedLabel, ofLabel, locationLabel, employerLabel, of, organised, location, employer), ~na_if(., ""))) |>
-  # # t82684 (Label), _:t82684
-  # mutate(across(c(organised, of, location, employer), ~if_else(str_detect(., "^_:t\\d"), NA, .))) |>
-  # mutate(across(c(organisedLabel, ofLabel, locationLabel, employerLabel), ~if_else(str_detect(., "^t\\d"), NA, .))) |>
-  # relocate(person, .after = last_col())
-
-
-```
 
 
 ```{r}

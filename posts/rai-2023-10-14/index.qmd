@@ -12,6 +12,10 @@ execute:
   echo: false 
 ---
 
+```{r finishing-up}
+# TODO finishing-up 
+```
+
 I did some analysis of SAL elections for my interview talk, but I never got round to doing anything similar for RAI. But the data seems to be much more patchy so I won't repeat all of the same analysis.
 
 Note: not sure if I've recorded this one already, but there are both &lt;unknown value&gt; and "Proposer not recorded" (item Q17) in the proposer names column. Unknown value might mean that there is a proposer name but the signature is illegible.?

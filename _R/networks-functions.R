@@ -95,7 +95,6 @@ bn_tbl_graph_dir <- function(n, e){
 
 
 
-## TODO more complex networks: directed, bimodal. unaggregated edge lists for dates etc.
 
 ## subsequent functions might not work with more complex network structures.
 
@@ -229,7 +228,7 @@ bn_one_person_circle <- function(network, q){
 }
 
 ## make network graph of the immediate circle
-# TODO widen out to neighbourhood, but not sure i've got that working properly
+
 bn_circle_ggraph <- function(data){
   
   # name label for tag
