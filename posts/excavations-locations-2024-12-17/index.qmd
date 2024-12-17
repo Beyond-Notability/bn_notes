@@ -22,7 +22,7 @@ NB that dates are completely ignored: it's just mapping the location of an excav
 
 Maps start by showing all the excavations and people for the region and then you can use the checkboxes to filter in/out individual excavations. I could do it with radio buttons to show just one excavation at a time but I quite like the overview.
 
-Also I'm not sure if I can get clustering options to work, so at present you can only see one circle if there are several at the same location. Filtering will help sometimes. (If there's an excavation and a person at the same spot there is a slight difference in colour.)
+Also I'm not sure if I can get clustering options to work, so at present you can only see one circle if there are several at the same location. Filtering will help sometimes. (The circles will be darker, and if there's an excavation and a person at the same spot there is a slight difference in colour, so you can get an idea of where it's happening.)
 
 
 ```{r finishing-up}
@@ -464,7 +464,7 @@ myLegend <- function(m) {
     map=m,
     position = "topright",
     colors = pal_colours,
-  labels = c("excavation", "participant"), 
+  labels = c("excavation", "residence"), 
   opacity = 1,
   title = "circle type"
   )
@@ -487,7 +487,7 @@ bn_participants_residences |>
   semi_join(bn_excavations_north_england, by="excavation") |>
   rename(locationLabel=residedLabel, location=resided) |>
   mutate(excavation_group=glue("{excavationLabel} {excavation}")) |>
-  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "{locationLabel}", .sep="<br/>")) |>
+  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "residence: {locationLabel}", .sep="<br/>")) |>
   mutate(id = paste(person, excavation, location, sep = "-")) # should be unique
 
 bn_excavations_residences_north_england <-
@@ -534,7 +534,7 @@ bn_participants_residences |>
   semi_join(bn_excavations_scotland, by="excavation") |>
   rename(locationLabel=residedLabel, location=resided) |>
   mutate(excavation_group=glue("{excavationLabel} {excavation}")) |>
-  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "{locationLabel}", .sep="<br/>")) |>
+  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "residence: {locationLabel}", .sep="<br/>")) |>
   mutate(id = paste(person, excavation, location, sep = "-")) # should be unique
 
 bn_excavations_residences_scotland <-
@@ -583,7 +583,7 @@ bn_participants_residences |>
   semi_join(bn_excavations_wales, by="excavation") |>
   rename(locationLabel=residedLabel, location=resided) |>
   mutate(excavation_group=glue("{excavationLabel} {excavation}")) |>
-  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "{locationLabel}", .sep="<br/>")) |>
+  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "residence: {locationLabel}", .sep="<br/>")) |>
   mutate(id = paste(person, excavation, location, sep = "-")) # should be unique
 
 bn_excavations_residences_wales <-
