@@ -16,13 +16,11 @@ toc: false
 
 ## Notes
 
-This was more fiddly than I expected so I've only done a few UK regions with small numbers of excavations so far. I'll see if I can streamline it and do some more later.
+NB that dates are completely ignored: it's just mapping the location of an excavation with all locatable resided_at (in the UK) for participants, so could be many years apart. Excavations that don't have any locatable participants are omitted.
 
-NB that dates are completely ignored: it's just mapping the location of an excavation with all locatable resided_at locations for participants. Excavations that don't have any locatable participants are omitted.
+Hover over the layers symbol (top right of maps) to see the excavations to filter in/out. The smaller groups start with all excavations and participants for the region shown for an overview; but could be tweaked to show the same way as the larger groups. I cannot find an option to select/deselect all for the package I'm using! 
 
-Maps start by showing all the excavations and people for the region and then you can use the checkboxes to filter in/out individual excavations. I could do it with radio buttons to show just one excavation at a time but I quite like the overview.
-
-Also I'm not sure if I can get clustering options to work, so at present you can only see one circle if there are several at the same location. Filtering will help sometimes. (The circles will be darker, and if there's an excavation and a person at the same spot there is a slight difference in colour, so you can get an idea of where it's happening.)
+I'm not sure if I can get clustering options to work, so at present you have the issue of only seeing one circle if there are several at the same location. Filters will help to some extent. (The circles will be darker if stacked, and if there's an excavation and a person at the same spot there is a slight difference in colour, so you can get an idea of where it's happening.)
 
 
 ```{r finishing-up}
@@ -472,12 +470,125 @@ myLegend <- function(m) {
 
 ```
 
+Using NUTS Regions:
+
+Midlands are grouped with north of England as there are so few, and Northern Ireland is lumped in with Scotland.
+
+```{r}
+bn_excavations_regions |>
+  count(regionLabel) |>
+  kable() |>
+  kableExtra::kable_styling()
+```
+
+
 
 
 ```{r excavations-regions-participants}
+
+
+bn_excavations_sw_england <-
+bn_excavations_regions |> 
+  filter(regionLabel %in% c("South West England")) |>
+  mutate(popup = glue("{excavationLabel}", "{locationLabel}", .sep="<br/>")) |>
+  mutate(id = excavation) |>
+  mutate(excavation_group=glue("{excavationLabel} {excavation}"))
+
+bn_participants_sw_england <-
+bn_participants_residences |> 
+  semi_join(bn_excavations_sw_england, by="excavation") |>
+  rename(locationLabel=residedLabel, location=resided) |>
+  mutate(excavation_group=glue("{excavationLabel} {excavation}")) |>
+  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "residence: {locationLabel}", .sep="<br/>")) |>
+  mutate(id = paste(person, excavation, location, sep = "-")) # should be unique
+
+bn_excavations_residences_sw_england <-
+bind_rows(bn_excavations_sw_england, bn_participants_sw_england) |>
+  mutate(type = case_when(
+    is.na(roleLabel) ~ "excavation",
+    .default = "person"
+  )) |>
+  mutate(name = case_when(
+    !is.na(personLabel) ~ personLabel,
+    .default = excavationLabel
+  )) |>
+  rename(place = locationLabel) |>
+  select(name, type, long, lat, place, popup, excavationLabel, excavation, location, person, role, roleLabel, regionLabel, id, excavation_group) 
+
+
+# https://martinctc.github.io/blog/vignette-write-and-read-multiple-excel-files-with-purrr/
+# Split: one data frame per grp
+# assign the data frames to a list object called list_of_dfs:
+
+bn_excavations_residences_sw_england |>
+  group_split(excavation_group) -> list_of_sw_england_excavations
+
+# list_of_p101_with_grp |>
+#   map(~pull(., grp)) |>
+#   map(~unique(.)) -> names(list_of_p101_with_grp)
+
+# Use the value from the "group" column to provide a name for the list members
+list_of_sw_england_excavations |>
+   map(~pull(.,excavation_group)) |>
+   map(~unique(.)) -> names(list_of_sw_england_excavations) # Set this as names for list members
+
+
+
+
+
+bn_excavations_se_england <-
+bn_excavations_regions |> 
+  filter(regionLabel %in% c("South East England")) |>
+  mutate(popup = glue("{excavationLabel}", "{locationLabel}", .sep="<br/>")) |>
+  mutate(id = excavation) |>
+  mutate(excavation_group=glue("{excavationLabel} {excavation}"))
+
+bn_participants_se_england <-
+bn_participants_residences |> 
+  semi_join(bn_excavations_se_england, by="excavation") |>
+  rename(locationLabel=residedLabel, location=resided) |>
+  mutate(excavation_group=glue("{excavationLabel} {excavation}")) |>
+  mutate(popup = glue("{personLabel}", "{excavationLabel}", "{roleLabel}", "residence: {locationLabel}", .sep="<br/>")) |>
+  mutate(id = paste(person, excavation, location, sep = "-")) # should be unique
+
+bn_excavations_residences_se_england <-
+bind_rows(bn_excavations_se_england, bn_participants_se_england) |>
+  mutate(type = case_when(
+    is.na(roleLabel) ~ "excavation",
+    .default = "person"
+  )) |>
+  mutate(name = case_when(
+    !is.na(personLabel) ~ personLabel,
+    .default = excavationLabel
+  )) |>
+  rename(place = locationLabel) |>
+  select(name, type, long, lat, place, popup, excavationLabel, excavation, location, person, role, roleLabel, regionLabel, id, excavation_group) 
+
+
+# https://martinctc.github.io/blog/vignette-write-and-read-multiple-excel-files-with-purrr/
+# Split: one data frame per grp
+# assign the data frames to a list object called list_of_dfs:
+
+bn_excavations_residences_se_england |>
+  group_split(excavation_group) -> list_of_se_england_excavations
+
+# list_of_p101_with_grp |>
+#   map(~pull(., grp)) |>
+#   map(~unique(.)) -> names(list_of_p101_with_grp)
+
+# Use the value from the "group" column to provide a name for the list members
+list_of_se_england_excavations |>
+   map(~pull(.,excavation_group)) |>
+   map(~unique(.)) -> names(list_of_se_england_excavations) # Set this as names for list members
+
+
+
+
+
+# include midlands since there are hardly any
 bn_excavations_north_england <-
 bn_excavations_regions |> 
-  filter(regionLabel %in% c("North West England", "North East England")) |>
+  filter(regionLabel %in% c("North West England", "North East England", "Yorkshire and the Humber", "East Midlands", "West Midlands")) |>
   mutate(popup = glue("{excavationLabel}", "{locationLabel}", .sep="<br/>")) |>
   mutate(id = excavation) |>
   mutate(excavation_group=glue("{excavationLabel} {excavation}"))
@@ -524,7 +635,7 @@ list_of_north_england_excavations |>
 
 bn_excavations_scotland <-
 bn_excavations_regions |> 
-  filter(regionLabel=="Scotland") |>
+  filter(regionLabel %in% c("Scotland", "Northern Ireland")) |>
   mutate(popup = glue("{excavationLabel}", "{locationLabel}", .sep="<br/>")) |>
   mutate(id = excavation) |>
   mutate(excavation_group=glue("{excavationLabel} {excavation}"))
@@ -608,63 +719,142 @@ bn_excavations_residences_wales |>
   group_split(excavation_group) -> list_of_wales_excavations
 
 # Use the value from the "group" column to provide a name for the list members
-list_of_wales_excavations |>
+# list_of_wales_excavations |>
+#    map(~pull(.,excavation_group)) |>
+#    map(~unique(.)) -> names(list_of_wales_excavations) # Set this as names for list members
+
+```
+
+
+
+```{r map-functions}
+
+# Create a palette that maps factor levels to colors
+pal_colours <- c("#D55E00", "#0072B2") # so you can reuse it in the legend function
+pal <- colorFactor(pal_colours, domain = c("excavation", "person"))
+
+
+# function for legend.
+bn_legend <- function(m) {
+  addLegend(
+    map=m,
+    position = "topright",
+    colors = pal_colours,
+  labels = c("excavation", "residence"), 
+  opacity = 1,
+  title = "circle type"
+  )
+}
+
+# function for layers control
+bn_layers <- function(m, df){
+  m |>
+    addLayersControl(
+    overlayGroups = df$excavation_group, 
+    options = layersControlOptions(collapsed = TRUE)
+  )  
+}
+
+# function for markers only
+
+bn_excavations_markers <- function(list){
+  m <- 
+  leaflet(width = "100%", height = 750) |>
+  addTiles()
+  
+  for(i in list){
+    m <- m |> addCircleMarkers(data=i, lat = ~lat, lng=~long, 
+                      layerId = ~id, 
+                      radius = ~ifelse(type == "person", 6, 8), 
+                      group = ~excavation_group, 
+                      popup = ~popup, 
+                      color=~pal(type), 
+                      opacity = 0.6, fillOpacity = 0.3
+                      )
+  }
+  m
+}
+
+
+# function to make map with all the controls
+bn_excavations_map <- function(df){
+  
+  m <- 
+  leaflet(width = "100%", height = 750) |>
+  addTiles()
+  
+  
+  df |>
+  group_split(excavation_group) -> list
+  
+  df_group <-
+  df |>
+  distinct(excavation_group)
+
+# Use the value from the "group" column to provide a name for the list members
+list |>
    map(~pull(.,excavation_group)) |>
-   map(~unique(.)) -> names(list_of_wales_excavations) # Set this as names for list members
+   map(~unique(.)) -> names(list) # Set this as names for list members
+  
+# now the loop
+  for(i in list){
+    m <- m |> addCircleMarkers(data=i, lat = ~lat, lng=~long, 
+                      layerId = ~id, 
+                      radius = ~ifelse(type == "person", 6, 8), 
+                      group = ~excavation_group, 
+                      popup = ~popup, 
+                      color=~pal(type), 
+                      opacity = 0.6, fillOpacity = 0.3
+                      )
+  }
+  m |>
+    bn_legend() |>
+    bn_layers(df_group) 
+}
 
 ```
 
 
-## North East/North West England
+## North of England and Midlands
+
+```{r}
+bn_excavations_residences_north_england |>
+  bn_excavations_map() 
+```
 
 
 ```{r}
-leaflet(
-    width = "100%",
-    height = 750
-    ) |>
-   addTiles() |> # modern base layer 
-  # add using [1][[1]] instead of names.
-   addCircleMarkers(data = list_of_north_england_excavations[1][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_north_england_excavations[2][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_north_england_excavations[3][[1]], lat = ~lat, lng=~long, layerId = ~id,radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.6, fillOpacity = 0.3) |>
-   addCircleMarkers(data = list_of_north_england_excavations[4][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.6, fillOpacity = 0.3) |>
-  addCircleMarkers(data = list_of_north_england_excavations[5][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.6, fillOpacity = 0.3) |>
-  addCircleMarkers(data = list_of_north_england_excavations[6][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3) |>
-  addCircleMarkers(data = list_of_north_england_excavations[7][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.7, fillOpacity = 0.3) |>
-  
- # addCircleMarkers(data = list_of_north_england_excavations[8][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |> # can't have too many.
-   addLayersControl(
-    overlayGroups = bn_excavations_north_england$excavation_group, # assume will only work if you have all the groups! otherwise you have to do stuff like c("Q1856", "Q3717"),
-    options = layersControlOptions(collapsed = FALSE)
-  ) |>
-  myLegend()
+# leaflet(
+#     width = "100%",
+#     height = 750
+#     ) |>
+#    addTiles() |> # modern base layer 
+#   # add using [1][[1]] instead of names.
+#    addCircleMarkers(data = list_of_north_england_excavations[1][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
+#    addCircleMarkers(data = list_of_north_england_excavations[2][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
+#    addCircleMarkers(data = list_of_north_england_excavations[3][[1]], lat = ~lat, lng=~long, layerId = ~id,radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.6, fillOpacity = 0.3) |>
+#    addCircleMarkers(data = list_of_north_england_excavations[4][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.6, fillOpacity = 0.3) |>
+#   addCircleMarkers(data = list_of_north_england_excavations[5][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.6, fillOpacity = 0.3) |>
+#   addCircleMarkers(data = list_of_north_england_excavations[6][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3) |>
+#   addCircleMarkers(data = list_of_north_england_excavations[7][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type) , opacity = 0.7, fillOpacity = 0.3) |>
+#   
+#  # addCircleMarkers(data = list_of_north_england_excavations[8][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |> # can't have too many.
+#    addLayersControl(
+#     overlayGroups = bn_excavations_north_england$excavation_group, # assume will only work if you have all the groups! otherwise you have to do stuff like c("Q1856", "Q3717"),
+#     options = layersControlOptions(collapsed = FALSE)
+#   ) |>
+#   myLegend()
 
 
 ```
 
 
-## Scotland
+## Scotland and Northern Ireland
+
 
 ```{r}
-leaflet(
-    width = "100%",
-    height = 750
-    ) |>
-   addTiles() |> # modern base layer 
-  # add using [1][[1]] instead of names.
-   addCircleMarkers(data = list_of_scotland_excavations[1][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_scotland_excavations[2][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_scotland_excavations[3][[1]], lat = ~lat, lng=~long, layerId = ~id,radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_scotland_excavations[4][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-  
- # addCircleMarkers(data = list_of_north_england_excavations[8][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |> # can't have too many.
-  
-   addLayersControl(
-    overlayGroups = bn_excavations_scotland$excavation_group, # assume will only work if you have all the groups! otherwise you have to do stuff like c("Q1856", "Q3717"),
-    options = layersControlOptions(collapsed = FALSE)
-  ) |>
-  myLegend()
+bn_excavations_residences_scotland |>
+  bn_excavations_map() 
 
 ```
 
@@ -673,27 +863,51 @@ leaflet(
 
 
 ```{r}
-leaflet(
-    width = "100%",
-    height = 750
-    ) |>
-   addTiles() |> # modern base layer 
-  # add using [1][[1]] instead of names.
-   addCircleMarkers(data = list_of_wales_excavations[1][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_wales_excavations[2][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_wales_excavations[3][[1]], lat = ~lat, lng=~long, layerId = ~id,radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-   addCircleMarkers(data = list_of_wales_excavations[4][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-  addCircleMarkers(data = list_of_wales_excavations[5][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-  addCircleMarkers(data = list_of_wales_excavations[6][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-  addCircleMarkers(data = list_of_wales_excavations[7][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |>
-  addCircleMarkers(data = list_of_wales_excavations[8][[1]], lat = ~lat, lng=~long, layerId = ~id, radius = ~ifelse(type == "person", 6, 8), group = ~excavation_group, popup = ~popup, color=~pal(type), opacity = 0.6, fillOpacity = 0.3 ) |> # can't have too many.
-  
-   addLayersControl(
-    overlayGroups = bn_excavations_wales$excavation_group, # assume will only work if you have all the groups! otherwise you have to do stuff like c("Q1856", "Q3717"),
-    options = layersControlOptions(collapsed = FALSE)
-  ) |>
-  myLegend()
+bn_excavations_residences_wales |>
+  bn_excavations_map() 
 
 ```
+
+
+## South West England
+
+Because the last two regions are much larger groups and unchecking 20-odd layers would be tedious, the map view starts with just a handful of excavations selected.
+
+```{r}
+sw_include <- c(bn_excavations_residences_sw_england$excavation_group[1],
+                bn_excavations_residences_sw_england$excavation_group[5],
+                bn_excavations_residences_sw_england$excavation_group[11],
+                bn_excavations_residences_sw_england$excavation_group[15],
+                bn_excavations_residences_sw_england$excavation_group[20])
+
+bn_excavations_residences_sw_england |>
+  bn_excavations_map()  |>
+  # this hides all. 
+  hideGroup(bn_excavations_residences_sw_england$excavation_group) |>
+  # and then this shows the selected
+  showGroup(sw_include)
+```
+
+## South East England
+
+
+```{r}
+se_include <- c(bn_excavations_residences_se_england$excavation_group[1],
+                bn_excavations_residences_se_england$excavation_group[5],
+                bn_excavations_residences_se_england$excavation_group[11],
+                bn_excavations_residences_se_england$excavation_group[15],
+                bn_excavations_residences_se_england$excavation_group[20])
+
+
+bn_excavations_residences_se_england |>
+  bn_excavations_map()  |>
+  # this hides all. 
+  hideGroup(bn_excavations_residences_se_england$excavation_group) |>
+  # and then this shows the selected
+  showGroup(se_include)
+```
+
+
+
 
 
