@@ -14,7 +14,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  sal-2023-10-17
 ```
 
 ## Wikibase queries
@@ -249,28 +249,7 @@ bn_women_sal_wide |>
 ```
 
 
-```{r}
-# I wondered how much of the difference between "FSA" and "not FSA" above reflected changing interactions *after* a woman was elected and how much was that women who became FSAs always interacted a bit differently with the Society. 
-# 
-# - "fsa" = women who were FSAs at the time of the interaction (54 interactions)
-# - "pre fsa" = women who were not FSAs at the time of the interaction but became FSAs at a later date (31)
-# - "not fsa" = women who never become FSAs (149)
 
-# bn_women_sal_wide |>
-#   add_count(prop_label) |>
-#   filter(n>2) |> select(-n) |> #count(is_fsa_at)
-#   #add_count(bn_id, name="n_bn") |>
-#   #filter(n_bn>1) |>
-#   count(prop_label, is_fsa_at, sort = T) |>
-#   mutate(is_fsa_at = fct_relevel(is_fsa_at, "pre fsa")) |>
-#   #mutate(prop_label = fct_reorder(prop_label, n)) |>
-#   ggplot(aes(fill=prop_label, y=n, x=is_fsa_at)) +
-#   geom_col(position = "fill") +
-#   scale_fill_tableau() +
-#   scale_y_continuous(labels = percent_format()) +
-#   labs(x=NULL, y=NULL, fill=NULL)
-
-```
 
 
 (I don't think this one quite works.)

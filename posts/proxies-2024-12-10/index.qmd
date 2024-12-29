@@ -13,7 +13,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up (recent post)
+# finishing up: checked. RData proxies-2024-12-10    slightly updated text in a couple of places.
 ```
 
 
@@ -238,7 +238,7 @@ General caveat: this is a basic yes or no which flattens all sort of potential d
 
 **Historic house**
 
-(716 women with at least one residence)
+(718 women with at least one residence)
 
 ```{r}
 # https://r-graph-gallery.com/piechart-ggplot2.html but added position= to geom_text.
@@ -280,7 +280,7 @@ booth_yellow |>
 
 **Landed/peerage references**
 
-(544 women with at least one reference and 10 statements)
+(545 women with at least one reference and 10 statements)
 
 ```{r}
 peerage_reference |>
@@ -766,7 +766,7 @@ bn_members_10 |>
 
 Historic house
 
-RAI is ranked 12 out of 20 (and just under 15% of RAI members=historic).
+RAI is ranked 13? out of 20 (and just under 15% of RAI members=historic).
 
 ```{r}
 members_historic |>
@@ -809,7 +809,7 @@ members_booth |>
 
 Landed reference.
 
-RAI is again in the top five. 
+RAI is sixth. 
 
 ```{r}
 members_peerage |>

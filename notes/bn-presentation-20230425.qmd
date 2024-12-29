@@ -17,7 +17,7 @@ freeze: auto
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData notes_bn-presentation-20230425
 ```
 
     
@@ -471,16 +471,7 @@ bn_proposers_dates_summary |>
 
 
 
-```{r include=FALSE}
-## i think omit this one as it's a bit of a mess.
-## From election to signing for women
-# signers_dates_summary |>
-#   mutate(time_to_propose = earliest_year-election_year) |>
-#   mutate(name = fct_reorder(name, time_to_propose)) |>
-#   ggplot(aes(x=election_year, xend=earliest_year, y=name, size=n_sign)) +
-#   geom_dumbbell() +
-#   labs(x="year", y=NULL, size="total\nsignatures", title = "Interval from year of election to first signature")
-```
+
 
 
 ```{r include=FALSE}
@@ -557,44 +548,4 @@ all_supporters_pair_cor_graph %>%
 ```
 
 
-
-
-```{r include=FALSE}
-## i don't think you have time for this!
-## Supporter networks: women only
-# women_supporters <-
-# bind_rows(
-# proposed_summary |>
-#   filter(proposerGender=="woman") |>
-#   select(person, date, supporter=proposed, supporterLabel=proposedLabel) |>
-#   mutate(supporterType="proposer") ,
-# proposed_sign_gender |>
-#   filter(signgender=="woman") |>
-#   mutate(year = year(date)) |>
-#   select(person, date, supporter=SALsignatorypersonal, supporterLabel=SALsignatorypersonalLabel) |>
-#   mutate(supporterType = "signer")
-# ) |>
-#   mutate(election_id = paste(person, date, sep="_")) |>
-#   add_count(supporter, name="n_supports") |>
-#   filter(n_supports>1)
-# 
-# women_supporters_widyr_cor <-
-# women_supporters |>
-#   # to add year of election to name label. probably quite proportionate actually! earliest 1932
-#   inner_join(proposed_summary |> filter(elected=="successful") |> select(personLabel, year_elected= year), by=c("supporterLabel"="personLabel")) |>
-#   mutate(supporterLabel = paste(supporterLabel, year_elected)) |>
-#   pairwise_cor(supporterLabel, election_id, upper=F, sort=T)
-# 
-# 
-# set.seed(1234)
-# women_supporters_widyr_cor |>
-#   filter(correlation>0.3) |>
-#   graph_from_data_frame() |>
-#   ggraph(layout = "nicely") +
-#    geom_edge_link(aes(edge_alpha = correlation), edge_colour = "black", show.legend = FALSE) +
-#    geom_node_point(colour="salmon") +
-#    geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"), size=3.5) +
-#    theme_void() +
-#   labs(caption = "At least two support actions; correlation coefficient > 0.3")
-```
 

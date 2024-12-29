@@ -13,7 +13,8 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData  education-2023-09-22
+# old style sparql query.
 ```
 
 Experimental dumbbell plots, restricted to women for whom we have at least one date, and for colleges with at least six students. If one of start/end is missing I've inferred it using a likely maximum attendance of 4 years (the majority of known durations are 1-4 years): these are highlighted in orange.

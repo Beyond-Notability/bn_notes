@@ -14,7 +14,8 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData salrai-2023-11-09  minor text update.
+
 ```
 
 ## Wikibase queries
@@ -947,7 +948,7 @@ all_supporters |>
 
 ## Supporters at both societies
 
-People who *propose* at both societies form a very small group.
+People who *propose* at both societies constitute a very small group.
 
 (Ordered by overall number of proposals.)
 
@@ -1040,9 +1041,16 @@ Same types of engagement (and sources) as previous posts
 - exhibited at
 - spoke at
 
-20 women engaged with both societies. 
+21 women engaged with both societies. 
 
-This is not symmetrical: about 30% of women who engaged with RAI *also* engaged with SAL; but only 13% of women who engaged with SAL also engaged with RAI. Probably reflects the narrower subject area of RAI compared to SAL (I assume we'd see something similar for (eg) RHS if we had that data).
+This is not symmetrical: about 30% of women who engaged with RAI *also* engaged with SAL; but only 13% of women who engaged with SAL also engaged with RAI. Probably reflects the narrower subject area of RAI compared to SAL (I assume we'd see something similar for (eg) RHS).
+
+```{r}
+# bn_women_salrai |>
+#   filter(nd_org==2) |> 
+#   count(bn_id)
+```
+
 
 ```{r}
  bn_women_salrai |>
@@ -1106,18 +1114,6 @@ bn_women_salrai |>
 
 Comparison of engagement with one or other of the societies versus both. 
 
-```{r}
-# bn_women_salrai |>
-#   count(act, nd_org) |>
-#   ggplot(aes(factor(nd_org), n, fill=act)) +
-#   geom_col(position = "fill") +
-#   scale_fill_tableau() +
-#   scale_y_continuous(labels = percent_format()) +
-#   labs(y=NULL, x="1 or 2 societies")
-```
-
-
-
 
 
 ```{r}
@@ -1136,37 +1132,6 @@ bn_women_salrai |>
 ```
 
 
-
-```{r}
-# how much effect is RG having?
-# bn_women_salrai |>
-#   filter(bn_id!="Q57") |>
-#   mutate(which = case_when(
-#     nd_org==2 ~ "both",
-#     org=="SAL" ~ "SAL only",
-#     org=="RAI" ~ "RAI only"
-#   )) |>
-#   count(act, which) |>
-#   ggplot(aes(which, n, fill=act)) +
-#   geom_col(position = "fill") +
-#   scale_fill_tableau() +
-#   scale_y_continuous(labels = percent_format()) +
-#   labs(y=NULL, x=NULL)
-```
-
-
-
-```{r}
-#  bn_women_salrai |>
-# #   count(org)  RAI 158 / SAL 239
-# #  filter(nd_org>1) |> count(org) # RAI 66 / SAL 68
-#   #filter(nd_org>1) |>
-#   count(org, nd_org) |>
-#   ggplot(aes(org, n, fill=factor(nd_org))) +
-#   geom_col(position = "fill") +
-#   #facet_wrap(~nd_org) +
-#   scale_fill_ptol()
-```
 
 
 

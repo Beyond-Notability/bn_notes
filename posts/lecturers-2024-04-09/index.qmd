@@ -14,7 +14,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData  lecturers-2024-04-09
 ```
 
 ## Wikibase queries
@@ -468,171 +468,9 @@ bn_lecturers_loc_linked |>
 
 
 
-```{r academics}
-# bn_academics_sparql <-
-# 'SELECT distinct ?person ?workLabel ?positionLabel ?date ?date_precision ?pqq 
-# ?employerLabel ?employer 
-# ?position ?work ?personLabel
-# ?s
-# 
-# WHERE {
-#     
-#   ?person bnwdt:P3 bnwd:Q3 . # women
-#   
-#   # work activities: held position / held position (free text) /  employed as
-#   ?person ( bnp:P17|bnp:P48|bnp:P105 ) ?s .  
-#   
-#   ?person ?work_p ?s . # for activity type label
-#     ?work wikibase:claim ?work_p .  
-# 
-#     ?s ?bnps ?position .  
-#     # Lecturer Q604 Academic (Q152) Assistant Lecturer (Q1292) 
-#     { ?s ?bnps bnwd:Q604  . } union { ?s ?bnps bnwd:Q152 .  } union { ?s ?bnps bnwd:Q1292 }
-#   
-#     # employer / organised by / of (incl free text). 
-#     optional { ?s bnpq:P18 ?employer .  }
-#    # OPTIONAL { ?s bnpq:P109 ?organised .}
-#    # OPTIONAL { ?s ( bnpq:P78 | bnpq:P66 ) ?of .}
-#  
-#    # optional { ?s bnpq:P2 ?location . } # do locations separately.
-#     
-#   # dates with precision
-#     optional {
-#       ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28  ) ?pqv.
-#       ?s ?pqq ?pqv . # just gets the uri 
-#          ?pqv wikibase:timeValue ?date .  
-#          ?pqv wikibase:timePrecision ?date_precision .
-#       }
-#       
-#   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
-#   
-# } # /where
-# 
-# ORDER BY ?person ?s'
-# 
-# bn_academics_query <-
-#   bn_std_query(bn_academics_sparql) |>
-#   make_bn_item_id(person) |>
-#   make_bn_ids(c(work, position, employer, pqq, s)) |>
-#   mutate(across(c(employer, employerLabel, date, pqq), ~na_if(., ""))) |>
-#   make_date_year() |>
-#   # add the date property labels
-#   mutate(date_propLabel = case_when(
-#     pqq=="P1" ~ "point in time",
-#     pqq=="P27" ~ "start time",
-#     pqq=="P28" ~ "end time"
-#   )) |>
-#   rename(date_prop=pqq)  |>
-#   select(-person)
-# 
-# bn_academics_lecturers_dates <-
-# bn_academics_query |> 
-#   semi_join(bn_lecturers_dates, by="bn_id") |> 
-#   filter(!is.na(date)) |> 
-#   select(bn_id, personLabel, date, date_propLabel, year, date_precision, positionLabel, workLabel, employerLabel, position, s) |>
-#   #add_count(s, date_prop) |> 
-#   # group by / top n to discard any extras before pivot
-#   # top_n -1 for the first of multi rows. arrange by date to ensure this is the earliest. needed here for qualifiers
-#   group_by(s, date_propLabel) |>
-#   arrange(date, positionLabel, .by_group = T) |>
-#   top_n(-1, row_number()) |>
-#   ungroup() |>
-#   pivot_wider(names_from = date_propLabel, values_from = c(date, date_precision, year)) |>
-#   # don't forget this will rename *all* the camelCase columsn...
-#   clean_names("snake") |>
-#   #not sure why r prefixes all the pivoted cols 
-#   rename_with(~str_remove(., "^date_"), starts_with("date_")) |>
-#   mutate(start_date = if_else(!is.na(point_in_time), point_in_time, start_time)) |>
-#   mutate(year1 = if_else(!is.na(year_point_in_time), year_point_in_time, year_start_time)) |>
-#   relocate(end_time, .after = start_time) |>
-#   relocate(year_end_time, .after = year_start_time)  |>
-#   mutate(end_date = case_when(
-#     !is.na(end_time) ~ end_time,
-#     !is.na(point_in_time) ~ point_in_time,
-#     !is.na(start_time) ~ start_time
-#   )) |>
-#   mutate(precision = case_when(
-#     precision_end_time>precision_start_time ~ precision_end_time,
-#     !is.na(precision_start_time) ~ precision_start_time,
-#     !is.na(precision_point_in_time) ~ precision_point_in_time
-#   )) 
-```
-
-
-```{r children}
-
-# bn_had_children_sparql <-
-# 'SELECT distinct ?person ?personLabel ?childLabel ?date_value ?date_prec ?had_child_edtf ?note  ?child ?s
-# 
-# where {
-# 
-#   ?person bnwdt:P3 bnwd:Q3 . # select women
-#   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
-#    
-# {   
-#   # had child (unnamed)
-#   ?person bnp:P131 ?s .
-#       ?s bnps:P131 ?had_child_edtf . # keep the edtf date for reference, though i think you can just use time value/prec with these.
-# 
-#   # get dates detail 
-#       ?s ?psv ?wdv .
-#         ?wdv wikibase:timeValue ?date_value .
-#         ?wdv wikibase:timePrecision ?date_prec .
-#   
-#   # filter edtf date.
-#   FILTER ( datatype(?had_child_edtf) = xsd:edtf ) . #shows only the raw EDTF string from the query results
-#     
-#    # not much added in quals for had child. only maybe note P47. some have sourcing circumstances.
-#    optional { ?s bnpq:P47 ?note .} 
-#    
-#   } 
-#   union 
-#   {
-#   # named children (are any in both sections??? from dates looks possible a couple might be [wherry / hodgson])
-#    ?person bnp:P45 ?s.
-#         ?s bnps:P45 ?child .
-#         optional { ?child bnp:P26 ?ss .
-#                     ?ss bnps:P26 ?dob . 
-#                      ?ss ?psv ?wdv .
-#                         ?wdv wikibase:timeValue ?date_value .
-#                         ?wdv wikibase:timePrecision ?date_prec .
-#                }
-#   }
-#   
-#     SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
-# }
-# order by ?person ?date_value
-# '
-# 
-# bn_had_children_query <-
-#   bn_std_query(bn_had_children_sparql) |>
-#   make_bn_item_id(person) |>
-#   make_bn_ids(c(child, s)) |>
-#   mutate(across(c(note, had_child_edtf, childLabel, child), ~na_if(., ""))) |>
-#   relocate(person, .after = last_col())
-# 
-# 
-# 
-# bn_had_children_lecturers <-
-# bn_had_children_query |>
-#   semi_join(bn_lecturers_dates, by="bn_id"  ) |>
-#     mutate(date_value = if_else(str_detect(date_value, "^_:t"), NA, date_value))  |>
-#     mutate(date_value = parse_date_time(date_value, "ymdHMS"))  |>
-#     mutate(year = year(date_value)) |>
-#   relocate(year, .after = date_value) |>
-#   filter(!is.na(date_value)) |>
-#   # this will sort named children above had_child rows. then top_n
-#   arrange(bn_id, year, child) |>
-#   group_by(bn_id, year) |>
-#   top_n(-1, row_number()) |>
-#   ungroup() 
-
-```
-
-
 ## Overview
 
-Numbers of freelance/extension are nearly the same. A few freelance lecturerships are undated; these will be ignored in subsequent charts. 
+Numbers of freelance/extension are similar. A few freelance lecturerships are undated; these will be ignored in subsequent charts. 
 
 ```{r}
 bn_lecturers_query |>
@@ -694,13 +532,7 @@ bn_lecturers_dates |>
 ```
 
 
-```{r}
-# bn_lecturers_dates |>
-#   count(year1, is_mm) |>
-#   ggplot(aes(year1, n, fill=is_mm)) +
-#   geom_col() +
-#   scale_fill_pander()
-```
+
 
 ### Timelines of positions per decade
 
@@ -743,29 +575,10 @@ bn_lecturers_dates |>
 
 
 
-```{r}
-# hmm.
-# bn_lecturers_dates |> 
-#   bind_rows(bn_spoke_at) |>
-#   #filter(bn_id !="Q569") |>
-#   #make_decade(year1) |>
-#   mutate(decade = fct_rev(paste0(decade, "s"))) |>
-#   ggplot(aes(y=decade, x=start_date, colour=position_label)) +
-#   geom_point(shape=124, size=4) +
-#   scale_color_tableau() +
-#   #scale_alpha_manual(values = c(1, 0.5)) +
-#   # Remove text and title from x axis
-#   theme(axis.text.x      = element_blank()) +
-#   #theme(axis.title.x     = element_blank()) +
-#   # Remove x tick marks
-#   theme(axis.ticks.x       = element_blank())  +
-#   theme(legend.position = "bottom") +
-#   labs(x="date", y=NULL, colour="position")
-```
 
 ## Women
 
-MM is the most obvious challenge for saying anything about general trends, but freelance lecturing is also highly concentrated around two women, Jane Ellen Harrison and Helen Mary Tirard (perhaps especially the latter).
+MM is the most obvious challenge for saying anything about general trends, but freelance lecturing is also highly concentrated around a few women, especially Helen Mary Tirard.
 
 ```{r}
 bn_lecturers_dates |> 
@@ -848,41 +661,20 @@ bind_rows(bn_lecturers_dates, bn_spoke_at) |>
 ```
 
 
-```{r}
 
-# # steady job.  ?
-# # separate geoms may be better, but how do you do shape labels if you don't do something like colour= to make a legend
-# bn_lecturers_dates |> 
-#   mutate(earliest = min(year1), .by = bn_id) |>
-#   add_count(bn_id) |>
-#   #filter(bn_id !="Q569") |>
-#   filter(n>2) |>
-#   #filter(!is.na(bn_dob_yr)) |>
-#   #mutate(bn_dob_yr = replace_na(bn_dob_yr, 9999)) |>
-#   relocate(start_date) |>
-#   mutate(person_label = fct_reorder(person_label, -earliest)) |>
-#   ggplot(aes(y=person_label, x=start_date)) +
-#   #geom_dumbbell(data=bn_academics_lecturers_dates, aes(y=person_label, x=start_date, xend=end_date), size=2, color="grey", alpha=0.5) +
-#   geom_point(shape=124, size=4, alpha=.5) +
-#   geom_point(data=bn_had_children_lecturers |> rename(person_label=personLabel), aes(y=person_label, x=date_value), shape=1, size=2) +
-#   # hmm
-#   guides(custom = guide_custom( title = "My circle",  grob = grid::circleGrob(r = unit(1, "mm")) )) +
-#   #scale_color_tableau() +
-#   #theme(legend.position = "bottom") +
-#   labs(y=NULL, x="date", colour="position")
-```
 
 
 ## Organisations
 
+
 "Other extension centres" groups together extension centres that appear only once (51 at time of writing). 
 
 ```{r}
-bn_lecturers_dates |>
+bn_lecturers_dates  |>
   add_count(organisation, name="n_ext") |>
   mutate(organisation_ext = case_when(
     #n_ext<2 & str_detect(organisation, "[Ee]xten.ion") ~ "Other extension centres",
-    n_ext<2 & position_label=="Lecturer (Extension)" ~ "Other extension centres",
+    n_ext<2 & position_label=="Lecturer (Extension)" ~  "Other extension centres",
     .default = organisation
   )) |>
   count(organisation_ext, position_label, sort = T) |> 
@@ -899,8 +691,6 @@ bn_lecturers_dates |>
 As I did previously with events, I though I'd take a look at the distribution of individuals across organisers. 
 
 Although not identifying all the individuals, MM was particularly noticeable in the single-appearance extension centres so that's highlighted. 
-
-(I'll try out an Observable version of this so all the individuals can be identified in the tooltips.)
 
 ```{r}
 bn_lecturers_dates |>
@@ -955,22 +745,7 @@ bind_rows(bn_lecturers_dates,
 ```
 
 
-```{r}
-# bn_lecturers_dates |>
-#   add_count(organisation, name="n_ext") |>
-#   #filter(n_ext>1) |>
-#   mutate(organisation = case_when(
-#     #n_ext<2 & str_detect(organisation, "[Ee]xten.ion") ~ "Other extension centres",
-#     n_ext<2 & position_label=="Lecturer (Extension)" ~ "Other extension centres",
-#     .default = organisation
-#   )) |>
-#   add_count(organisation, name="n_ext2", sort=T) |>
-#   group_by(organisation, n_ext2, is_mm, bn_id) |>
-#   summarise(n_ev=n(), .groups = "drop_last") |>
-#   arrange(n_ev, .by_group = T) |>
-#   mutate(cum_sum_ev = cumsum(n_ev)) |>
-#   ungroup() 
-```
+
 
 ## Regions
 
@@ -1051,12 +826,11 @@ bn_lecturers_loc_linked_region |>
 
 A breakdown of the London postcode areas. 
 
-(I'll need to look into "London" and "Greenwich"; could be pointing to some issues with data processing.)
 
 ```{r}
 bn_lecturers_loc_linked_region |>
   filter(region=="Q75") |>
-  #filter(p33_label=="London")
+  filter(str_detect(p33_label,"London ")) |>
   count(p33_label)  |>
   rename(area = p33_label) |>
   kable() |> kable_styling()

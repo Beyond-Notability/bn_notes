@@ -17,7 +17,7 @@ listing:
     sort-ui: false
     filter-ui: false
     date-format: "D MMM YYYY"
-    max-items: 99
+    page-size: 99
 toc: false
 page-layout: full
 title-block-banner: false
@@ -27,51 +27,7 @@ execute:
   echo: false 
 ---
 
-The site does not contain live wikibase data but will be quite frequently updated. (Doing the updates is straightforward but as the number of pages grows it takes longer to run a full update, so it'll probably happen less often. Let me know if you want to see an updated version of a page at any time.) 
-
-```{r}
-# will need to check this actually works...
-#latest_knit <- Sys.Date()
-#Latest data update: ``r latest_knit``
-
-## ok consolidating notes and posts sseems to work, but keep original separate listings code below for reference
-
-## want to show everything (it's not likely to get silly and that should fix filtering problems) set max-items at 99, unlikely to end up with more than that...!
-
-## original listings
-
-  # - id: other-notes
-  #   contents: "notes/*.qmd"
-  #   sort: "title"
-  #   exclude: 
-  #     title: "Other Notes"
-  #   type: table
-  #   fields: [title, file-modified, categories]
-  #   field-display-names:
-  #     file-modified: "Updated"
-  #   categories: false
-  #   sort-ui: false
-  #   filter-ui: false
-  #   date-format: "D MMM YYYY"
-  # - id: posts-table
-  #   contents: posts
-  #   sort: "date desc"
-  # 
-  #   type: table
-  #   fields: [date, title, file-modified, categories]
-  #   field-display-names:
-  #     file-modified: "Updated"
-  #   categories: true
-  #   sort-ui: false
-  #   filter-ui: false
-  #   date-format: "D MMM YYYY"
-
-```
-
-
-Caveats: 
-
-This is all work in progress, provisional, generally handle with caution, etc. But, because the wikibase itself is continually evolving, updates may sometimes break things without me noticing, so if you see anything that really looks *strange*, let me know.
+This is a work-in-progress data blog by [Sharon Howard](https://sharonhoward.org) for the [Beyond Notability wikibase](https://beyond-notability.wikibase.cloud/wiki/Main_Page), August 2023-December 2024.
 
 
 ## Posts and Notes
@@ -80,33 +36,12 @@ This is all work in progress, provisional, generally handle with caution, etc. B
 
 [Notes](notes/): overviews, summary tables and other Stuff
 
-(The Updated column in this listing refers to modifications to the file, not data updates. The Modified field on individual pages should be the most recent data update for that page.)
 
 :::{#everything}
 :::
 
 
-```{r separate-listings-deprecated}
-# ## Notes
-# 
-# Overviews, summary tables and other documents 
-# 
-# :::{#other-notes}
-# :::
-# 
-# [All notes](notes/)
-# 
-# 
-# ## Recent Posts
-# 
-# Short posts on specific questions or topics
-# 
-# ::: {#posts-table}
-# :::
-# 
-# [All posts](blog.qmd)
 
-```
 
 
 

@@ -1,17 +1,32 @@
 ---
 title: "About BN Notes"
+author: "Sharon Howard"
+execute: 
+  warning: false
+  message: false
+  echo: false 
 ---
 
 About this blog
 -----------
 
-[Quarto](https://quarto.org/)
+* The site is built with [Quarto](https://quarto.org/).
+* Data analysis is carried out using [R](https://cran.r-project.org/) and the [Tidyverse](https://www.tidyverse.org/).
 
-Tidyverse
 
 
-R packages used in the making of the blog 
+Project links
 --------------
+
+- [Beyond Notability Project Website](https://beyondnotability.org/)
+- [Beyond Notability Wikibase](https://beyond-notability.wikibase.cloud/wiki/Main_Page)
+- [Beyond Notability GitHub](https://github.com/Beyond-Notability/)
+
+
+
+R packages 
+----------
+
 
 ```{r}
 renv::dependencies(quiet = TRUE) |>

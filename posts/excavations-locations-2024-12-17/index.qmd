@@ -24,6 +24,7 @@ I'm not sure if I can get clustering options to work, so at present you have the
 
 
 ```{r finishing-up}
+# finishing up: checked. RData  excavations-locations-2024-12-17
 # new post. code is orrible in places.
 ```
 

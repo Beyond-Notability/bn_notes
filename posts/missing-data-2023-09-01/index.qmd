@@ -14,7 +14,8 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData missing-data-2023-09-01
+# using old style sparql query.
 ```
 
 ## Wikibase queries

@@ -13,7 +13,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData education-overview-2024-10-09 
 ```
 
 ## Notes

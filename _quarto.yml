@@ -12,7 +12,9 @@ website:
       - text: Posts
         href: blog.qmd
       - text: Notes
-        href: notes/index.qmd        
+        href: notes/index.qmd    
+      - text: About
+        href: about.qmd
     right:
       - text: Beyond Notability
         href: https://beyondnotability.org/
@@ -21,6 +23,7 @@ website:
       - icon: github
         href: https://github.com/Beyond-Notability/bn_notes
         aria-label: Github
+
 
 format:
   html:

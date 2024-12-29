@@ -14,18 +14,14 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. saved RData ppa-2023-12-08
+# also quick check of dates.R which looks ok. 
 ```
 
 ## Wikibase queries
 
 * [Dates](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#Dates) section
 * [PPA buckets](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples#PPA_Buckets_for_Women)
-
-```{r}
-# this doesn't have a Table
-# find out what's happened to date_prop_label. (was only used in reactable i think, but still)
-```
 
 
 ```{r libraries-etc}

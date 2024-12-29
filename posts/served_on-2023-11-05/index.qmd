@@ -13,22 +13,18 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData  served_on-2023-11-05 adjusted some charts appearance, minor text update.
 ```
 
-This has taken a while to come together and is still WIP. 
+## Notes
 
-- `served on` isn't a must-have property and isn't necessarily recorded comprehensively (except for some specific SAL/RAI sources(?)), which may limit what can usefully or meaningfully be done with it
-- there are a lot of organisations, many with a very small number of service events (and some with very long names which are not ideal for labels in visualisations)
+- there are a lot of organisations, many with a very small number of service events (and some with very long names which are not ideal for labels in visualisations!)
 - the structure of the data can have slight variations; eg, most statements have an `of` property with a named organisation, but for a few that info needs to be got from `part of` instead
 
 I'm still thinking about the best ways to handle these issues, as they'll recur with other PPAs when I go beyond SAL/RAI.
 
 A "service event" = a discrete statement in the served on property for each woman, which usually has at least a type of service (generic committee, Council, specific sub-committee, etc), organisation name and date.
 
-Todo
-
-- I have more work to do generally on locations; what's here is just a starting point. 
 
 
 ## Wikibase query
@@ -331,11 +327,11 @@ bn_service_locations |>
 
 ## Organisations
 
-There are about 70 different organisations, more than half of which are represented by a single service event.
+There are about 100 different organisations, about half of which are represented by a single service event.
 
 ```{r}
 bn_women_served_service |>
-  count(of_label) |>
+  count(of_label, sort = T) |>
   filter(n>2 & of_label !="exhibition") |>
     mutate(of_label=str_replace_all(of_label, organisations_abbr)) |>
   mutate(of_label = fct_reorder(of_label, n)) |>
@@ -346,18 +342,7 @@ bn_women_served_service |>
 ```
 
 
-```{r}
-## Counting by women rather than individual service events. (I've been trying and failing to come up with a way to combine/compare these two charts, to see if anything interesting appears, but I think there's very little difference in ordering which suggests it won't.)
-# bn_women_served_service |>
-#   distinct(bn_id, of_label) |>
-#   count(of_label) |>
-#   filter(n>1 & of_label !="exhibition") |>
-#   mutate(of_label = fct_reorder(of_label, n)) |>
-#   ggplot(aes(of_label, n)) +
-#   geom_col() +
-#   coord_flip() +
-#   labs(x=NULL, title="Organisations served on", y="number of women", caption = "n>1")
-```
+
 
 ### Type of service
 
@@ -369,6 +354,7 @@ bn_women_served_service |>
     serviceLabel %in% c("Joint Committee for Anthropological Training and Research") ~ "Archaeological",
     serviceLabel=="Council for British Archaeology" ~ "Archaeological",
     str_detect(serviceLabel, "Committee for Excavating") ~ "Excavation",
+    str_detect(serviceLabel, "British Academy Archaeological and Historical") ~ "Archaeological",
     serviceLabel %in% c("Council") ~ serviceLabel,
     str_detect(serviceLabel, "Committee$") ~ str_extract(serviceLabel, "\\w+(?= Committee)"),
     str_detect(serviceLabel, "Ancient Metals|Monuments") ~ "Historical",
@@ -386,9 +372,9 @@ bn_women_served_service |>
 
 ### Location
 
-(Work on locations is very WIP)
+(Work on locations is WIP)
 
-```{r}
+```{r fig.height=7}
 bn_women_served_service |>
   add_count(bn_id, name="n_bn") |>
   add_count(of_std, name="n_of") |>
@@ -411,7 +397,7 @@ bn_women_served_service |>
 
 This time SAL/RAI are highlighted separately from other London organisations.
 
-```{r}
+```{r fig.height=7}
 bn_women_served_service |>
   add_count(bn_id, name="n_bn") |>
   add_count(of_std, name="n_of") |>
@@ -456,23 +442,7 @@ bn_women_served_service |>
 Although likely still problematic, this seems a more interesting use of the dates data. (Only includes women whose dates span more than 1 year.) 
 
 
-```{r}
-# but why are there 106 when the next has 109? otoh you get 38 instead of 28 after filtering range... oh well just go with it
-# bn_women_served_dates |>
-#   select(-s) |>
-#   pivot_longer(end_time:latest_date, names_to = "date_type", values_to = "date") |>
-#   filter(!is.na(date)) |>
-#   mutate(year = year(date)) |>
-#   group_by(bn_id) |>
-#   summarise(earliest=min(year), latest=max(year)) |>
-#   ungroup() |>
-#   mutate(range = latest-earliest) |>
-#   filter(range>1) |>
-#   inner_join(bn_women_list, by="bn_id")
-```
-
-
-```{r}
+```{r fig.height=7}
 # revise to include end time /latest - maybe should drop if *only* a latest?
 # bn_women_served_service |>
 #   group_by(bn_id, personLabel) |>
@@ -494,7 +464,7 @@ bn_women_served_dates_range |>
 
 Sorting by longest service will tend to privilege the earliest starters, so this is the same thing ordered by earliest date.
 
-```{r}
+```{r fig.height=7}
 bn_women_served_dates_range |>
   filter(range>1) |>
   inner_join(bn_women_list, by="bn_id") |>
@@ -511,7 +481,7 @@ bn_women_served_dates_range |>
 
 Women with five or more service events all served on multiple organisations; but there's no obvious pattern for those with fewer than five. 
 
-```{r}
+```{r fig.height=7}
 bn_women_served_service |>
   select(bn_id, personLabel, served_type, of_label, of_std) |>
   arrange(bn_id) |>
@@ -537,7 +507,7 @@ bn_women_served_service |>
 
 [Don't think this quite works.]
 
-```{r}
+```{r fig.height=7}
 bn_women_served_service |>
   #filter(n()>1, .by = "bn_id") |>
   add_count(bn_id, name="n_bn") |>
@@ -552,7 +522,11 @@ bn_women_served_service |>
   ggplot(aes(y=personLabel, x=n, fill=of_label)) +
   geom_col() +
   scale_fill_ptol(na.value = "lightgrey",) +
+  guides(
+    fill = guide_legend(position = "inside")
+  ) +
   #theme(legend.position = "bottom") +
+  theme(legend.position.inside = c(0.7, 0.5)) +
   labs(y=NULL, x=NULL, fill="organisation", caption = "'NA' - orgs with 5 or fewer service events")
 ```
 

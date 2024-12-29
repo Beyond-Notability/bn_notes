@@ -13,7 +13,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData notes_notes-on-dates
 ```
 
 ## Wikibase queries

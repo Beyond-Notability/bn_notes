@@ -136,6 +136,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="nav-link" href="../notes/index.html"> 
 <span class="menu-text">Notes</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
@@ -197,6 +201,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1 class="title">Project workflow</h1>
   <div class="quarto-categories">
     <div class="quarto-category">methods</div>
+    <div class="quarto-category">sparql</div>
   </div>
   </div>
 
@@ -226,7 +231,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">18 December 2024</p>
+      <p class="date-modified">29 December 2024</p>
     </div>
   </div>
     
@@ -237,9 +242,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">TODO</span><span class="co"> finishing-up </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
 <section id="the-project-infrastructure" class="level2">
 <h2 class="anchored" data-anchor-id="the-project-infrastructure">The project infrastructure</h2>
 <p>The Beyond Notability database has been created using <a href="https://wikiba.se/">Wikibase</a>, a <a href="https://www.mediawiki.org/wiki/Wikibase">“software toolbox that offers a collaborative space to pool, edit and curate information in a structured way”</a>. The biggest and best-known instance of Wikibase is <a href="https://www.wikidata.org/wiki/Wikidata:Main_Page">Wikidata</a>.</p>
@@ -262,13 +264,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>However, I quickly discovered that I wanted to do a lot of queries that were a bit different from most of the examples in basic Wikidata/wikibase SPARQL tutorials. These tend to cover how to do quite specific things like “find items that are films (P179) in the Star Wars series (Q22092344)”</p>
 <p>But I was more likely to want to ask questions that would look like “find items that are associated with the Star Wars series, but I don’t know exactly what sort of things there might be yet, oh and can I have associated dates of any type for the results as well?”.</p>
-<p>Writing queries to explore a wikibase where you don’t know exactly what you’re looking for, or you want to get several different kinds of a thing at the same time, turned out to be quite a bit harder (and involved getting more familiar with an intimidatingly complex <a href="https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer">data model</a>). <a href="https://stackoverflow.com/questions/46383784/wikidata-get-all-properties-with-labels-and-values-of-an-item">Stack Overflow</a> was also invaluable.</p>
+<p>Writing queries to explore a wikibase where you don’t know exactly what you’re looking for, or you want to get several different kinds of a thing at the same time, turned out to be quite a bit harder (and involved getting more familiar with an intimidatingly complex <a href="https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer">data model</a>). <a href="https://stackoverflow.com/questions/46383784/wikidata-get-all-properties-with-labels-and-values-of-an-item">Stack Overflow</a> was invaluable.</p>
 </section>
 <section id="from-sparql-to-r" class="level2">
 <h2 class="anchored" data-anchor-id="from-sparql-to-r">From SPARQL to R</h2>
 <p>The crucial next step is to get the results of queries into R in order to use the <a href="https://www.tidyverse.org/">Tidyverse</a> and visualise with <a href="https://ggplot2.tidyverse.org/">ggplot</a>.</p>
 <p>As far as possible I wanted the queries underpinning all my work to be recorded on the <a href="https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples">wikibase queries page</a>. The queries page has two functions: it records the SPARQL queries for those who can read the language, but it also enables the queries to be run by those who can’t. So anyone can check the results against my outputs.</p>
-<p>This influenced my workflow choices in specific ways which might not be quite the same for all projects.</p>
+<p>This influenced my workflow choices in particular ways which might not be quite the same for all projects.</p>
 </section>
 <section id="r-packages" class="level2">
 <h2 class="anchored" data-anchor-id="r-packages">R packages</h2>
@@ -325,11 +327,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="setting-up">Setting up</h2>
 <p>A number of prerequisites and frequently used functions and objects are stored in two R scripts that are loaded at the beginning of every document.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># shared libraries, functions etc ####</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"_R/shared.R"</span>))</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># standard query strings and queries ####</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"_R/std_queries.R"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># shared libraries, functions etc ####</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"_R/shared.R"</span>))</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># standard query strings and queries ####</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">"_R/std_queries.R"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <section id="whats-in-the-setup" class="level3">
 <h3 class="anchored" data-anchor-id="whats-in-the-setup">what’s in the setup?</h3>
@@ -389,29 +391,29 @@ make_date_year &lt;-function(data){
 <h3 class="anchored" data-anchor-id="a-simple-query-list-women-in-the-database">a simple query: list women in the database</h3>
 <p>A list of all the women currently in the BN database with the number of <a href="https://www.wikidata.org/wiki/Help:Statements">statements</a> for each woman, which gives an idea of how much information we’ve collected for her. A simple but typical example of the two-step sparql&gt;query process.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>bn_all_women_sparql <span class="ot">&lt;-</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">'SELECT distinct ?person ?personLabel ?statements</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="st"> WHERE {</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="st">   ?person bnwdt:P3 bnwd:Q3 ;</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">         wikibase:statements ?statements .</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="st">   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="st">SERVICE wikibase:label { </span></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="st">        bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". </span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="st">        } </span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="st">ORDER BY ?person'</span></span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>bn_all_women_query <span class="ot">&lt;-</span></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bn_std_query</span>(bn_all_women_sparql) <span class="sc">|&gt;</span></span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_ids</span>(person) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>bn_all_women_sparql <span class="ot">&lt;-</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">'SELECT distinct ?person ?personLabel ?statements</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="st"> WHERE {</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="st">   ?person bnwdt:P3 bnwd:Q3 ;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="st">         wikibase:statements ?statements .</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="st">   FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .}</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="st">SERVICE wikibase:label { </span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="st">        bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". </span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="st">        } </span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="st">ORDER BY ?person'</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>bn_all_women_query <span class="ot">&lt;-</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bn_std_query</span>(bn_all_women_sparql) <span class="sc">|&gt;</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_ids</span>(person) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Who do we have most information about?</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>bn_all_women_query <span class="sc">|&gt;</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="sc">-</span>statements) <span class="sc">|&gt;</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(statements<span class="sc">&gt;=</span><span class="dv">50</span>) <span class="sc">|&gt;</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>() <span class="sc">|&gt;</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>bn_all_women_query <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="sc">-</span>statements) <span class="sc">|&gt;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(statements<span class="sc">&gt;=</span><span class="dv">50</span>) <span class="sc">|&gt;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>() <span class="sc">|&gt;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="table caption-top table-sm table-striped small" data-quarto-postprocess="true">
 <thead>
@@ -445,7 +447,7 @@ make_date_year &lt;-function(data){
 <tr class="odd">
 <td style="text-align: left;">Q133</td>
 <td style="text-align: left;">Margerie Venables Taylor</td>
-<td style="text-align: right;">86</td>
+<td style="text-align: right;">87</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Q60</td>
@@ -483,24 +485,24 @@ make_date_year &lt;-function(data){
 <td style="text-align: right;">68</td>
 </tr>
 <tr class="odd">
+<td style="text-align: left;">Q145</td>
+<td style="text-align: left;">Tessa Verney Wheeler</td>
+<td style="text-align: right;">61</td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Q153</td>
 <td style="text-align: left;">Eliza Jeffries Davis</td>
 <td style="text-align: right;">61</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Q3628</td>
 <td style="text-align: left;">Katherine Routledge</td>
 <td style="text-align: right;">61</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;">Q145</td>
-<td style="text-align: left;">Tessa Verney Wheeler</td>
-<td style="text-align: right;">60</td>
-</tr>
 <tr class="even">
 <td style="text-align: left;">Q916</td>
 <td style="text-align: left;">Agnes Conway Horsfield</td>
-<td style="text-align: right;">60</td>
+<td style="text-align: right;">61</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Q867</td>
@@ -538,14 +540,24 @@ make_date_year &lt;-function(data){
 <td style="text-align: right;">54</td>
 </tr>
 <tr class="even">
+<td style="text-align: left;">Q108</td>
+<td style="text-align: left;">Norah Jolliffe</td>
+<td style="text-align: right;">53</td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">Q1909</td>
 <td style="text-align: left;">Hilda Petrie</td>
 <td style="text-align: right;">53</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">Q434</td>
 <td style="text-align: left;">Maud Cunnington</td>
 <td style="text-align: right;">53</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Q294</td>
+<td style="text-align: left;">Dina Portway Dobson</td>
+<td style="text-align: right;">51</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Q812</td>
@@ -563,11 +575,6 @@ make_date_year &lt;-function(data){
 <td style="text-align: right;">50</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Q294</td>
-<td style="text-align: left;">Dina Portway Dobson</td>
-<td style="text-align: right;">50</td>
-</tr>
-<tr class="even">
 <td style="text-align: left;">Q606</td>
 <td style="text-align: left;">Margaret Stokes</td>
 <td style="text-align: right;">50</td>
@@ -586,80 +593,81 @@ make_date_year &lt;-function(data){
 <p>Many properties, especially for public and professional activities (PPAs) potentially could have this information attached. For example, <a href="https://beyond-notability.wikibase.cloud/wiki/Item:Q894">Alice Bertha Gomme</a> <code>was a member of</code> (P67) the Women’s Emancipation Union (Q2711) and the Parliamentary Committee for Women’s Suffrage (Q3808); she also <code>gave money to</code> (P115) the Women’s Social and Political Union (Q746).</p>
 <p>So this is a case where I can’t assume a fixed set of properties for a query; I need queries that will look for the P12-Q1166 combination anywhere (including a few cases where it’s not explicitly recorded on a woman’s page but an organisation she’s involved with has that <code>instance of</code>). I also want to get associated information (including dates) in qualifiers and not all of the properties have exactly the same qualifiers, so some flexibility is desirable there as well.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>bn_suffrage_sparql <span class="ot">&lt;-</span> </span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="st">'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?s </span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">   WHERE {  </span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="st">    ?person bnwdt:P3 bnwd:Q3 . #select women</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="st">    FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="st">    ?person ?p ?s .</span></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="st">        ?s ?sub ?subval .</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="st">        ?main wikibase:claim ?p.</span></span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="st">        ?main wikibase:statementProperty ?sub.   </span></span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="st">    # sub_ i/o  some have suffrage activity which will duplicate, filter </span></span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="st">    optional { ?subval bnwdt:P12 ?sub_io . </span></span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="st">                filter not exists { ?subval bnwdt:P12 bnwd:Q1166 . }</span></span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="st">              }</span></span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="st">             </span></span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a><span class="st">  # union query</span></span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a><span class="st">   { # qualifier on the page i/o suffrage activity</span></span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a><span class="st">       ?s bnpq:P12 bnwd:Q1166.</span></span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a><span class="st">  union</span></span>
-<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="st">    { # org in qualifier has i/o suffrage activity.</span></span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a><span class="st">      ?s ?pq ?qual .</span></span>
-<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a><span class="st">        ?qual bnwdt:P12 bnwd:Q1166 .</span></span>
-<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a><span class="st">    } # /union</span></span>
-<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a><span class="st">  optional { ?s bnpq:P78 ?of. }  </span></span>
-<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a><span class="st">  optional { </span></span>
-<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a><span class="st">    # dates.</span></span>
-<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a><span class="st">        ?s ?dpq ?qual_date .   </span></span>
-<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a><span class="st">          ?qual_date wikibase:timeValue ?date .</span></span>
-<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
-<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a><span class="st">  SERVICE wikibase:label { </span></span>
-<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a><span class="st">        bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". </span></span>
-<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a><span class="st">        }</span></span>
-<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
-<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a><span class="st">order by ?personLabel ?mainLabel'</span></span>
-<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>bn_suffrage_query <span class="ot">&lt;-</span></span>
-<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bn_std_query</span>(bn_suffrage_sparql) <span class="sc">|&gt;</span></span>
-<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_item_id</span>(person) <span class="sc">|&gt;</span></span>
-<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_ids</span>(<span class="fu">c</span>(s)) <span class="sc">|&gt;</span></span>
-<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(date, mainLabel, subvalLabel, ofLabel), </span>
-<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>                <span class="sc">~</span><span class="fu">na_if</span>(., <span class="st">""</span>))) <span class="sc">|&gt;</span></span>
-<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(person, <span class="at">.after =</span> <span class="fu">last_col</span>())</span>
-<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a><span class="co"># use the ppa_buckets data to add broad categories to activities</span></span>
-<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a>bn_suffrage_buckets <span class="ot">&lt;-</span></span>
-<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>bn_suffrage_query <span class="sc">|&gt;</span></span>
-<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(bn_ppa_buckets <span class="sc">|&gt;</span> </span>
-<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>              <span class="fu">select</span>(ppa, <span class="at">bucket=</span>label), <span class="at">by=</span><span class="fu">c</span>(<span class="st">"mainLabel"</span><span class="ot">=</span><span class="st">"ppa"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">bucket =</span> <span class="fu">case_when</span>(</span>
-<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a>    bucket<span class="sc">==</span><span class="st">"event participation"</span> <span class="sc">~</span> <span class="st">"events"</span>,</span>
-<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a>    <span class="fu">is.na</span>(bucket) <span class="sc">&amp;</span> mainLabel<span class="sc">==</span><span class="st">"gave money to"</span> <span class="sc">~</span> <span class="st">"money"</span>, <span class="co"># not in ppa_buckets for some reason</span></span>
-<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a>    <span class="at">.default =</span> bucket</span>
-<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
-<span id="cb9-59"><a href="#cb9-59" aria-hidden="true" tabindex="-1"></a>  <span class="co"># there's also a `recorded in` which is not relevant. </span></span>
-<span id="cb9-60"><a href="#cb9-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(bucket))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>bn_suffrage_sparql <span class="ot">&lt;-</span> </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="st">'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?s </span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="st">   WHERE {  </span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="st">    ?person bnwdt:P3 bnwd:Q3 . #select women</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="st">    FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="st">    ?person ?p ?s .</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="st">        ?s ?sub ?subval .</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="st">        ?main wikibase:claim ?p.</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="st">        ?main wikibase:statementProperty ?sub.   </span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="st">    # sub_ i/o  some have suffrage activity which will duplicate, filter </span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="st">    optional { ?subval bnwdt:P12 ?sub_io . </span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="st">                filter not exists { ?subval bnwdt:P12 bnwd:Q1166 . }</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="st">              }</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="st">             </span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="st">  # union query</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="st">   { # qualifier on the page i/o suffrage activity</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="st">       ?s bnpq:P12 bnwd:Q1166.</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="st">  union</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="st">    { # org in qualifier has i/o suffrage activity.</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a><span class="st">      ?s ?pq ?qual .</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="st">        ?qual bnwdt:P12 bnwd:Q1166 .</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a><span class="st">    } # /union</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="st">  optional { ?s bnpq:P78 ?of. }  </span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="st">  optional { </span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a><span class="st">    # dates.</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a><span class="st">        ?s ?dpq ?qual_date .   </span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a><span class="st">          ?qual_date wikibase:timeValue ?date .</span></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a><span class="st">  SERVICE wikibase:label { </span></span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a><span class="st">        bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". </span></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a><span class="st">        }</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a><span class="st">order by ?personLabel ?mainLabel'</span></span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>bn_suffrage_query <span class="ot">&lt;-</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bn_std_query</span>(bn_suffrage_sparql) <span class="sc">|&gt;</span></span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_item_id</span>(person) <span class="sc">|&gt;</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">make_bn_ids</span>(<span class="fu">c</span>(s)) <span class="sc">|&gt;</span></span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(date, mainLabel, subvalLabel, ofLabel), </span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>                <span class="sc">~</span><span class="fu">na_if</span>(., <span class="st">""</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(person, <span class="at">.after =</span> <span class="fu">last_col</span>())</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a><span class="co"># use the ppa_buckets data to add broad categories to activities</span></span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>bn_suffrage_buckets <span class="ot">&lt;-</span></span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>bn_suffrage_query <span class="sc">|&gt;</span></span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(bn_ppa_buckets <span class="sc">|&gt;</span> </span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>              <span class="fu">select</span>(ppa, <span class="at">bucket=</span>label), <span class="at">by=</span><span class="fu">c</span>(<span class="st">"mainLabel"</span><span class="ot">=</span><span class="st">"ppa"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">bucket =</span> <span class="fu">case_when</span>(</span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>    bucket<span class="sc">==</span><span class="st">"event participation"</span> <span class="sc">~</span> <span class="st">"events"</span>,</span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a>    bucket<span class="sc">==</span><span class="st">"charitable/organisational"</span> <span class="sc">~</span> <span class="st">"charitable"</span>,</span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">is.na</span>(bucket) <span class="sc">&amp;</span> mainLabel<span class="sc">==</span><span class="st">"gave money to"</span> <span class="sc">~</span> <span class="st">"money"</span>, <span class="co"># not in ppa_buckets for some reason</span></span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>    <span class="at">.default =</span> bucket</span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a>  <span class="co"># there's also a `recorded in` which is not relevant. </span></span>
+<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(bucket))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>A look at the BN women who were most involved in suffrage activities:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>bn_suffrage_buckets <span class="sc">|&gt;</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_count</span>(bn_id, <span class="at">name=</span><span class="st">"n_bn"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(n_bn<span class="sc">&gt;</span><span class="dv">1</span>) <span class="sc">|&gt;</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(bn_id, personLabel, bucket, n_bn, <span class="at">sort =</span> T) <span class="sc">|&gt;</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">personLabel =</span><span class="fu">fct_reorder</span>(personLabel, n_bn)) <span class="sc">|&gt;</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(n, personLabel, <span class="at">fill=</span>bucket)) <span class="sc">+</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_ptol</span>() <span class="sc">+</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y=</span><span class="cn">NULL</span>, <span class="at">x=</span><span class="st">"number of actions"</span>, </span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"BN women's suffrage activities"</span>, </span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">caption =</span> <span class="st">"at least 2 actions"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>bn_suffrage_buckets <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_count</span>(bn_id, <span class="at">name=</span><span class="st">"n_bn"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(n_bn<span class="sc">&gt;</span><span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(bn_id, personLabel, bucket, n_bn, <span class="at">sort =</span> T) <span class="sc">|&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">personLabel =</span><span class="fu">fct_reorder</span>(personLabel, n_bn)) <span class="sc">|&gt;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(n, personLabel, <span class="at">fill=</span>bucket)) <span class="sc">+</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_ptol</span>() <span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y=</span><span class="cn">NULL</span>, <span class="at">x=</span><span class="st">"number of actions"</span>, </span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"BN women's suffrage activities"</span>, </span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">caption =</span> <span class="st">"at least 2 actions"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -672,7 +680,7 @@ make_date_year &lt;-function(data){
 </section>
 <section id="the-workflow-in-practice" class="level2">
 <h2 class="anchored" data-anchor-id="the-workflow-in-practice">The workflow in practice</h2>
-<p>See the posts on this blog for examples of data analysis and visualisations using the workflow; the linked Github repository contains the R code for those who’d like to dig further.</p>
+<p>See the posts on this blog for examples of data analysis and visualisations using the workflow; the linked Github repository contains the R code for those who’d like to dig further. (But NB that it’s working code written for my own use and may be… messy.)</p>
 
 
 </section>

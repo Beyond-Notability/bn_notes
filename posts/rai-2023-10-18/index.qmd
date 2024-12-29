@@ -14,7 +14,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData rai-2023-10-18
 ```
 
 Update: 
@@ -497,67 +497,6 @@ reactable(
     rai = colDef(maxWidth = 70, name="RAI")
   )
 )
-
-```
-
-```{r}
-# ## Members
-# 
-# Of 220 women with a member of statement, 138 have start dates for membership. Some don't have a record of election as a Fellow (though this might be data/sources gaps). All but three have the same membership start year and election year, but those three have a membership date that is a year *later* than their election year, which seems slightly problematic? (Q2294, Q467, Q2565) 
-
-# bn_women_rai_member_wide |>
-#   filter(!is.na(start_time)) |>
-#   count(start_year, is_frai) |>
-#   ggplot(aes(start_year, n, fill=is_frai)) +
-#   geom_col() +
-#   scale_fill_ptol()
-```
-
-```{r}
-# oh bum, a woman joined *and* elected twice drop her from one side for the moment
-# don't forget two women in elected query don't seem to have member of??? but leave that for now
-# bn_women_rai_member_wide |>
-#   distinct(bn_id, person_label, prop_label, start_year, elected_year) |>
-# 
-#   filter(start_year != elected_year)
-```
-
-
-
-```{r}
-##any non-member/fellow engagement?
-# bn_women_rai_wide |>
-#   left_join(bn_women_rai_member_wide |> distinct(bn_id, member_start_time= start_time, member_start_year= start_year) |> mutate(is_member="y"), by="bn_id") |>
-#   mutate(is_member_at = case_when(
-#     is.na(is_member) ~ "not member",
-#     member_start_time < point_in_time ~ "member",
-#     member_start_time > point_in_time ~ "pre member",
-#     is_member=="y" & is.na(member_start_year) ~ "na"
-#   )) |> 
-#   relocate(is_frai_at, is_member, is_member_at, point_in_time, member_start_time, member_start_year, is_frai)
-```
-
-
-```{r}
-# hmmmm....
-# bn_women_rai_wide |>
-#   left_join(bn_women_rai_member_wide |> distinct(bn_id, member_start_time= start_time, member_start_year= start_year) |> mutate(is_member="y"), by="bn_id") |>
-#   mutate(is_member_at = case_when(
-#     is.na(is_member) ~ "not member",
-#     member_start_time < point_in_time ~ "member",
-#     member_start_time > point_in_time ~ "pre member",
-#     is_member=="y" & is.na(member_start_year) ~ "na"
-#   )) |>
-#   add_count(prop_label) |>
-#   filter(n>3) |> select(-n) |>
-#   #mutate(is_fsa_at2 = if_else(is_frai_at=="frai", "FRAI", "not FRAI")) |>
-#   count(prop_label, is_member_at, sort = T) |>
-#   #mutate(prop_label = fct_reorder(prop_label, n)) |>
-#   ggplot(aes(fill=prop_label, y=n, x=is_member_at)) +
-#   geom_col(position = "fill") +
-#   scale_fill_tableau() +
-#   scale_y_continuous(labels = percent_format()) +
-#   labs(y=NULL, x=NULL, fill=NULL, title="Women interacting with the Institute: Members and non-Members")
 
 ```
 

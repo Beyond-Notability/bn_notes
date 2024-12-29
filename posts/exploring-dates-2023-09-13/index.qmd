@@ -14,7 +14,7 @@ categories:
 ---
 
 ```{r finishing-up}
-# checked 14/12/24
+# finishing up: checked 14/12/24. RData exploring-dates-2023-09-13 
 # old code: redo labels (prop and qual_prop), use bn_std_query.
 ```
 

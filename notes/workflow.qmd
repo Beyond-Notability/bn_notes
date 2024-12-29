@@ -6,6 +6,7 @@ date: "2024-08-26"
 date-modified: today
 categories: 
   - methods
+  - sparql
 execute: 
   warning: false
   message: false
@@ -14,8 +15,9 @@ format:
     code-fold: false
 ---
 
-```{r finishing-up}
-# TODO finishing-up 
+```{r finishing-up, echo=FALSE}
+# checked; fairly new so no real issues.
+# adjusted v long "charitable/organisational" bucket label. that needs doing elsewhere.
 ```
 
 ## The project infrastructure
@@ -48,16 +50,16 @@ However, I quickly discovered that I wanted to do a lot of queries that were a b
 
 But I was more likely to want to ask questions that would look like "find items that are associated with the Star Wars series, but I don't know exactly what sort of things there might be yet, oh and can I have associated dates of any type for the results as well?".
 
-Writing queries to explore a wikibase where you don't know exactly what you're looking for, or you want to get several different kinds of a thing at the same time, turned out to be quite a bit harder (and involved getting more familiar with an intimidatingly complex [data model](https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer)). [Stack Overflow](https://stackoverflow.com/questions/46383784/wikidata-get-all-properties-with-labels-and-values-of-an-item) was also invaluable.
+Writing queries to explore a wikibase where you don't know exactly what you're looking for, or you want to get several different kinds of a thing at the same time, turned out to be quite a bit harder (and involved getting more familiar with an intimidatingly complex [data model](https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer)). [Stack Overflow](https://stackoverflow.com/questions/46383784/wikidata-get-all-properties-with-labels-and-values-of-an-item) was invaluable.
 
 
 ## From SPARQL to R
 
 The crucial next step is to get the results of queries into R in order to use the [Tidyverse](https://www.tidyverse.org/) and visualise with [ggplot](https://ggplot2.tidyverse.org/).
 
-As far as possible I wanted the queries underpinning all my work to be recorded on the [wikibase queries page](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples). The queries page has two functions: it records the SPARQL queries for those who can read the language, but it also enables the queries to be run by those who can't. So anyone can check the results against my outputs. 
+As far as possible I wanted the queries underpinning all my work to be recorded on the [wikibase queries page](https://beyond-notability.wikibase.cloud/wiki/Project:SPARQL/examples). The queries page has two functions: it records the SPARQL queries for those who can read the language, but it also enables the queries to be run by those who can't. So anyone can check the results against my outputs.
 
-This influenced my workflow choices in specific ways which might not be quite the same for all projects.
+This influenced my workflow choices in particular ways which might not be quite the same for all projects.
 
 
 ## R packages 
@@ -303,6 +305,7 @@ bn_suffrage_query |>
               select(ppa, bucket=label), by=c("mainLabel"="ppa")) |>
   mutate(bucket = case_when(
     bucket=="event participation" ~ "events",
+    bucket=="charitable/organisational" ~ "charitable",
     is.na(bucket) & mainLabel=="gave money to" ~ "money", # not in ppa_buckets for some reason
     .default = bucket
   )) |>
@@ -329,7 +332,7 @@ bn_suffrage_buckets |>
 
 ## The workflow in practice
 
-See the posts on this blog for examples of data analysis and visualisations using the workflow; the linked Github repository contains the R code for those who'd like to dig further.
+See the posts on this blog for examples of data analysis and visualisations using the workflow; the linked Github repository contains the R code for those who'd like to dig further. (But NB that it's working code written for my own use and may be... messy.)
 
 
 

@@ -16,7 +16,7 @@ toc: false
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. [but not checked the excavations R] RData notes_excavations-browser
 ```
 
 

@@ -13,7 +13,9 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData education-2023-09-09
+# there is a colour accessibility issue to check.
+# still using old style sparql query.
 ```
 
 ## Wikibase query

@@ -13,7 +13,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked   RData rai-2023-10-14
 ```
 
 I did some analysis of SAL elections for my interview talk, but I never got round to doing anything similar for RAI. But the data seems to be much more patchy so I won't repeat all of the same analysis.
@@ -161,34 +161,6 @@ bn_women_election_rai_query |>
 ```
 
 
-```{r}
-## actions per supporter, idk whether to do this
-# faceted chart at last lol
-# bn_proposed_summary |>
-#   #mutate(proposerGender = na_if(proposerGender, "")) |>
-#   filter(!is.na(proposed_gender)) |>
-#   count(proposed, proposed_gender) |>
-#   group_by(proposed_gender) |>
-#   summarise(mn = mean(n), md=median(n), max=max(n)) |>
-#   ungroup() |>
-#   rename(supporterGender=proposed_gender) |>
-#   mutate(supporterType="proposer") |>
-#   bind_rows(
-#     bn_women_election_rai_query |>
-#      filter(!is.na(seconded) & !is.na(second_gender)) |>
-#      count(seconded, second_gender) |>
-#       group_by(second_gender) |>
-#       summarise(mn = mean(n), md=median(n), max=max(n)) |>
-#       ungroup() |>
-#       rename(supporterGender=second_gender) |>
-#       mutate(supporterType="seconder")
-#   ) |>
-#   ggplot(aes(supporterGender, mn, fill=supporterGender)) +
-#   geom_col(show.legend = F) +
-#   facet_wrap(~supporterType, scales = "free_y") +
-#   scale_fill_manual(values = c("#33bbee", "#ee7733")) +
-#   labs(title="Actions per supporter", y="mean average", x=NULL)
-```
 
 
 
@@ -299,17 +271,7 @@ bn_rai_men_supporters |>
   labs(x=NULL, y="number of elections", fill="support\ntype", title="RAI elections: men who support women", caption = "n>1")   #  fill="also \nsigns",
 ```
 
-```{r}
-# leave this one and the following network graphs, given the gap in the records
-# ## From election to proposing other women
-# (Cf. same for SAL; some charts work better than others...)
-# bn_proposers_dates_summary |>
-#   mutate(time_to_propose = earliest_year-election_year) |>
-#   mutate(name = fct_reorder(name, -election_year)) |>
-#   ggplot(aes(x=election_year, xend=earliest_year, y=name, linewidth=n_proposal)) + # changed size to linewidth
-#   geom_dumbbell() +
-#   labs(x="year", y=NULL, size="total\nproposals", title = "Interval from year of election to first proposal")
-```
+
 
 
 

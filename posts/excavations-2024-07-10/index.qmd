@@ -15,7 +15,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData  excavations-2024-07-10   a few edits to text.
 ```
 
 
@@ -76,73 +76,12 @@ networks_periods <-
   mutate(src = str_remove(src, "network_"))
 
 
-# # overlapping five year periods 1920-37
-# 
-# network_1920_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1920, 5)  |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# network_1922_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1922, 5) |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# network_1925_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1925, 5) |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# network_1927_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1927, 5) |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# network_1930_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1930, 5) |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# network_1932_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1932, 5) |>
-#   bn_centrality()
-# 
-# network_1935_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1935, 5) |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# # this won't be a complete five years but there will be plenty of them anyway!
-# network_1937_05 <-
-#   bn_excavations_grp_network(bn_excavations_people_participants_named, 1937, 5) |>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# 
-# # combine five year periods and add src name col for faceting 
-# networks_1920_1937_05 <-
-# bind_graphs(
-#   network_1920_05 |> obj_name_as_var(),
-#   network_1922_05 |> obj_name_as_var(),
-#   network_1925_05 |> obj_name_as_var(),
-#   network_1927_05 |> obj_name_as_var(),
-#   network_1930_05 |> obj_name_as_var(),
-#   network_1932_05 |> obj_name_as_var(),
-#   network_1935_05 |> obj_name_as_var(),
-#   network_1937_05 |> obj_name_as_var()
-# )  |>
-#   mutate(src = str_remove(src, "network_"))
 
 
 
 
 # size of excavation
 
-# network_size_03 <-
-# bn_excavations_people_participants_named_size_03 |>
-#   bn_excavations_make_network()|>
-#   bn_centrality() |>
-#   bn_clusters()
 
 network_size_05 <-
 bn_excavations_people_participants_named_size_05 |>
@@ -156,49 +95,16 @@ bn_excavations_people_participants_named_size_gt05 |>
   bn_centrality() |>
   bn_clusters()
 
-# network_size_10 <-
-# bn_excavations_people_participants_named_size_10 |>
-#   bn_excavations_make_network()|>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-# network_size_20 <-
-# bn_excavations_people_participants_named_size_20 |>
-#   bn_excavations_make_network()|>
-#   bn_centrality() |>
-#   bn_clusters()
+
 # 
 # networks_size_lte <-
 #   bind_graphs(
 #     network_size_03 |> obj_name_as_var(),
-#     network_size_05 |> obj_name_as_var(),
-#     network_size_10 |>obj_name_as_var(),
-#     network_size_20 |> obj_name_as_var()
+#     network_size_05 |> obj_name_as_var()
 #   ) |>
 #   mutate(src = str_remove(src, "network_"))
 
 
-# network_size_gt03 <-
-# bn_excavations_people_participants_named_size_gt03 |>
-#   bn_excavations_make_network()|>
-#   bn_centrality() |>
-#   bn_clusters()
-# 
-
-# network_size_gt10 <-
-# bn_excavations_people_participants_named_size_gt10 |>
-#   bn_excavations_make_network()|>
-#   bn_centrality() |>
-#   bn_clusters()
-
-
-# networks_size_gt <-
-#   bind_graphs(
-#     network_size_gt03 |> obj_name_as_var(),
-#     network_size_gt05 |> obj_name_as_var(),
-#     network_size_gt10 |>obj_name_as_var()
-#   ) |>
-#   mutate(src = str_remove(src, "network_"))
 
 
 networks_size_split05 <-
@@ -264,10 +170,9 @@ Occasionally this is a bit unsatisfactory; eg there is an excavation with dates 
 
 ### todo
 
+Things I won't try to do
+
 - places (this may be a non-networky thing though)
-
-Things I probably won't try to do
-
 - change over time (in any detail), but I do have a method worked out for this and will try it on SAL elections
 - I thought about more complex analyses, eg a directed network (directors > members) or bimodal network (excavations / people), but I'm not convinced they'd justify the extra work
 
@@ -356,10 +261,11 @@ bn_excavations_people_participants |>
 
 (including unnamed people)
 
-very wide variation in numbers; largest (Q2560) has 42 people but vast majority have only one or two (6 have more than 10; only four have more than 10 *named* participants).
+very wide variation in numbers; largest (Q2560) has 44 people but vast majority have only one or two (7 have more than 10; only five have more than 10 *named* participants).
 
 ```{r}
 bn_excavations_people_participants  |>
+  #filter(person !="Q576") |>
   count(excavation, sort = T) |>
   ggplot(aes(n)) +
   geom_histogram(binwidth = 1) +
@@ -367,7 +273,7 @@ bn_excavations_people_participants  |>
 ```
 
 
-Four of the six excavations with more than 10 participants are in the 1930s, and the 1930s excavations tend to have more recorded participants.
+Four of the excavations with more than 10 participants are in the 1930s, and the 1930s excavations tend to have more recorded participants.
 
 ```{r}
 bn_excavations_people_participants |>
@@ -392,15 +298,22 @@ bn_excavations_people_participants |>
 
 (named participants only)
 
-Of the ``r  bn_excavations_people_participants_named |> distinct(person) |> tally() |> pull(n) `` named individuals in the network, only 80 (at time of writing) are recorded in more than one excavation. 
 
-22 people have no connections to anyone else (because they are the sole recorded participant in their excavation(s)) and a further 29 (most in a single excavation) are linked to only one other person.
+Of the ``r  bn_excavations_people_participants_named |> distinct(person) |> tally() |> pull(n) `` named individuals in the network, only 95 (at time of writing) are recorded in more than one excavation. 
 
-This makes for a very sparse network (which is far from unusual).
+21 people have no connections to anyone else (because they are the sole recorded participant in their excavation(s)) and a further 31 (most in a single excavation) are linked to only one other person.
+
+```{r}
+# network_all |>
+#   as_tibble() |>
+#   filter(degree==1)
+```
+
+This makes for a sparse network (which is far from unusual).
 
 ```{r}
 bn_excavations_people_participants_named |>
-  count(person) |>
+  count(person, sort = T) |>
   ggplot(aes(n)) +
   geom_histogram(binwidth = 1) +
   scale_x_continuous(breaks = c(2,4,6,8)) +
@@ -475,23 +388,7 @@ network_all |>
 ```
 
 
-```{r}
-# ok notthis one but lolz
-# networks_1920_1937_05 |>
-#   as_tibble() |>
-#   count(degree, src) |>
-#   filter(degree!=0) |>
-#   group_by(src) |>
-#   mutate(p = n/sum(n)) |>
-#   ungroup() |>
-#   ggplot(aes(degree, n)) +
-#   geom_point(alpha=0.5)  +
-#     scale_x_log10() +
-#    scale_y_log10() +
-#   #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
-#   geom_smooth(se=FALSE, formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
-#     facet_wrap(~src, scales = "free", ncol = 4)
-```
+
 
 By period (excluding the handful of 1940s excavations). 
 
@@ -538,45 +435,19 @@ networks_size_split05 |>
 
 
 
-```{r}
-##Comparing excavation sizes up to 3, up to 5, up to 10 and up to 20. 
-# networks_size_lte |>
-#   as_tibble() |>
-#   count(degree, src) |>
-#   filter(degree!=0) |>
-#   group_by(src) |>
-#   mutate(p = n/sum(n)) |>
-#   ungroup() |> #arrange(n, degree)
-#   ggplot(aes(degree, n)) +
-#   geom_point(alpha=0.5)  +
-#   scale_x_log10() +
-#   scale_y_log10() +
-#   #geom_smooth(method = "lm", se=FALSE, colour="darkorange", formula = y~x, lty=4, linewidth=0.7) +
-#   geom_smooth(se=FALSE, method = "loess", formula = y~x, colour="cyan4", lty=2, linewidth=0.7) +
-#     facet_wrap(~src, scales = "free", ncol = 2)  +
-#   labs(y="number of people")
 
-```
-
-I think this is happening because the large excavations have quite a lot of people who *only* appear in those large excavations, often in just one. If there are (for example) 20 people on an excavation and 18 of them are *only* recorded on that excavation, the 18 will all have degree of 18. Notably, the single larger 1920s excavation, Richborough (Q3380), has 17 participants and only three of them appear on any other excavation. (The decade as a whole has only 79 named participants in 43 excavations.)
+I think this is happening because the large excavations have quite a lot of people who *only* appear in those large excavations, often in just one. If there are (for example) 20 people on an excavation and 18 of them are *only* recorded on that excavation, the 18 will all have degree of 18. Notably, the single larger 1920s excavation, Richborough (Q3380), has 18 participants and only four of them appear on any other excavation. (The decade as a whole has only 92 named participants in 46 excavations.)
 
 This is one of the reasons why simply counting links between nodes in a network is a limited measure; it can be useful, like this, to get a picture of the network as a whole but misleading for understanding individuals within the network.
 
 ```{r}
 # bn_excavations_people_participants_named |>
-#   filter(p=="1920") |> count(excavation)
+#   filter(p=="1920") |> 
+#  filter(excavation=="Q3380")
+#   count(person)
+#   count(excavation)
 ```
 
-
-```{r}
-# what is it i want to do here...???? show if 14/17 singletons at richborough is disproportionate (cf other large excavations)
-# bn_excavations_people_participants_named |> 
-#   filter(excavation_n>10) |>
-#   #count(excavation, excavation_n, p_n_excavations)|> arrange(excavation, n) |>
-#   ggplot(aes(p_n_excavations, excavation_n)) +
-#   geom_point()
-  #filter(excavation=="Q3380")
-```
 
 
 
@@ -606,7 +477,7 @@ Top ten rankings are coloured and other rankings are in grey. The most striking 
 
 An interesting absence is Margaret Murray who is recorded in 7 excavations (the same number as Mortimer Wheeler) but she has only 18 connections and her highest ranking is at 22 [betweenness]. 
 
-Also perhaps worth noting that Maud and B.H. Cunnington are absolutely nowhere in any rankings in spite of being recorded on more excavations than anyone else (9), because they only connect to each other. That may reflect the sources too, given that most of their excavations were pre-WW1, though I [see](https://beyondnotability.org/biographical/maud-cunnington-part-1/) that Maud had a reputation for being "difficult".
+Also perhaps worth noting that Maud and B.H. Cunnington are absolutely nowhere in any rankings in spite of being recorded on more excavations than anyone else (9), because they only connect to each other. That may reflect the sources too, given that most of their excavations were pre-WW1 (though I [see](https://beyondnotability.org/biographical/maud-cunnington-part-1/) that Maud had a reputation for being "difficult").
 
 
 ```{r all-top-ten-heatmap}
@@ -618,7 +489,7 @@ network_centrality_top_r_plus(network_all, 10) |>
 
 Because there's so much variation I hesitated over doing averages of the rankings; I've tried out a boxplot combined with beeswarm. It's possibly a bit odd looking (lol) but I quite like it.  
 
-It turns out that at the top end of the chart (it's been sorted by median average) there's quite a bit of consistency; for 2 to 10 the lowest rankings are in the 20s.  
+It turns out that at the top end of the chart (it's been sorted by median average) there's quite a bit of consistency; for 2 to 10 most of the lowest rankings are in the 20s.  
 
 
 ```{r all-top-ten-averages}
@@ -641,43 +512,6 @@ network_centrality_top_r_plus(network_all, 10) |>
 
 
 
-```{r}
-## So the same thing  but restricted to the overall top 10. what a PITA
-# network_centrality_top_r_plus(network_all, 10) |>
-#   group_by(person) |>
-#   # mutate here because you want to show each point
-#   mutate(sort = median(rank)) |>
-#   ungroup() |>
-#   # need rank for each person or some other way to filter the overall top ten.
-#   # this seems a bit clunky...
-#   inner_join(
-#     network_centrality_top_r_plus(network_all, 10) |>
-#       group_by(person) |>
-#       summarise(overall_rank = median(rank)) |>
-#       ungroup() |>
-#       mutate(overall_rank = min_rank(overall_rank) ) , by="person"
-#   ) |>
-#   #arrange(overall_rank)
-#   filter(overall_rank <= 10) |>
-#   mutate(centrality = str_remove(centrality, "_rank")) |>
-#   mutate(personLabel = fct_reorder(personLabel, -sort)) |>
-#   # With categorical y-axis
-#   ggplot(aes(rank, personLabel)) + 
-#   geom_boxplot(show.legend = F, colour="grey", outliers = F) +
-#   geom_beeswarm(aes(colour = centrality)) +
-#   #geom_quasirandom(aes(colour=centrality), orientation = "y") +
-#   scale_colour_tableau() +
-#   theme(legend.position = "bottom") +
-#   labs(y=NULL, title = "boxplot of top ranked individuals (whole network)")
-```
-
-
-
-```{r}
-# network_centrality_top_r_plus(network_all, 10) |>
-#   gg_centrality_heatmap("top ranked (1930s)") +
-#   scale_fill_viridis_b(breaks=c(2,4,6,8,10), na.value = "grey") 
-```
 
 Trying the beeswarm/boxplots for sub-networks
 

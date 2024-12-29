@@ -80,8 +80,7 @@ ul.task-list li input[type="checkbox"] {
 
     const options = {
       valueNames: ['listing-date','listing-title','listing-file-modified','listing-categories',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-title-sort'] }],
-      page: 30,
-    pagination: { item: "<li class='page-item'><a class='page page-link' href='#'></a></li>" },
+      
       searchColumns: ["listing-date","listing-title","listing-author"],
     };
 
@@ -158,6 +157,10 @@ window.Quarto = {
     <a class="nav-link" href="./notes/index.html"> 
 <span class="menu-text">Notes</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
@@ -185,7 +188,7 @@ window.Quarto = {
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(36)</span></div><div class="category" data-category="RAI">RAI <span class="quarto-category-count">(3)</span></div><div class="category" data-category="SAL">SAL <span class="quarto-category-count">(4)</span></div><div class="category" data-category="class">class <span class="quarto-category-count">(1)</span></div><div class="category" data-category="dates">dates <span class="quarto-category-count">(4)</span></div><div class="category" data-category="education">education <span class="quarto-category-count">(5)</span></div><div class="category" data-category="events">events <span class="quarto-category-count">(1)</span></div><div class="category" data-category="excavations">excavations <span class="quarto-category-count">(3)</span></div><div class="category" data-category="men">men <span class="quarto-category-count">(1)</span></div><div class="category" data-category="methods">methods <span class="quarto-category-count">(2)</span></div><div class="category" data-category="missing">missing <span class="quarto-category-count">(2)</span></div><div class="category" data-category="musthave">musthave <span class="quarto-category-count">(3)</span></div><div class="category" data-category="networks">networks <span class="quarto-category-count">(3)</span></div><div class="category" data-category="place">place <span class="quarto-category-count">(5)</span></div><div class="category" data-category="ppa">ppa <span class="quarto-category-count">(14)</span></div><div class="category" data-category="proxies">proxies <span class="quarto-category-count">(1)</span></div><div class="category" data-category="publishing">publishing <span class="quarto-category-count">(1)</span></div><div class="category" data-category="summaries">summaries <span class="quarto-category-count">(3)</span></div><div class="category" data-category="wikidata">wikidata <span class="quarto-category-count">(1)</span></div><div class="category" data-category="work">work <span class="quarto-category-count">(5)</span></div></div></div>
+    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-default"><div class="category" data-category="">All <span class="quarto-category-count">(36)</span></div><div class="category" data-category="RAI">RAI <span class="quarto-category-count">(3)</span></div><div class="category" data-category="SAL">SAL <span class="quarto-category-count">(4)</span></div><div class="category" data-category="class">class <span class="quarto-category-count">(1)</span></div><div class="category" data-category="dates">dates <span class="quarto-category-count">(4)</span></div><div class="category" data-category="education">education <span class="quarto-category-count">(5)</span></div><div class="category" data-category="events">events <span class="quarto-category-count">(1)</span></div><div class="category" data-category="excavations">excavations <span class="quarto-category-count">(3)</span></div><div class="category" data-category="men">men <span class="quarto-category-count">(1)</span></div><div class="category" data-category="methods">methods <span class="quarto-category-count">(2)</span></div><div class="category" data-category="missing">missing <span class="quarto-category-count">(2)</span></div><div class="category" data-category="musthave">musthave <span class="quarto-category-count">(3)</span></div><div class="category" data-category="networks">networks <span class="quarto-category-count">(3)</span></div><div class="category" data-category="place">place <span class="quarto-category-count">(5)</span></div><div class="category" data-category="ppa">ppa <span class="quarto-category-count">(14)</span></div><div class="category" data-category="proxies">proxies <span class="quarto-category-count">(1)</span></div><div class="category" data-category="publishing">publishing <span class="quarto-category-count">(1)</span></div><div class="category" data-category="sparql">sparql <span class="quarto-category-count">(1)</span></div><div class="category" data-category="summaries">summaries <span class="quarto-category-count">(3)</span></div><div class="category" data-category="wikidata">wikidata <span class="quarto-category-count">(1)</span></div><div class="category" data-category="work">work <span class="quarto-category-count">(5)</span></div></div></div>
 <!-- main -->
 <main class="content column-page-left" id="quarto-document-content">
 
@@ -209,14 +212,11 @@ window.Quarto = {
 </header>
 
 
-<p>The site does not contain live wikibase data but will be quite frequently updated. (Doing the updates is straightforward but as the number of pages grows it takes longer to run a full update, so it’ll probably happen less often. Let me know if you want to see an updated version of a page at any time.)</p>
-<p>Caveats:</p>
-<p>This is all work in progress, provisional, generally handle with caution, etc. But, because the wikibase itself is continually evolving, updates may sometimes break things without me noticing, so if you see anything that really looks <em>strange</em>, let me know.</p>
+<p>This is a work-in-progress data blog by <a href="https://sharonhoward.org">Sharon Howard</a> for the <a href="https://beyond-notability.wikibase.cloud/wiki/Main_Page">Beyond Notability wikibase</a>, August 2023-December 2024.</p>
 <section id="posts-and-notes" class="level2">
 <h2 class="anchored" data-anchor-id="posts-and-notes">Posts and Notes</h2>
 <p><a href="./blog.html">Posts</a>: short pieces on specific topics or questions</p>
 <p><a href="notes/">Notes</a>: overviews, summary tables and other Stuff</p>
-<p>(The Updated column in this listing refers to modifications to the file, not data updates. The Modified field on individual pages should be the most recent data update for that page.)</p>
 <div id="listing-everything" class="quarto-listing quarto-listing-container-table">
 <table class="quarto-listing-table table">
 <thead>
@@ -236,7 +236,7 @@ Categories
 </tr>
 </thead>
 <tbody class="list">
-<tr data-index="0" data-categories="place,excavations" data-listing-date-sort="1734393600000" data-listing-file-modified-sort="1734518923585" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="23" data-listing-word-count-sort="4508" data-listing-title-sort="Excavations and Residences" data-listing-filename-sort="index.qmd">
+<tr data-index="0" data-categories="place,excavations" data-listing-date-sort="1734393600000" data-listing-file-modified-sort="1735493540497" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="23" data-listing-word-count-sort="4514" data-listing-title-sort="Excavations and Residences" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">17 Dec 2024</span>
 </td>
@@ -244,13 +244,13 @@ Categories
 <a href="./posts/excavations-locations-2024-12-17/index.html" class="title listing-title">Excavations and Residences</a>
 </td>
 <td>
-<span class="listing-file-modified">18 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">place, excavations</span>
 </td>
 </tr>
-<tr data-index="1" data-categories="class" data-listing-date-sort="1733788800000" data-listing-file-modified-sort="1734174326055" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="18" data-listing-word-count-sort="3556" data-listing-title-sort="Finding Proxies" data-listing-filename-sort="index.qmd">
+<tr data-index="1" data-categories="class" data-listing-date-sort="1733788800000" data-listing-file-modified-sort="1735494971666" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="18" data-listing-word-count-sort="3552" data-listing-title-sort="Finding Proxies" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">10 Dec 2024</span>
 </td>
@@ -258,13 +258,13 @@ Categories
 <a href="./posts/proxies-2024-12-10/index.html" class="title listing-title">Finding Proxies</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">class</span>
 </td>
 </tr>
-<tr data-index="2" data-categories="methods" data-listing-date-sort="1730764800000" data-listing-file-modified-sort="1734544674780" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="24" data-listing-word-count-sort="4665" data-listing-title-sort="Making a Directory of Women" data-listing-filename-sort="narratives-from-data.qmd">
+<tr data-index="2" data-categories="methods" data-listing-date-sort="1730764800000" data-listing-file-modified-sort="1735491487536" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="24" data-listing-word-count-sort="4664" data-listing-title-sort="Making a Directory of Women" data-listing-filename-sort="narratives-from-data.qmd">
 <td>
 <span class="listing-date">5 Nov 2024</span>
 </td>
@@ -272,13 +272,13 @@ Categories
 <a href="./notes/narratives-from-data.html" class="title listing-title">Making a Directory of Women</a>
 </td>
 <td>
-<span class="listing-file-modified">18 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">methods</span>
 </td>
 </tr>
-<tr data-index="3" data-categories="ppa,publishing,men" data-listing-date-sort="1728774000000" data-listing-file-modified-sort="1734198197170" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="31" data-listing-word-count-sort="6153" data-listing-title-sort="Publishing activity" data-listing-filename-sort="index.qmd">
+<tr data-index="3" data-categories="ppa,publishing,men" data-listing-date-sort="1728774000000" data-listing-file-modified-sort="1735492595632" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="31" data-listing-word-count-sort="6153" data-listing-title-sort="Publishing activity" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">13 Oct 2024</span>
 </td>
@@ -286,13 +286,13 @@ Categories
 <a href="./posts/bibliographic-2024-09-30/index.html" class="title listing-title">Publishing activity</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, publishing, men</span>
 </td>
 </tr>
-<tr data-index="4" data-categories="ppa,networks" data-listing-date-sort="1728428400000" data-listing-file-modified-sort="1734174396277" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="18" data-listing-word-count-sort="3486" data-listing-title-sort="Experimental network visualisation" data-listing-filename-sort="d3-network.qmd">
+<tr data-index="4" data-categories="ppa,networks" data-listing-date-sort="1728428400000" data-listing-file-modified-sort="1735491093087" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="18" data-listing-word-count-sort="3516" data-listing-title-sort="Experimental network visualisation" data-listing-filename-sort="d3-network.qmd">
 <td>
 <span class="listing-date">9 Oct 2024</span>
 </td>
@@ -300,13 +300,13 @@ Categories
 <a href="./notes/d3-network.html" class="title listing-title">Experimental network visualisation</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, networks</span>
 </td>
 </tr>
-<tr data-index="5" data-categories="education" data-listing-date-sort="1728428400000" data-listing-file-modified-sort="1734174342996" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="9" data-listing-word-count-sort="1687" data-listing-title-sort="Higher education overviews" data-listing-filename-sort="index.qmd">
+<tr data-index="5" data-categories="education" data-listing-date-sort="1728428400000" data-listing-file-modified-sort="1735492968641" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="9" data-listing-word-count-sort="1687" data-listing-title-sort="Higher education overviews" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">9 Oct 2024</span>
 </td>
@@ -314,13 +314,13 @@ Categories
 <a href="./posts/education-overview-2024-10-09/index.html" class="title listing-title">Higher education overviews</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">education</span>
 </td>
 </tr>
-<tr data-index="6" data-categories="methods" data-listing-date-sort="1724626800000" data-listing-file-modified-sort="1734174786500" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="11" data-listing-word-count-sort="2100" data-listing-title-sort="Project workflow" data-listing-filename-sort="workflow.qmd">
+<tr data-index="6" data-categories="methods,sparql" data-listing-date-sort="1724626800000" data-listing-file-modified-sort="1735218651116" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="11" data-listing-word-count-sort="2130" data-listing-title-sort="Project workflow" data-listing-filename-sort="workflow.qmd">
 <td>
 <span class="listing-date">26 Aug 2024</span>
 </td>
@@ -328,13 +328,13 @@ Categories
 <a href="./notes/workflow.html" class="title listing-title">Project workflow</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">26 Dec 2024</span>
 </td>
 <td>
-<span class="listing-categories">methods</span>
+<span class="listing-categories">methods, sparql</span>
 </td>
 </tr>
-<tr data-index="7" data-categories="ppa,SAL,networks" data-listing-date-sort="1721689200000" data-listing-file-modified-sort="1734174369925" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="13" data-listing-word-count-sort="2448" data-listing-title-sort="Networks part 2: SAL elections" data-listing-filename-sort="index.qmd">
+<tr data-index="7" data-categories="ppa,SAL,networks" data-listing-date-sort="1721689200000" data-listing-file-modified-sort="1735495069749" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="8" data-listing-word-count-sort="1561" data-listing-title-sort="Networks part 2: SAL elections" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">23 Jul 2024</span>
 </td>
@@ -342,13 +342,13 @@ Categories
 <a href="./posts/sal-2024-07-23/index.html" class="title listing-title">Networks part 2: SAL elections</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, SAL, networks</span>
 </td>
 </tr>
-<tr data-index="8" data-categories="ppa,excavations,networks" data-listing-date-sort="1721602800000" data-listing-file-modified-sort="1734174385418" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="30" data-listing-word-count-sort="5944" data-listing-title-sort="Networks part 1: Excavations" data-listing-filename-sort="index.qmd">
+<tr data-index="8" data-categories="ppa,excavations,networks" data-listing-date-sort="1721602800000" data-listing-file-modified-sort="1735493160771" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="26" data-listing-word-count-sort="5172" data-listing-title-sort="Networks part 1: Excavations" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">22 Jul 2024</span>
 </td>
@@ -356,13 +356,13 @@ Categories
 <a href="./posts/excavations-2024-07-10/index.html" class="title listing-title">Networks part 1: Excavations</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, excavations, networks</span>
 </td>
 </tr>
-<tr data-index="9" data-categories="summaries,ppa,excavations" data-listing-date-sort="1721516400000" data-listing-file-modified-sort="1734174744824" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="3" data-listing-word-count-sort="406" data-listing-title-sort="Excavations browser" data-listing-filename-sort="excavations-browser.qmd">
+<tr data-index="9" data-categories="summaries,ppa,excavations" data-listing-date-sort="1721516400000" data-listing-file-modified-sort="1735491008723" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="3" data-listing-word-count-sort="406" data-listing-title-sort="Excavations browser" data-listing-filename-sort="excavations-browser.qmd">
 <td>
 <span class="listing-date">21 Jul 2024</span>
 </td>
@@ -370,13 +370,13 @@ Categories
 <a href="./notes/excavations-browser.html" class="title listing-title">Excavations browser</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">summaries, ppa, excavations</span>
 </td>
 </tr>
-<tr data-index="10" data-categories="education" data-listing-date-sort="1717714800000" data-listing-file-modified-sort="1734187266491" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="5" data-listing-word-count-sort="835" data-listing-title-sort="Age and Higher Education" data-listing-filename-sort="index.qmd">
+<tr data-index="10" data-categories="education" data-listing-date-sort="1717714800000" data-listing-file-modified-sort="1735492851331" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="5" data-listing-word-count-sort="835" data-listing-title-sort="Age and Higher Education" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">7 Jun 2024</span>
 </td>
@@ -384,13 +384,13 @@ Categories
 <a href="./posts/education-age-2024-06-07/index.html" class="title listing-title">Age and Higher Education</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">education</span>
 </td>
 </tr>
-<tr data-index="11" data-categories="place,work" data-listing-date-sort="1714518000000" data-listing-file-modified-sort="1734198367364" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="24" data-listing-word-count-sort="4706" data-listing-title-sort="A Map of Speakers" data-listing-filename-sort="index.qmd">
+<tr data-index="11" data-categories="place,work" data-listing-date-sort="1714518000000" data-listing-file-modified-sort="1735495182363" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="22" data-listing-word-count-sort="4263" data-listing-title-sort="A Map of Speakers" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">1 May 2024</span>
 </td>
@@ -398,13 +398,13 @@ Categories
 <a href="./posts/speakers-map-2024-05-22/index.html" class="title listing-title">A Map of Speakers</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">place, work</span>
 </td>
 </tr>
-<tr data-index="12" data-categories="place,work" data-listing-date-sort="1714518000000" data-listing-file-modified-sort="1734198331594" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="17" data-listing-word-count-sort="3288" data-listing-title-sort="Another Map of Lecturing" data-listing-filename-sort="index.qmd">
+<tr data-index="12" data-categories="place,work" data-listing-date-sort="1714518000000" data-listing-file-modified-sort="1735486887785" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="15" data-listing-word-count-sort="2961" data-listing-title-sort="Another Map of Lecturing" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">1 May 2024</span>
 </td>
@@ -412,13 +412,13 @@ Categories
 <a href="./posts/lecturing-map-2024-05-01/index.html" class="title listing-title">Another Map of Lecturing</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">place, work</span>
 </td>
 </tr>
-<tr data-index="13" data-categories="place,work" data-listing-date-sort="1714431600000" data-listing-file-modified-sort="1734198278446" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="16" data-listing-word-count-sort="3105" data-listing-title-sort="A Map of Lecturing" data-listing-filename-sort="index.qmd">
+<tr data-index="13" data-categories="place,work" data-listing-date-sort="1714431600000" data-listing-file-modified-sort="1735494753511" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="12" data-listing-word-count-sort="2206" data-listing-title-sort="A Map of Lecturing" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">30 Apr 2024</span>
 </td>
@@ -426,13 +426,13 @@ Categories
 <a href="./posts/lecturing-map-2024-04-30/index.html" class="title listing-title">A Map of Lecturing</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">place, work</span>
 </td>
 </tr>
-<tr data-index="14" data-categories="ppa,work" data-listing-date-sort="1712617200000" data-listing-file-modified-sort="1734174575517" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="27" data-listing-word-count-sort="5387" data-listing-title-sort="Work activities: Lecturing" data-listing-filename-sort="index.qmd">
+<tr data-index="14" data-categories="ppa,work" data-listing-date-sort="1712617200000" data-listing-file-modified-sort="1735493907668" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="20" data-listing-word-count-sort="3829" data-listing-title-sort="Work activities: Lecturing" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">9 Apr 2024</span>
 </td>
@@ -440,13 +440,13 @@ Categories
 <a href="./posts/lecturers-2024-04-09/index.html" class="title listing-title">Work activities: Lecturing</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, work</span>
 </td>
 </tr>
-<tr data-index="15" data-categories="ppa" data-listing-date-sort="1710892800000" data-listing-file-modified-sort="1734174271275" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="18" data-listing-word-count-sort="3437" data-listing-title-sort="Suffrage activities" data-listing-filename-sort="index.qmd">
+<tr data-index="15" data-categories="ppa" data-listing-date-sort="1710892800000" data-listing-file-modified-sort="1735486135151" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="17" data-listing-word-count-sort="3213" data-listing-title-sort="Suffrage activities" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">20 Mar 2024</span>
 </td>
@@ -454,13 +454,13 @@ Categories
 <a href="./posts/suffrage-2024-03-18/index.html" class="title listing-title">Suffrage activities</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa</span>
 </td>
 </tr>
-<tr data-index="16" data-categories="ppa,events" data-listing-date-sort="1709510400000" data-listing-file-modified-sort="1734189738214" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="41" data-listing-word-count-sort="8088" data-listing-title-sort="PPA: events" data-listing-filename-sort="index.qmd">
+<tr data-index="16" data-categories="ppa,events" data-listing-date-sort="1709510400000" data-listing-file-modified-sort="1735493072834" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="38" data-listing-word-count-sort="7413" data-listing-title-sort="PPA: events" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">4 Mar 2024</span>
 </td>
@@ -468,13 +468,13 @@ Categories
 <a href="./posts/events-2024-02-26/index.html" class="title listing-title">PPA: events</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, events</span>
 </td>
 </tr>
-<tr data-index="17" data-categories="ppa" data-listing-date-sort="1708819200000" data-listing-file-modified-sort="1734174617823" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="7" data-listing-word-count-sort="1387" data-listing-title-sort="PPA Buckets" data-listing-filename-sort="index.qmd">
+<tr data-index="17" data-categories="ppa" data-listing-date-sort="1708819200000" data-listing-file-modified-sort="1735494861186" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1009" data-listing-title-sort="PPA Buckets" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">25 Feb 2024</span>
 </td>
@@ -482,13 +482,13 @@ Categories
 <a href="./posts/ppa-2024-02-25/index.html" class="title listing-title">PPA Buckets</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa</span>
 </td>
 </tr>
-<tr data-index="18" data-categories="ppa,dates" data-listing-date-sort="1702339200000" data-listing-file-modified-sort="1734174609027" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="16" data-listing-word-count-sort="3012" data-listing-title-sort="PPAs and change over time" data-listing-filename-sort="index.qmd">
+<tr data-index="18" data-categories="ppa,dates" data-listing-date-sort="1702339200000" data-listing-file-modified-sort="1735486085044" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="16" data-listing-word-count-sort="3001" data-listing-title-sort="PPAs and change over time" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">12 Dec 2023</span>
 </td>
@@ -496,13 +496,13 @@ Categories
 <a href="./posts/ppa-2023-12-08/index.html" class="title listing-title">PPAs and change over time</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa, dates</span>
 </td>
 </tr>
-<tr data-index="19" data-categories="dates" data-listing-date-sort="1700524800000" data-listing-file-modified-sort="1734198127317" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="15" data-listing-word-count-sort="2963" data-listing-title-sort="Work in progress: notes on dates" data-listing-filename-sort="notes-on-dates.qmd">
+<tr data-index="19" data-categories="dates" data-listing-date-sort="1700524800000" data-listing-file-modified-sort="1735492358651" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="15" data-listing-word-count-sort="2963" data-listing-title-sort="Work in progress: notes on dates" data-listing-filename-sort="notes-on-dates.qmd">
 <td>
 <span class="listing-date">21 Nov 2023</span>
 </td>
@@ -510,13 +510,13 @@ Categories
 <a href="./notes/notes-on-dates.html" class="title listing-title">Work in progress: notes on dates</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">dates</span>
 </td>
 </tr>
-<tr data-index="20" data-categories="RAI,SAL" data-listing-date-sort="1699488000000" data-listing-file-modified-sort="1734174664621" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="30" data-listing-word-count-sort="5956" data-listing-title-sort="Connecting SAL and RAI" data-listing-filename-sort="index.qmd">
+<tr data-index="20" data-categories="RAI,SAL" data-listing-date-sort="1699488000000" data-listing-file-modified-sort="1735490644826" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="29" data-listing-word-count-sort="5798" data-listing-title-sort="Connecting SAL and RAI" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">9 Nov 2023</span>
 </td>
@@ -524,13 +524,13 @@ Categories
 <a href="./posts/salrai-2023-11-09/index.html" class="title listing-title">Connecting SAL and RAI</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">RAI, SAL</span>
 </td>
 </tr>
-<tr data-index="21" data-categories="place,proxies" data-listing-date-sort="1699228800000" data-listing-file-modified-sort="1734174707215" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="10" data-listing-word-count-sort="1897" data-listing-title-sort="BN Women in 1890s London" data-listing-filename-sort="index.qmd">
+<tr data-index="21" data-categories="place,proxies" data-listing-date-sort="1699228800000" data-listing-file-modified-sort="1735490087789" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1164" data-listing-title-sort="BN Women in 1890s London" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">6 Nov 2023</span>
 </td>
@@ -538,13 +538,13 @@ Categories
 <a href="./posts/women-1890s-london-2023-11-06/index.html" class="title listing-title">BN Women in 1890s London</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">place, proxies</span>
 </td>
 </tr>
-<tr data-index="22" data-categories="ppa" data-listing-date-sort="1699142400000" data-listing-file-modified-sort="1734174674331" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="23" data-listing-word-count-sort="4417" data-listing-title-sort="Women serving on committees" data-listing-filename-sort="index.qmd">
+<tr data-index="22" data-categories="ppa" data-listing-date-sort="1699142400000" data-listing-file-modified-sort="1735489736140" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="22" data-listing-word-count-sort="4225" data-listing-title-sort="Women serving on committees" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">5 Nov 2023</span>
 </td>
@@ -552,13 +552,13 @@ Categories
 <a href="./posts/served_on-2023-11-05/index.html" class="title listing-title">Women serving on committees</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">ppa</span>
 </td>
 </tr>
-<tr data-index="23" data-categories="RAI,ppa" data-listing-date-sort="1697929200000" data-listing-file-modified-sort="1734174642093" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="15" data-listing-word-count-sort="2868" data-listing-title-sort="Women at the Royal Archaeological Institute" data-listing-filename-sort="index.qmd">
+<tr data-index="23" data-categories="RAI,ppa" data-listing-date-sort="1697929200000" data-listing-file-modified-sort="1735487496018" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="13" data-listing-word-count-sort="2523" data-listing-title-sort="Women at the Royal Archaeological Institute" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">22 Oct 2023</span>
 </td>
@@ -566,13 +566,13 @@ Categories
 <a href="./posts/rai-2023-10-18/index.html" class="title listing-title">Women at the Royal Archaeological Institute</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">RAI, ppa</span>
 </td>
 </tr>
-<tr data-index="24" data-categories="SAL,ppa" data-listing-date-sort="1697497200000" data-listing-file-modified-sort="1734174651569" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="12" data-listing-word-count-sort="2217" data-listing-title-sort="Women at the Society of Antiquaries of London" data-listing-filename-sort="index.qmd">
+<tr data-index="24" data-categories="SAL,ppa" data-listing-date-sort="1697497200000" data-listing-file-modified-sort="1735487664933" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="11" data-listing-word-count-sort="2057" data-listing-title-sort="Women at the Society of Antiquaries of London" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">17 Oct 2023</span>
 </td>
@@ -580,13 +580,13 @@ Categories
 <a href="./posts/sal-2023-10-17/index.html" class="title listing-title">Women at the Society of Antiquaries of London</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">SAL, ppa</span>
 </td>
 </tr>
-<tr data-index="25" data-categories="RAI" data-listing-date-sort="1697238000000" data-listing-file-modified-sort="1734174631511" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="9" data-listing-word-count-sort="1670" data-listing-title-sort="RAI elections" data-listing-filename-sort="index.qmd">
+<tr data-index="25" data-categories="RAI" data-listing-date-sort="1697238000000" data-listing-file-modified-sort="1735487263357" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="8" data-listing-word-count-sort="1431" data-listing-title-sort="RAI elections" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">14 Oct 2023</span>
 </td>
@@ -594,13 +594,13 @@ Categories
 <a href="./posts/rai-2023-10-14/index.html" class="title listing-title">RAI elections</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">RAI</span>
 </td>
 </tr>
-<tr data-index="26" data-categories="wikidata" data-listing-date-sort="1697151600000" data-listing-file-modified-sort="1734174696364" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1075" data-listing-title-sort="Wikidata links for BN Women" data-listing-filename-sort="index.qmd">
+<tr data-index="26" data-categories="wikidata" data-listing-date-sort="1697151600000" data-listing-file-modified-sort="1735489883850" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="5" data-listing-word-count-sort="911" data-listing-title-sort="Wikidata links for BN Women" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">13 Oct 2023</span>
 </td>
@@ -608,13 +608,13 @@ Categories
 <a href="./posts/wikidata-ids-2023-10-14/index.html" class="title listing-title">Wikidata links for BN Women</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">wikidata</span>
 </td>
 </tr>
-<tr data-index="27" data-categories="education" data-listing-date-sort="1696287600000" data-listing-file-modified-sort="1734186972208" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="14" data-listing-word-count-sort="2711" data-listing-title-sort="Academic degrees (P59)" data-listing-filename-sort="index.qmd">
+<tr data-index="27" data-categories="education" data-listing-date-sort="1696287600000" data-listing-file-modified-sort="1735492780875" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="14" data-listing-word-count-sort="2711" data-listing-title-sort="Academic degrees (P59)" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">3 Oct 2023</span>
 </td>
@@ -622,13 +622,13 @@ Categories
 <a href="./posts/degrees-2023-10-03/index.html" class="title listing-title">Academic degrees (P59)</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">education</span>
 </td>
 </tr>
-<tr data-index="28" data-categories="education" data-listing-date-sort="1695337200000" data-listing-file-modified-sort="1734174445631" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="17" data-listing-word-count-sort="3350" data-listing-title-sort="College cohorts" data-listing-filename-sort="index.qmd">
+<tr data-index="28" data-categories="education" data-listing-date-sort="1695337200000" data-listing-file-modified-sort="1735486626341" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="17" data-listing-word-count-sort="3354" data-listing-title-sort="College cohorts" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">22 Sep 2023</span>
 </td>
@@ -636,13 +636,13 @@ Categories
 <a href="./posts/education-2023-09-22/index.html" class="title listing-title">College cohorts</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">education</span>
 </td>
 </tr>
-<tr data-index="29" data-categories="missing,dates" data-listing-date-sort="1694646000000" data-listing-file-modified-sort="1734183062991" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1001" data-listing-title-sort="Exploring dates and datable properties" data-listing-filename-sort="index.qmd">
+<tr data-index="29" data-categories="missing,dates" data-listing-date-sort="1694646000000" data-listing-file-modified-sort="1735493658516" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1001" data-listing-title-sort="Exploring dates and datable properties" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">14 Sep 2023</span>
 </td>
@@ -650,13 +650,13 @@ Categories
 <a href="./posts/exploring-dates-2023-09-13/index.html" class="title listing-title">Exploring dates and datable properties</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">missing, dates</span>
 </td>
 </tr>
-<tr data-index="30" data-categories="summaries,musthave,dates" data-listing-date-sort="1694473200000" data-listing-file-modified-sort="1734174780174" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="7" data-listing-word-count-sort="1229" data-listing-title-sort="Women main dates summary" data-listing-filename-sort="women-summary-main-dates.qmd">
+<tr data-index="30" data-categories="summaries,musthave,dates" data-listing-date-sort="1694473200000" data-listing-file-modified-sort="1735491873775" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="7" data-listing-word-count-sort="1201" data-listing-title-sort="Women main dates summary" data-listing-filename-sort="women-summary-main-dates.qmd">
 <td>
 <span class="listing-date">12 Sep 2023</span>
 </td>
@@ -664,13 +664,13 @@ Categories
 <a href="./notes/women-summary-main-dates.html" class="title listing-title">Women main dates summary</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">summaries, musthave, dates</span>
 </td>
 </tr>
-<tr data-index="31" data-categories="education" data-listing-date-sort="1694214000000" data-listing-file-modified-sort="1734174429836" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1052" data-listing-title-sort="The higher education of FSAs (P94)" data-listing-filename-sort="index.qmd">
+<tr data-index="31" data-categories="education" data-listing-date-sort="1694214000000" data-listing-file-modified-sort="1735486377848" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="6" data-listing-word-count-sort="1066" data-listing-title-sort="The higher education of FSAs (P94)" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">9 Sep 2023</span>
 </td>
@@ -678,13 +678,13 @@ Categories
 <a href="./posts/education-2023-09-09/index.html" class="title listing-title">The higher education of FSAs (P94)</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">education</span>
 </td>
 </tr>
-<tr data-index="32" data-categories="missing,musthave" data-listing-date-sort="1693954800000" data-listing-file-modified-sort="1734174600591" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="10" data-listing-word-count-sort="1850" data-listing-title-sort="Missing data: a first look" data-listing-filename-sort="index.qmd">
+<tr data-index="32" data-categories="missing,musthave" data-listing-date-sort="1693954800000" data-listing-file-modified-sort="1735487045718" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="10" data-listing-word-count-sort="1855" data-listing-title-sort="Missing data: a first look" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">6 Sep 2023</span>
 </td>
@@ -692,13 +692,13 @@ Categories
 <a href="./posts/missing-data-2023-09-01/index.html" class="title listing-title">Missing data: a first look</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">missing, musthave</span>
 </td>
 </tr>
-<tr data-index="33" data-categories="summaries,musthave" data-listing-date-sort="1692745200000" data-listing-file-modified-sort="1734174773002" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="10" data-listing-word-count-sort="1826" data-listing-title-sort="All the Women" data-listing-filename-sort="women-summary-browser.qmd">
+<tr data-index="33" data-categories="summaries,musthave" data-listing-date-sort="1692745200000" data-listing-file-modified-sort="1735491750964" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="9" data-listing-word-count-sort="1798" data-listing-title-sort="All the Women" data-listing-filename-sort="women-summary-browser.qmd">
 <td>
 <span class="listing-date">23 Aug 2023</span>
 </td>
@@ -706,13 +706,13 @@ Categories
 <a href="./notes/women-summary-browser.html" class="title listing-title">All the Women</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">summaries, musthave</span>
 </td>
 </tr>
-<tr data-index="34" data-categories="work,ppa" data-listing-date-sort="1692658800000" data-listing-file-modified-sort="1734198456288" data-listing-date-modified-sort="1734652800000" data-listing-reading-time-sort="7" data-listing-word-count-sort="1354" data-listing-title-sort="Work (P17/P48/P105)" data-listing-filename-sort="index.qmd">
+<tr data-index="34" data-categories="work,ppa" data-listing-date-sort="1692658800000" data-listing-file-modified-sort="1735490315707" data-listing-date-modified-sort="1735430400000" data-listing-reading-time-sort="7" data-listing-word-count-sort="1278" data-listing-title-sort="Work (P17/P48/P105)" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">22 Aug 2023</span>
 </td>
@@ -720,13 +720,13 @@ Categories
 <a href="./posts/work-queries/index.html" class="title listing-title">Work (P17/P48/P105)</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">work, ppa</span>
 </td>
 </tr>
-<tr data-index="35" data-categories="SAL" data-listing-date-sort="1682377200000" data-listing-file-modified-sort="1734174735916" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="16" data-listing-word-count-sort="3043" data-listing-title-sort="Electing Women FSAs 1920-52" data-listing-filename-sort="bn-presentation-20230425.qmd">
+<tr data-index="35" data-categories="SAL" data-listing-date-sort="1682377200000" data-listing-file-modified-sort="1735492198206" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="14" data-listing-word-count-sort="2792" data-listing-title-sort="Electing Women FSAs 1920-52" data-listing-filename-sort="bn-presentation-20230425.qmd">
 <td>
 <span class="listing-date">25 Apr 2023</span>
 </td>
@@ -734,7 +734,7 @@ Categories
 <a href="./notes/bn-presentation-20230425.html" class="title listing-title">Electing Women FSAs 1920-52</a>
 </td>
 <td>
-<span class="listing-file-modified">14 Dec 2024</span>
+<span class="listing-file-modified">29 Dec 2024</span>
 </td>
 <td>
 <span class="listing-categories">SAL</span>
@@ -745,9 +745,6 @@ Categories
 <div class="listing-no-matching d-none">
 No matching items
 </div>
-<nav id="everything-pagination" class="listing-pagination" aria-label="Page Navigation">
-  <ul class="pagination"></ul>
-</nav>
 </div>
 
 

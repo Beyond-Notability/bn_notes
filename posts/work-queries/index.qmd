@@ -15,7 +15,7 @@ page-layout: full
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked  RData work-queries   adjusted appearance of a chart.
 ```
 
 ```{r libraries-etc}
@@ -138,23 +138,6 @@ bn_women_work_activities |>
 
 Percentage of posts that are `employed as` (with trend line)
 
-```{r}
-
-# bn_women_employed_positions |>
-#   count(year_date1_n, type) |>
-#   filter(!is.na(year_date1_n)) |>
-#   group_by(year_date1_n) |>
-#   mutate(p = n/sum(n)) |>
-#   ungroup() |>
-#   complete(year_date1_n, type,
-#            fill=list(p=0)) |>
-#   filter(type=="employed as") |>
-#   ggplot(aes(year_date1_n, p)) +
-#   geom_point() +
-#   geom_smooth() +
-#   scale_y_continuous(labels = percent_format()) +
-#   labs(title="'Employed as' posts per year", x="year", y="% of jobs")
-```
 
 
 ```{r}
@@ -214,7 +197,7 @@ bn_women_work_activities |>
 
 
 
-```{r}
+```{r fig.height=7}
 bn_women_work_activities |>
   count(personLabel, employed_position)  |>
   mutate(t = sum(n), .by = personLabel) |>

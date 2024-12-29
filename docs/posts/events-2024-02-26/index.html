@@ -102,6 +102,10 @@ ul.task-list li input[type="checkbox"] {
     <a class="nav-link" href="../../notes/index.html"> 
 <span class="menu-text">Notes</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
@@ -138,7 +142,6 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#definitions" id="toc-definitions" class="nav-link" data-scroll-target="#definitions">Definitions!</a></li>
   <li><a href="#updates" id="toc-updates" class="nav-link" data-scroll-target="#updates">updates</a></li>
-  <li><a href="#todo" id="toc-todo" class="nav-link" data-scroll-target="#todo">TODO</a></li>
   </ul></li>
   <li><a href="#event-types" id="toc-event-types" class="nav-link" data-scroll-target="#event-types">Event types</a></li>
   <li><a href="#most-frequently-attended-events" id="toc-most-frequently-attended-events" class="nav-link" data-scroll-target="#most-frequently-attended-events">Most frequently attended events</a>
@@ -198,7 +201,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">18 December 2024</p>
+      <p class="date-modified">29 December 2024</p>
     </div>
   </div>
     
@@ -260,13 +263,12 @@ ul.task-list li input[type="checkbox"] {
 
 </div>
 </div>
-<p>“was delegate at (item)” and “was delegate at (free text)” will be merged into a single PPA type “was delegate at” for purposes of analysis.</p>
+<p>NB: “was delegate at (item)” and “was delegate at (free text)” will be merged into a single PPA type “was delegate at” for purposes of analysis.</p>
 <section id="definitions" class="level3">
 <h3 class="anchored" data-anchor-id="definitions">Definitions!</h3>
-<p>(a bit nerdy, sorry)</p>
 <p>There are basically two different kinds of event in the data: recurring events (eg society monthly meetings or AGMs) and one-off events. Recurring events are a bit more complicated to handle when counting things.</p>
 <p>So, for recurring events, “event” will refer to any/all instances of (eg) “meeting of the Folklore Society” (Q31 / Q292), “Royal Archaeological Institute Meeting” (Q29), and so on.</p>
-<p>Meanwhile, an “event instance” refers to a <em>single occurrence</em> of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903), or a one-off event. For counting one-off events “event” and “event instance” are the same thing.</p>
+<p>Meanwhile, an “event instance” refers to a <em>single occurrence</em> of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903) <em>or</em> a one-off event. (For counting one-off events “event” and “event instance” are the same thing.)</p>
 <p>Finally, an “event attendance” refers to one woman participating in one event instance. Sometimes the same event instance appears more than once on a woman’s page under different PPAs; unless the emphasis is on the specific activity rather than the event, I’ll reduce them to one for counting purposes.</p>
 <p>Identifying what is a single instance of a recurring event is not always perfectly simple, especially given the different kinds of event present in the database. At present it’s based on three elements:</p>
 <ul>
@@ -284,14 +286,6 @@ ul.task-list li input[type="checkbox"] {
 <li>added more about event activities</li>
 <li>added regions heatmap; and a heatmap excluding London</li>
 <li>added tables of the counts in the heatmap</li>
-</ul>
-</section>
-<section id="todo" class="level3">
-<h3 class="anchored" data-anchor-id="todo">TODO</h3>
-<ul>
-<li>I may be able to make a few further improvements by pulling in some infrequently used qualifiers</li>
-<li>Several events are related to suffrage activities (or other interesting subjects); nothing is being done with this kind of information at the moment. [post added on suffrage]</li>
-<li>Look into adding text annotations for data points of interest</li>
 </ul>
 </section>
 </section>
@@ -365,7 +359,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="frequent-attenders" class="level2">
 <h2 class="anchored" data-anchor-id="frequent-attenders">Frequent attenders</h2>
 <p>Many women turn up at only a small number of event instances. Who are the most frequent event attenders?</p>
-<p>At least 8 attendances (ignoring different PPAs). About 140 women have only a single event attendance; about 40 went to 8 or more.</p>
+<p>At least 8 attendances (ignoring different PPAs). About 150 women have only a single event attendance; about 50 went to 8 or more.</p>
 <p>Jessie MacGregor is at the top because she exhibited at the RA Summer Exhibition almost every year from 1872 to 1904 (as well as six times at the Society of Lady Artists Exhibition).</p>
 <div class="cell">
 <div class="cell-output-display">
@@ -399,7 +393,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -409,7 +403,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -420,7 +414,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -430,7 +424,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -440,7 +434,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -454,7 +448,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -464,7 +458,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -475,7 +469,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -490,7 +484,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -500,7 +494,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -512,7 +506,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -521,7 +515,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -548,7 +542,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-27-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -557,7 +551,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-28-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -607,7 +601,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td style="text-align: left;">South West England</td>
-<td style="text-align: right;">115</td>
+<td style="text-align: right;">116</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Wales</td>
@@ -684,7 +678,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -694,7 +688,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-30-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -706,7 +700,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-33-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -715,7 +709,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-34-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -729,13 +723,13 @@ ul.task-list li input[type="checkbox"] {
 <p>Hence it’s possible to have negative as well as positive scores. Greens in the correlation plot show pairs who appear together more often than expected, purples (probably blues to James) are people who are apart more often than expected (which might sometimes be interesting too).</p>
 <p>Caveats</p>
 <p>Correlations can be misleading in the opposite way from counts, if you have a lot of single appearances in the data (as we do). That can result in impressive looking scores of 1.0, but it just means that two women happen to be recorded just once, at the same event, which may be completely random and unrepresentative. So usually I’ll set a threshold of at least two/three appearances.</p>
-<p>Most of the correlations in this kind of data aren’t very strong by statisticians’ standards: +/- 0.4 is usually the threshold for “moderate” strength, although I think for exploratory purposes anything from 0.25 upwards <em>can</em> be of interest. (For reference, the Jessie MacGregor-Rosa Wallis link scores only 0.21.)</p>
+<p>Most of the correlations in this kind of data aren’t very strong by statisticians’ standards: +/- 0.4 is usually the threshold for “moderate” strength, although I think for exploratory purposes anything from 0.25 upwards <em>can</em> be of interest. (For reference, the Jessie MacGregor-Rosa Wallis link scores 0.25.)</p>
 <p>A correlation plot of women with at least 9 attendances (it’s not really possible to squeeze more names in).</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-38-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-36-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -746,7 +740,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="index_files/figure-html/unnamed-chunk-40-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="index_files/figure-html/unnamed-chunk-38-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>

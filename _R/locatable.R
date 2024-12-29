@@ -173,4 +173,3 @@ geo_bn_wd_locality <-
 # 
 
 
-## todo: areas ????

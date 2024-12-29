@@ -14,10 +14,9 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up ugh this is a bit of a mess.
-# checked 14/12/24 and it looks ok but.
-# other/misc category is jeez.
-# some charts have got very tall and squished.
+# finishing up: checked. RData events-2024-02-26
+# ok but messy.!!
+# a few edits to text.
 ```
 
 
@@ -173,12 +172,11 @@ bn_women_events_query |>
 
 
 
-# TODO?
+
 # get instance of for qualifiers
-# i think it's better to get them separately esp as there are multis etc
-# problems adapting the query for events only... just get all for ppa for now and get moving
-# it's not that slow; maybe come back to it
-# but i think you may need to work it out so you can narrow down? for now do a semi join afterwards
+# better to get them separately esp as there are multis etc
+# problems adapting the query for events only... just get all in ppa
+# it's not that slow;just do a semi join afterwards
 
 bn_women_ppa_qual_inst_sparql <-
   'SELECT distinct ?person ?ppa ?qual ?qual_instance ?qual_instanceLabel  ?s
@@ -215,12 +213,8 @@ bn_women_ppa_qual_inst_query <-
 
 
 ```{r}
-# bn_events_time_precision_csv_file <- 
-#   paste(bn_fetched_data, "bn_ppa_events_time_precision.csv", sep="/")
 
-# TODO?
-# this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
-# fetching date_prop makes the query a *lot* slower, so get R to turn the prop IDs into labels instead.
+# fetching date_prop makes the query a *lot* slower, so turn prop IDs into labels here 
 
 bn_women_events_time_precision_sparql <-
 'SELECT distinct ?person ?date ?date_precision ?pq ?pqv  ?s  ?ppa  
@@ -230,22 +224,12 @@ WHERE {
   ?person bnwdt:P3 bnwd:Q3 .
   ?person ( bnp:P71 | bnp:P24 | bnp:P72 | bnp:P23 | bnp:P13 | bnp:P120 | bnp:P113 ) ?s .
     ?s ( bnps:P71 | bnps:P24 | bnps:P72 | bnps:P23 | bnps:P13 | bnps:P120 | bnps:P113 ) ?ppa .  
-   
-  # dont need any of this
-  # ?person ?p ?s .
-  #     ?prop wikibase:claim ?p;
-  #        wikibase:statementProperty ?ps.      
 
   # qualifier timevalue and precision.
       ?s (bnpqv:P1 | bnpqv:P27 | bnpqv:P28 ) ?pqv.
       ?s ?pq ?pqv .
           ?pqv wikibase:timeValue ?date .  
           ?pqv wikibase:timePrecision ?date_precision .
-     
-  # this really slows down the query, just for the sake of the property labels. ?
-  #      ?s ?pq ?date .   
-  #        ?date_prop wikibase:qualifier ?pq .
-  #        ?date_prop wikibase:propertyType wikibase:Time.  
   
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }
@@ -261,7 +245,6 @@ bn_women_events_time_precision_query <-
   bn_events_time_precision_fetched |>
   make_bn_item_id(person) |>
   make_bn_ids(c(ppa, pq, pqv, s)) |>
-  #make_bn_ids(c(prop, ppa, date_prop, pqv, s)) |>
   make_date_year() |>
   mutate(date_propLabel = case_when(
     pq=="P1" ~ "point in time",
@@ -271,10 +254,6 @@ bn_women_events_time_precision_query <-
   rename(date_prop=pq) |>
   select(-person)
 
-
-# read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
-#bn_std_query(bn_women_events_time_precision_sparql) # not converted
-#read_csv(bn_events_timeprecision_csv_file) # converted
 
 
 bn_women_events_dates <-
@@ -352,13 +331,6 @@ bn_women_events_of_dates |>
       distinct(qual, qual_instance, qual_instanceLabel) |>
       rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
   ) |>
-  # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
-  # left_join(
-  #   bn_women_ppa_qual_inst_query |>
-  #     filter(!qual_instanceLabel %in% c("meeting", "conference", "exhibition", "event", "bucket", "locality", "venue")) |>
-  #     distinct(qual, qual_instance, qual_instanceLabel) |>
-  #     rename(instance2_id=qual_instance, instance2=qual_instanceLabel), by=c("event_id"="qual")
-  # )  |>
   # add directly available locations
   left_join(
     bn_women_events_qualifiers |>
@@ -482,7 +454,6 @@ bn_women_events_of_dates_types_all |>
 ```{r}
 
 ## ugh.
-## of course this is more complicated than you wanted it to be.
 
 source(here::here("_R/mapping.R"))
 
@@ -747,17 +718,16 @@ bn_ppa_buckets |>
 ```
 
 
-"was delegate at (item)" and "was delegate at (free text)" will be merged into a single PPA type "was delegate at" for purposes of analysis.
+NB: "was delegate at (item)" and "was delegate at (free text)" will be merged into a single PPA type "was delegate at" for purposes of analysis.
 
 ### Definitions! 
 
-(a bit nerdy, sorry)
 
 There are basically two different kinds of event in the data: recurring events (eg society monthly meetings or AGMs) and one-off events. Recurring events are a bit more complicated to handle when counting things. 
 
 So, for recurring events, "event" will refer to any/all instances of (eg) "meeting of the Folklore Society" (Q31 / Q292), "Royal Archaeological Institute Meeting" (Q29), and so on. 
 
-Meanwhile, an "event instance" refers to a *single occurrence* of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903), or a one-off event. For counting one-off events "event" and "event instance" are the same thing.
+Meanwhile, an "event instance" refers to a *single occurrence* of a recurring event (eg the meeting of the Folklore Society that was held on 17 December 1903) *or* a one-off event. (For counting one-off events "event" and "event instance" are the same thing.)
 
 Finally, an "event attendance" refers to one woman participating in one event instance. Sometimes the same event instance appears more than once on a woman's page under different PPAs; unless the emphasis is on the specific activity rather than the event, I'll reduce them to one for counting purposes.
 
@@ -779,11 +749,7 @@ In a few cases, there's more than one possible way to structure a record of what
 - added regions heatmap; and a heatmap excluding London
 - added tables of the counts in the heatmap
 
-### TODO
 
-- I may be able to make a few further improvements by pulling in some infrequently used qualifiers
-- Several events are related to suffrage activities (or other interesting subjects); nothing is being done with this kind of information at the moment. [post added on suffrage]
-- Look into adding text annotations for data points of interest
 
 
 
@@ -919,23 +885,24 @@ Many women turn up at only a small number of event instances. Who are the most f
 ```
 
 
-At least 8 attendances (ignoring different PPAs). About 140 women have only a single event attendance; about 40 went to 8 or more.
+At least 8 attendances (ignoring different PPAs). About 150 women have only a single event attendance; about 50 went to 8 or more.
 
 Jessie MacGregor is at the top because she exhibited at the RA Summer Exhibition almost every year from 1872 to 1904 (as well as six times at the Society of Lady Artists Exhibition).
 
 
-```{r}
+```{r fig.height=6}
 # TODO? another very tall chart...
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id) |>
- 
-  add_count(bn_id, name="n_bn") |>
-  filter(n_bn>=8) |>
+  add_count(bn_id, name="n_bn") |> 
+  #filter(n_bn==1)
+  filter(n_bn>=8) |> 
   count(bn_id, personLabel, event_type, n_bn) |>
   mutate(personLabel=fct_reorder(personLabel, n_bn)) |>
   ggplot(aes(y=personLabel, x=n, fill=event_type)) +
   geom_col() +
   scale_fill_ptol() +
+  #theme(aspect.ratio = 7/4) + # not doing what you want
   labs(y=NULL, x="attendances", title = "Most frequent attenders of events, with breakdown by type")
 ```
 
@@ -947,8 +914,7 @@ at least 8 attendances
 - earlier women more likely to accumulate >20 attendances
 - but in the 8-12 attendances range the numbers in each group are actually very similar 
 
-```{r}
-# TODO? height of chart
+```{r fig.height=7}
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, yob) |>
   
@@ -972,6 +938,7 @@ bn_women_events_of_dates_types |>
   geom_col() +
   facet_wrap(~birth, scales = "free_y", ncol=1) +
   scale_fill_ptol() +
+ # theme(aspect.ratio = 1) + # bad idea w faceted...
   labs(y=NULL, x="attendances", title = "Most frequent attenders of events, by age groups")
 ```
 
@@ -984,28 +951,9 @@ There are too many different events/organisations to show labelled breakdowns bu
 
 It's noticeable that in many cases, even women who attend several different events tend to favour one over the rest.
 
-```{r}
-## by organisation; virtually identical to event...
-# bn_women_events_of_dates_types |> 
-#   #distinct(bn_id, personLabel, event_title, event_type, event_org_id, event_org, org_id, event_instance_date, event_instance_id) |>
-#   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>  
-#   filter(!is.na(event_org)) |> 
-#   add_count(bn_id, name="n_bn") |>
-#   filter(n_bn>=8) |>
-# 
-#   group_by(bn_id, personLabel, n_bn, event_org) |>
-#   summarise(n_ev=n(),  .groups = "drop_last") |>
-#   arrange(n_ev, .by_group = T) |>
-#   mutate(cum_sum_ev = cumsum(n_ev)) |>
-#   ungroup() |>
-#     
-#   mutate(personLabel = fct_reorder(personLabel, n_bn)) |>
-#   ggplot(aes(x=n_ev, y=personLabel)) +
-#   geom_col(colour="white", fill="darkblue") +
-#   labs(y=NULL, x="event attendances", title = "Most frequent attenders, with breakdown by organisation")
-```
 
-```{r}
+
+```{r fig.height=6}
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
   #filter(event_type !="misc") |>
@@ -1029,7 +977,7 @@ bn_women_events_of_dates_types |>
 
 This colour codes the segments by event type; it's kinda cute but I'm not sure if it's useful
 
-```{r}
+```{r fig.height=6}
 ## group by event type. works but i'm not sure it's helpful
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, ppa_type, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
@@ -1059,7 +1007,7 @@ The chart can be flipped around, to look at patterns of participation by event r
 
 Conferences, as they're all (or nearly all) one-off events aren't very interesting except to show what a uniform one person per event pattern looks like.
 
-```{r}
+```{r fig.height=6}
 bn_women_events_of_dates_types |>
   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
     filter(event_type=="conference") |>
@@ -1204,31 +1152,7 @@ bn_women_events_of_dates_types |>
 ```
 
 
-```{r}
-##At meetings, very few organisations average more than 1 woman attending per event
-# average per event for each organisation?
 
-# bn_women_events_of_dates_types |>
-#   distinct(bn_id, personLabel, event_title, event_type, event_instance_date, event_instance_id, year, event_org, org_id, event_org_id) |>
-#   filter(!is.na(org_id)  ) |>
-#   filter(event_type=="meeting") |>
-#   mutate(event_org=str_replace_all(event_org, sal_rai_cas_abbr)) |>
-#   mutate(event_org=str_replace_all(event_org, organisations_abbr)) |>
-#   mutate(event_org=str_replace_all(event_org, c("Conference"="Conf", "Congress"="Cong"))) |>
-#   add_count(event_org, org_id, name="n_bn") |>
-#  # filter(n_bn>=7)  |> # 
-#   count(event_instance_id, event_org, event_org_id, n_bn) |>
-#   group_by(event_org, event_org_id, n_bn) |>
-#   summarise(s=sum(n), mn=mean(n), med=median(n), .groups = "drop_last") |>
-#   ungroup() |>
-#   filter(mn>1) |>
-#   #top_n(20, mn)
-#     mutate(event_org = fct_reorder(event_org, mn)) |>
-#   ggplot(aes(x=mn, y=event_org)) +
-#   geom_col() +
-#   labs(y=NULL, x="mean", title="Meetings: top average attendances per meeting")
-
-```
 
 
 
@@ -1509,8 +1433,7 @@ Caveats
 
 Correlations can be misleading in the opposite way from counts, if you have a lot of single appearances in the data (as we do). That can result in impressive looking scores of 1.0, but it just means that two women happen to be recorded just once, at the same event, which may be completely random and unrepresentative. So usually I'll set a threshold of at least two/three appearances. 
 
-Most of the correlations in this kind of data aren't very strong by statisticians' standards: +/- 0.4 is usually the threshold for "moderate" strength, although I think for exploratory purposes anything from 0.25 upwards *can* be of interest. (For reference, the Jessie MacGregor-Rosa Wallis link scores only 0.21.)
-
+Most of the correlations in this kind of data aren't very strong by statisticians' standards: +/- 0.4 is usually the threshold for "moderate" strength, although I think for exploratory purposes anything from 0.25 upwards *can* be of interest. (For reference, the Jessie MacGregor-Rosa Wallis link scores 0.25.)
 
 A correlation plot of women with at least 9 attendances (it's not really possible to squeeze more names in).
 
@@ -1527,7 +1450,6 @@ Network graphs
 
 
 ```{r}
-
 #library(igraph)
 library(ggraph)
 #library(tidygraph) 
@@ -1553,19 +1475,4 @@ events_correlation_pairs %>%
 
 
 
-```{r}
-#Meetings only
-# set.seed(1234)
-# meetings_correlation_pairs %>%
-#   filter(correlation>=0.3) |>
-#   igraph::graph_from_data_frame() %>%
-#    ggraph(layout = "graphopt") +
-#    geom_edge_link(aes(edge_alpha = correlation), edge_colour = "salmon", show.legend = FALSE) +
-#   #ggraph(layout = 'linear', circular = TRUE) +
-#   #geom_edge_arc(aes(edge_alpha = correlation), colour = "cyan4", show.legend = FALSE) +
-#    geom_node_point(size = 1) +
-#    geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"), size=3) +
-#    theme_void() +
-#   labs(caption = "minimum count = 3, correlation > 0.3", title = "Network graph of women at events")
-  
-```
+

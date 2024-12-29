@@ -16,7 +16,7 @@ toc: false
 
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData lecturing-map-2024-04-30
 ```
 
 
@@ -30,22 +30,11 @@ source(here::here("_R/shared.R"))
 library(leaflet)
 
 
-#library(DT)
-# https://rstudio.github.io/DT/
- # datatable(data, options = list(), class = "display",
- #    callback = JS("return table;"), rownames, colnames, container,
- #    caption = NULL, filter = c("none", "bottom", "top"), escape = TRUE,
- #    style = "auto", width = NULL, height = NULL, elementId = NULL,
- #    fillContainer = getOption("DT.fillContainer", NULL),
- #    autoHideNavigation = getOption("DT.autoHideNavigation", NULL),
- #    selection = c("multiple", "single", "none"), extensions = list(),
- #    plugins = NULL, editable = FALSE)
-#styling options https://datatables.net/manual/styling/classes
 
 # reactable works with crosstalk? not sure. might have to use DT. 
 # do it without first, then see if you can get it working to filter things.
 # should be working atb example somewhere
-library(crosstalk)
+#library(crosstalk)
 
 # standard query strings and queries ####
 
@@ -308,29 +297,7 @@ bn_work_loc_id |>
   #mutate(use_geo= str_remove(use_geo, "\\)")) |>
   #separate(use_geo, into = c("a", "lat", "long"), sep="\\(| +", convert = T) 
 
-# this *only* added geos, not place names or io
-  # # direct to geo_bn_wd_locality
-  # left_join(geo_bn_wd_locality |> select(item, loc_bn_geo=bn_geo, loc_wd_geo=wd_geo), by=c("location"="item")) |>
-  # left_join(geo_bn_wd_locality |> select(item, c_bn_geo=bn_geo, c_wd_geo=wd_geo), by=c("link_p2_id"="item"))  |>
-  # # if you did separate cols...
-  # #left_join(bn_work_loc_geos |> mutate(has_direct_geo="y"), by="s_id") |>
-  # # linked
-  # left_join(bn_work_p2_loc_query |> select(item, p2_linked_loc_bn_geo, p2_linked_loc_wd_geo), by=c("location"="item")) |>
-  # left_join(bn_work_p33_loc_query |> select(item, p33_linked_loc_bn_geo, p33_linked_loc_wd_geo), by=c("location"="item")) |>
-  # # this needs to join on the link_p2_id you dummy
-  # left_join(bn_work_p2_c_query |> select(item, p2_linked_c_bn_geo, p2_linked_c_wd_geo), by=c("link_p2_id"="item"))  |>
 
-
-
-
-## need to test that this scales up from the subset in the map
-  #   mutate(locality = case_when(
-  #   loc_io=="locality"|c_io=="locality" ~ location_label,
-  #   !is.na(p2_linked_loc_id) ~ p2_linked_loc_label,
-  #   !is.na(p2_linked_c_loc_id) ~ p2_linked_c_loc_label,
-  #   .default = ""
-  # )) 
-# # one NA left is Women's Institute, how does it have geo? might be hq and not v meaningful. 
 
 ```
 
@@ -384,82 +351,7 @@ pal <- colorFactor(c("navy", "brown"), domain = c("MM", "other"))
 
 
 ```{r}
-## not got this to work right yet. don't like that it only shows one label when several items on one point. but cluster doesn't work with crosstalk.
-# bscols(
-#   widths = c(12,12,12),
-#    #device = "lg", # forces single column except on bigger screens... but really want always single column?
-#    
-#    leaflet(
-#       shared_map1, # don't get the select area thing without this.
-#       width = "100%") |>
-#       addTiles() |> # modern base layer as default if you zoom in too far for the nls map.
-#   # problem of multi people at same address...
-#   # ok clusterOptions seems to work with freezeAtZoom set really high. but then the default pins look ugly. make circles.
-#   # looks like clusteroptions doesn't play nicely with crosstalk
-#      addCircleMarkers(
-#        data=shared_map1,
-#        lat = ~lat, lng=~long, 
-#        color = ~pal(is_mm),
-#        stroke = FALSE, # darker border
-#        fillOpacity = 0.5,
-#        #options = markerOptions(riseOnHover = TRUE) , # what does this do?
-#        #clusterOptions = markerClusterOptions(freezeAtZoom = 18), # known issue that cluster doesn't work with crosstalk
-# 
-#        popup = ~label
-#        )
-#   ,
-# 
-#   list(    
-#     bscols(
-#       widths = c(7,5,6,6),
-#     filter_slider(id="year", label = "year", sharedData = shared_map1, column=~year1),  # sep = "", # sep grrr.
-#     #filter_slider(id="date", label = "year", sharedData = shared_map1, column = ~start_date), # !!!!!
-#     filter_checkbox(id="position", label="position", sharedData = shared_map1, group = ~position_label), #, inline = TRUE),
-#     filter_select(id = "person_label", label = "names", sharedData = shared_map1, group = ~person_label),
-#     filter_select(id="locality", label="area", sharedData = shared_map1, group = ~locality)
-#     )
-#   ),
-#   
-#   
-#  # nb reactable filter doesn't do anyting to map even when crosstalk is working
-# 
-#   reactable(
-#   shared_map1 ## |> select(-person, -long, -lat, -label, -rowid) # can't use this here!
-#   ,
-#   #filterable = TRUE,
-#   #searchable = TRUE,
-#   bordered = TRUE,
-#   highlight = TRUE,
-#   defaultPageSize = 100,
-#   #groupBy =  "college_label",
-#   defaultExpanded = TRUE,
-#   defaultColDef = colDef(maxWidth = 150),
-#   # , headerClass = "sticky" but i think it has to be fixed height to use this
-#   columns = list(
-#     bn_id = colDef(name="id", maxWidth = 75),
-# #    person_label = colDef(name="name", maxWidth = 220),
-#     person_label =colDef(maxWidth = 220, name="name",
-#       html = TRUE,
-#       cell = function(value, index) { 
-#         sprintf('<a href="%s" target="_blank">%s</a>', bn_work_loc_geo_map1_table$person[index], value) #shared_map1 doesn't work here
-#       })   ,
-#     locality = colDef(maxWidth = 125, name="area"),
-#     position_label = colDef(maxWidth = 150, name = "position"),
-#     year1 = colDef(maxWidth = 100, name = "year"),
-#     person=colDef(show = F),
-#     long=colDef(show = F),
-#     lat=colDef(show = F),
-#     label=colDef(show = F),
-#     s_id=colDef(show = F),
-#     is_mm=colDef(show=F),
-#     start_date=colDef(show=F)
-#     
-#   )
-# )
-# 
-# 
-# 
-# )
+## don't like that it only shows one label when several items on one point. but cluster doesn't work with crosstalk.
 ```
 
 

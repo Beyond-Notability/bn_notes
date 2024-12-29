@@ -15,7 +15,8 @@ toc: false
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData  speakers-map-2024-05-22
+# but not done anything to optimise.
 ```
 
 This is adapted from the maps for lecturers. 
@@ -65,7 +66,7 @@ source(here::here("_R/locatable.R"))
 
 
 ```{r}
-## from events 20240226 but for spoke at only. this is almost certainly over complicated for this purpose, but it was a complicated thing.
+## from events 20240226 but for spoke at only. this is almost certainly over complicated for this purpose, but it was a complicated thing. it's pretty slow...
 
 # organised by (P109): union query for linked event pages or in quals, excluding human organisers. atm all are items.
 
@@ -178,7 +179,6 @@ bn_women_events_query |>
 
 ```{r}
 
-# this is quite similar to qualifiers query in dates.r (though that's more general) - see if you can consolidate them later.
 # fetching date_prop makes the query a *lot* slower, so get R to turn the prop IDs into labels instead.
 # it's fast without the labels
 
@@ -217,9 +217,6 @@ bn_women_events_time_precision_query <-
   rename(date_prop=pq) |>
   select(-person)
 
-# read_csv is automatically converting date to POSIXct... since when? it will break make_date_year
-#bn_std_query(bn_women_events_time_precision_sparql) # not converted
-#read_csv(bn_events_timeprecision_csv_file) # converted
 
 
 bn_women_events_dates <-
@@ -284,37 +281,15 @@ bn_women_events_of_dates <-
   relocate(s, .after = last_col())
 
 
-
-# before adding organised_by
-# # watch out for manytomany warning. caused by multiple orgs in of. top_n as a quick hack to get rid. there are only a handful.
-# bn_women_events_of_dates <-
-# bn_women_events |> 
-#   left_join(bn_women_events_qualifiers |>
-#               # of (item/free text)
-#               filter(qual_p %in% c("P78", "P66")) |>
-#               anti_join(bn_women_events |> filter(event_id=="Q3644"), by="s") |> # exclude CAS AGM of 
-#               distinct(s, qual_p, qual_label, qual_value, qual_valueLabel) |> # do i need distinct? possibly not.
-#               # ensure you have only 1 per stmt. 
-#               group_by(s) |>
-#               top_n(1, row_number()) |>
-#               ungroup() |>
-#               rename(of_label=qual_label, of=qual_p, of_id=qual_value, of_value=qual_valueLabel) 
-#               , by="s") |>
-#   left_join(bn_women_events_dates, by="s")  |>
-#   relocate(s, .after = last_col())
-# 
-
 ```
 
 
 
 ```{r}
 
-# get instance of for qualifiers
-# i think it's better to get them separately esp as there are multis etc
+# get instance of for qualifiers - better to get them separately esp as there are multis etc
 # problems adapting the query for events only... just get all for ppa for now and get moving
 # it's not that slow; maybe come back to it
-# but i think you may need to work it out so you can narrow down? for now do a semi join afterwards
 
 bn_women_ppa_qual_inst_sparql <-
   'SELECT distinct ?person ?ppa ?qual ?qual_instance ?qual_instanceLabel  ?s
@@ -345,8 +320,6 @@ bn_women_ppa_qual_inst_query <-
 
 
 
-## even newer versions: of_org replaces use of of_value
-
 bn_women_events_of_dates_types_all <-
 bn_women_events_of_dates |>
   # add i/o that are generic event types meeting/conference/exhibition - shouldn't dup... if it does will need to turn this into a separate step
@@ -356,13 +329,6 @@ bn_women_events_of_dates |>
       distinct(qual, qual_instance, qual_instanceLabel) |>
       rename(instance_id=qual_instance, instance=qual_instanceLabel), by=c("event_id"="qual")
   ) |>
-  # # add other i/o - started to dup. see how you get on without it.  mostly will be orgs....
-  # left_join(
-  #   bn_women_ppa_qual_inst_query |>
-  #     filter(!qual_instanceLabel %in% c("meeting", "conference", "exhibition", "event", "bucket", "locality", "venue")) |>
-  #     distinct(qual, qual_instance, qual_instanceLabel) |>
-  #     rename(instance2_id=qual_instance, instance2=qual_instanceLabel), by=c("event_id"="qual")
-  # )  |>
   # add directly available locations. why on earth did i call the qual_location id "value"?
   left_join(
     bn_women_events_qualifiers |>
@@ -451,19 +417,14 @@ bn_women_events_of_dates |>
     event_type %in% c("conference", "exhibition") ~ paste0(year, "-01-01")
   ))  |>
   
-# NB: there is no event_of_id now; event_org_id instead.
   # id columns for convenience
-  # mutate(event_instance_id = paste(event_instance_date, event_id, of_id, sep="_"))  |>
-  # mutate(event_of_id = paste(event_id, of_id, sep="_")) |>
   mutate(event_instance_id = paste(event_instance_date, org_id, event_type, sep="_"))  |>
-  
   # hmm, this may not quite work. and might need a bit of extra work for CAS etc. 
   mutate(event_org_id = case_when(
     # if generic and no other info except date, add year to the id [as in event_title].
     event %in% c("exhibition", "meeting", "event", "conference", "Annual Meeting", "petition") & is.na(of_org) & !is.na(year) ~ paste(org_id, event_type, year, sep="_"),
     # otherwise exclude date info
     .default =  paste(org_id, event_type, sep="_"))
-         
          ) |>
   relocate(event_title, event_type, year, event_instance_date, event_org, org_id, event_instance_id, event_org_id, of_org, of_org_id, .after = ppa_type) 
   
@@ -482,8 +443,6 @@ bn_women_events_of_dates_types_all |>
   arrange(date, .by_group = T) |>
   summarise(dates_in_db = paste(unique(date), collapse = " | "), .groups = "drop_last") |>
   ungroup() 
-
-
 
 
 
@@ -582,12 +541,7 @@ bn_event_p2_c_query <-
   ungroup()
 ```
 
-```{r}
-# only 93 don't join... hopefully because of lots of repeat IDs...
-# bn_women_event_geo_ids |>
-#   anti_join(
-#     bind_rows(bn_event_p2_c_query, bn_event_p2_loc_query, bn_event_p33_loc_query) , by=c("link_p2_id"="item") )
-```
+
 
 
 

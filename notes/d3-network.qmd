@@ -14,7 +14,11 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData notes_d3-network
+
+# not totally sure if this message was networkD3 or save.image...
+# Links is a tbl_df. Converting to a plain data frame.
+# Nodes is a tbl_df. Converting to a plain data frame.
 ```
 
 An experimental interactive visualisation; this uses a package with a limited set of D3.js features but is quite quick and easy to set up; I wanted to see what it would look like before deciding how much time to spend wrestling directly with d3 in the Observable! It's intended as a qualitative tool for exploring associations in a way that's hard to do with the static R visualisations.

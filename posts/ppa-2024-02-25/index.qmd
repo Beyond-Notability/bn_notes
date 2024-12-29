@@ -13,7 +13,8 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked RData  ppa-2024-02-25
+# changed to use buckets file rather than code in a query 
 ```
 
 ## Wikibase queries
@@ -34,8 +35,6 @@ source(here::here("_R/shared.R"))
 
 # any extra libraries will usually go here 
 
-# library(ggbeeswarm)
-# library(ggridges)
 
 # standard query strings and queries ####
 
@@ -46,44 +45,26 @@ source(here::here("_R/std_queries.R"))
 
 
 
-```{r}
 
+```{r}
 bn_ppa_buckets_sparql <-
-  'SELECT distinct ?person ?personLabel ?ppa_label ?ppa ?bucket ?ppa_value ?ppa_valueLabel ?s
+  'SELECT distinct ?person ?personLabel ?ppaLabel ?ppa  ?ppa_value ?ppa_valueLabel ?s
 WHERE {  
   ?person bnwdt:P3 bnwd:Q3 .
   ?person ?p ?s .  
  
       ?ppa wikibase:claim ?p;      
          wikibase:statementProperty ?ps.      
-          
-      SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". 
-                       ?ppa rdfs:label ?ppa_label.  # you need this for the bind() - *Label wont work... i think
-                } # /label service
   
       ?ppa bnwdt:P12 bnwd:Q151 . # limit to i/o ppa      
  
       # get stuff about ?s 
       ?s ?ps ?ppa_value.
-  
-    bind(
-      if( str(?ppa_label) in ("attended", "exhibited at", "organiser of", "performed at", "spoke at", "was delegate at (free text)", "was delegate at (item)" ), "events",
-        if( str(?ppa_label) in ("curated (item)", "donor to", "loaner to", "recovered (free text)", "seller to", "was collector of", "was donor of" ), "collections",
-          if( str(?ppa_label) in ("educated at"),  "education" ,
-            if( str(?ppa_label) in ("election to Council of CAS proposed by", "election to RAI proposed by", "election to SAL proposed by", "proposed election to RHS signed by (personal)"),  "elections" ,
-              if( str(?ppa_label) in ("Member of Committee for Archaeological Fieldwork", "President of Committee for Archaeological Fieldwork", "director of archaeological fieldwork", "director of expedition", "member of excavation during archaeological fieldwork", "member of expedition", "travelled overseas for"
-),   "fieldwork" ,
-                 if( str(?ppa_label) in ("acknowledged for role", "applicant to", "employed as", "held position", "held position (free text)", "served on"),   "positions" ,
-                   if( str(?ppa_label) in ("contributed to", "illustrated in", "work(s) published in"),  "publishing",
-                     if( str(?ppa_label) in ("corresponded with", "was fellow of", "was member of"),  "societies",
-                       if( str(?ppa_label) in ("benefactor to", "fundraiser for", "founded"),  "charitable" ,
-       "none")))))))))
-    as ?bucket).
-        
 
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,en-gb". } 
 }
-order by ?personLabel ?ppa_label'
+order by ?personLabel ?ppaLabel'
+
 
 
 bn_ppa_buckets_fetched <-
@@ -91,18 +72,24 @@ bn_ppa_buckets_fetched <-
 
 
 # process the data a bit
-bn_ppa_buckets_query <-
+# use buckets csv rather than query.
+bn_ppa_buckets_main <-
   bn_ppa_buckets_fetched |>
   make_bn_item_id(person) |>
-  # forgot c() again...
-  make_bn_ids(c(s, ppa, ppa_value)) |>
-  relocate(person, .after = last_col())
+  make_bn_ids(c(s, ppa, ppa_value, ppaLabel)) |>
+  inner_join(bn_ppa_buckets |> select(ppa=ppa_id, bucket=label), by=c("ppa")) |>
+  relocate(person, .after = last_col()) |>
+  mutate(bucket = case_when(
+    bucket=="event participation" ~ "events",
+    bucket=="charitable/organisational" ~ "charitable",
+    bucket=="no buckets" ~ NA,
+    .default = bucket
+  )) |>
+  filter(!is.na(bucket))
 
-# name mirrors original version
-bn_women_ppa_main <-
-  bn_ppa_buckets_query |>
-  filter(bucket !="none")
 ```
+
+
 
 
 
@@ -147,7 +134,6 @@ make_named_colours2 <- function(df, grpname, pal){
 # example use
 #make_named_colours2(for_colours, "positions", "BuGn")
 
-
 # if you had a set number you could do something like
 # brewer_pal_num <- function(p, num){
 #   brewer_pal(palette=p, direction=-1)(num)
@@ -162,13 +148,14 @@ make_named_colours2 <- function(df, grpname, pal){
 # NB using ppa IDs *not* labels.
 
 for_colours <-
-  bn_women_ppa_main |>
-  count(bucket, ppa_label, ppa) |>
+  bn_ppa_buckets_main |>
+  count(bucket, ppaLabel, ppa) |>
   rename(group=bucket) |>
   mutate(colour_category=ppa)
+```
 
 
-
+```{r}
 charitable_colours <-
   for_colours |>
   make_named_colours2("charitable", "BuGn")
@@ -217,9 +204,9 @@ The purpose of the buckets is to group PPAs together in reasonably coherent (and
 
 
 ```{r}
-bn_ppa_buckets_query |>
-  mutate(ppa = paste0(ppa_label, " (", ppa, ")")) |>
-  select(bucket, ppa=ppa_label) |>
+bn_ppa_buckets_main |>
+  mutate(ppa = paste0(ppaLabel, " (", ppa, ")")) |>
+  select(bucket, ppa=ppaLabel) |>
   count(bucket, ppa) |>
   kable() |>
   kable_styling()
@@ -228,10 +215,10 @@ bn_ppa_buckets_query |>
 
 Not all PPAs are in buckets! Some are more useful for network-y analysis.
 
-- publishing will need reviewing once we have more bibliographical data (eg `editor` specifically intended for editions of primary sources)
+- publishing could need reviewing once we have more bibliographical data 
 - `corresponded with` should only be included in buckets if it's to an institution rather than an individual, but I haven't yet amended queries to handle that. (Correspondence with individuals is a small minority of results at present.)
 - charitable/organisational is a very small bucket that will probably be mostly ignored for big picture stuff
-- collections and fieldwork are buckets i haven't looked at at all yet, will need to do something about that soon. 
+- collections and fieldwork are buckets i haven't looked at at all yet 
 
 
 
@@ -240,9 +227,9 @@ Not all PPAs are in buckets! Some are more useful for network-y analysis.
 Labels for activities within buckets have been omitted as a) there isn't space for them and b) this just gives an overview of distributions.
 
 ```{r}
-bn_women_ppa_main |>
+bn_ppa_buckets_main |>
   add_count(bucket, name="n_grp") |>
-  count(bucket, ppa_label, ppa, n_grp) |>
+  count(bucket, ppaLabel, ppa, n_grp) |>
   mutate(bucket = fct_reorder(bucket, n_grp)) |>
   ggplot(aes(bucket, n, fill=ppa)) +
   geom_col(show.legend = F) +
@@ -271,9 +258,9 @@ bn_ppa_bucket_bar <- function(df, f){
     pull(bucket)
   
   filtered_data  |>
-    count(ppa, ppa_label) |>
-    mutate(ppa_label=fct_reorder(ppa_label, n)) |>
-    ggplot(aes(ppa_label, n)) +
+    count(ppa, ppaLabel) |>
+    mutate(ppaLabel=fct_reorder(ppaLabel, n)) |>
+    ggplot(aes(ppaLabel, n)) +
     geom_col(show.legend = F) +
     coord_flip() +
     labs(x=NULL, y="count", title=title)
@@ -283,47 +270,47 @@ bn_ppa_bucket_bar <- function(df, f){
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "societies") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "societies") 
 ```
 
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "events") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "events") 
 ```
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "positions") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "positions") 
 ```
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "elections") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "elections") 
 ```
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "education") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "education") 
 ```
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "collections") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "collections") 
 ```
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "publishing") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "publishing") 
 ```
 
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "fieldwork") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "fieldwork") 
 ```
 
 ```{r}
-bn_ppa_bucket_bar(bn_women_ppa_main, "charitable") 
+bn_ppa_bucket_bar(bn_ppa_buckets_main, "charitable") 
 ```
 
 

@@ -13,7 +13,8 @@ execute:
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked. RData suffrage-2024-03-18
+# a couple of changes to text and modified data slightly. some colours issues should be fixed.
 ```
 
 ## Wikibase queries
@@ -45,7 +46,7 @@ bucket_colours <-
 c(events="#1f77b4", 
   positions="#ff7f0e", 
   societies="#8c564b",   
-  money="#17becf", 
+  charitable="#17becf", 
   publishing="#EEcc66")
 
 
@@ -57,38 +58,20 @@ c(events="#1f77b4",
 
 Nearly all the suffrage activities in the database are dated, though charts ignore differences in kinds of date - `positions` are usually at year level while `events` are more short term. (Though they're all point in time dates, I think, rather than start/end, so presumably none were of more than a year duration.)
 
-TODO
+### update
 
-locations? will need more complex queries (which I'll work out for the lecturing post first)
+change from original version: "gave money to", which isn't in an existing PPA bucket, has been added to "charitable" rather than having its own bucket (and filtering out the handful of items in charitable). This slightly changes some charts. 
+
 
 ```{r}
 
 # sub_io is so you know what kind of thing sub_ is - can be event, role, organisaiton...
 
-# SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
-
-##i think you'll have to fetch locations separately
-
-# sub io
-# - lose suffrage activity. 
-# - atm there are no other dups. but something to watch out for if you change the query.
-# - keep bucket - both are event i think. NA is role. but that could also change, 
-# probably want timeprecision
-# hmm still got na orgs
-# organised by adds one, hardly worth the bother.
-
-
-#apparently they all have dob!
-
-
 # updated hopefully much faster query
 
 bn_suffrage_sparql <- 
-  
   'SELECT distinct ?person ?personLabel ?mainLabel ?subvalLabel ?ofLabel ?date ?date_prec ?sub_ioLabel ?subval ?of ?s 
-
 WHERE {  
-
     ?person bnwdt:P3 bnwd:Q3 . #select women
     FILTER NOT EXISTS {?person bnwdt:P4 bnwd:Q12 .} #filter out project team
 
@@ -119,10 +102,7 @@ WHERE {
   union
   
     {
-     # does *not* have i/o suffrage activity in any qualifiers  ... this slows things right down again and makes no difference to results.
-     #filter not exists { ?s bnpq:P12 bnwd:Q1166. }
-  
-     # ... but a qualifier *does* have i/o suffrage activity. i think!
+     # a qualifier *does* have i/o suffrage activity. i think!
       ?s ?pq ?qual .
         ?qual bnwdt:P12 bnwd:Q1166 .
       
@@ -131,7 +111,7 @@ WHERE {
   optional { ?s bnpq:P78 ?of. }  # outside the union seems speedier
   
   optional { 
-    # date qualifiers. [assumes no edtf in quals. ] all seem to be p.i.t. ?
+    # date qualifiers. 
         ?s ?dpq ?qual_date .   
           ?qual_date wikibase:timeValue ?date .
           ?qual_date wikibase:timePrecision ?date_prec .
@@ -171,14 +151,15 @@ bn_suffrage_query |>
   left_join(bn_ppa_buckets |> select(ppa, bucket= label), by=c("mainLabel"="ppa")) |>
   mutate(bucket = case_when(
     bucket=="event participation" ~ "events",
-    is.na(bucket) & mainLabel=="gave money to" ~ "money",
+    bucket=="charitable/organisational" ~ "charitable",
+    is.na(bucket) & mainLabel=="gave money to" ~ "charitable",
     .default = bucket
   )) |>
-  # a `recorded in` has appeared which is unlikely to be relevant. 
-  # might need to keep an eye on any other unexpected NAs though!
-  # where the f has this chartiable thing come from?
+  # adjust for additional activities since original processing...
+  # now a couple with only 1 instance, drop them to keep to 8.
+  # but need to update colours?
+  # keep an eye on unexpected NAs
   filter(!is.na(bucket)) |>
-  filter(!bucket %in% c("charitable/organisational")) |> 
   relocate(sub_type, org, bucket, .after = ofLabel) |>
   rename(activity=mainLabel) |>
   left_join(bn_women_dob_dod |> select(-person, -personLabel), by="bn_id")
@@ -188,10 +169,8 @@ bn_suffrage_query |>
 
 
 
-
 ## Types of activity
 
-["money" is an invented bucket for "gave money to", which doesn't seem to be in an existing PPA bucket; only a couple of them]
 
 ```{r}
 bn_suffrage |>
@@ -205,7 +184,8 @@ bn_suffrage |>
   geom_col() +
   #facet_wrap(~bucket) +
   #scale_fill_tableau()
-  scale_fill_manual(values = bucket_colours)
+  scale_fill_manual(values = bucket_colours) +
+  labs(y="count")
 
 ```
 
@@ -229,17 +209,16 @@ A beeswarm of activity types grouped by PPA buckets. [excluding the buckets with
 
 ```{r}
 
-
 # named vector of colours for variable values
 # make_named_colours <- function(df, grpname, grpcols){
 # get rows in required order before using this (this sorts by frequency; could make another version for random/uncounted etc) and then add rowid
 # grpname is the name of the group or bucket in the group col
 # **grpcols has to be a vector of colour codes** - sthg like viridis_pal()(16)  will work, just have to have enough colours. may need to reverse direction to stop the first one being white grr.
 
-c(events="#1f77b4", 
-  positions="#ff7f0e", 
-  societies="#8c564b",   
-  money="#17becf")
+# c(events="#1f77b4", 
+#   positions="#ff7f0e", 
+#   societies="#8c564b",   
+#   charitable="#17becf") # was money
 
 # could probably add the counts programmatically too... in fact haven't i done that somewhere?
 g1 <- colorRampPalette(c('#1f77b4', '#071926'))(6)
@@ -248,7 +227,7 @@ g2 <- colorRampPalette(c("#ff7f0e", "#361b03"))(6)
 
 g3 <- colorRampPalette(c("#8c564b", "#612013"))(4)
 
-g4 <- c("#17becf")
+g4 <- c("#17becf", "#467b80")
 
 
 
@@ -275,8 +254,8 @@ suffrage_group_activities_colours |>
 
 group_4 <-
 suffrage_group_activities_colours |>
-  filter(group=="money") |>
-  make_named_colours("money", g4)
+  filter(group=="charitable") |>
+  make_named_colours("charitable", g4)
 
 
 # the final named vector 
@@ -290,7 +269,7 @@ grouped_colours <-
 ```{r warning=FALSE}
 bn_suffrage |>
   # drop publishing
-  filter(!bucket %in% c("publishing", "charitable/organisational")) |> 
+  filter(!bucket %in% c("publishing")) |> 
   left_join(
     enframe(grouped_colours, name="activity") |>
       left_join(bn_suffrage |> distinct(bucket, activity), by="activity") |>
@@ -312,7 +291,7 @@ bn_suffrage |>
 
 ## Women
 
-32 women represented here; 12 have more than one activity recorded.
+48 women represented here; 21 have more than one activity recorded.
 
 ```{r}
 #bn_suffrage |> count(bn_id, sort=T)
@@ -320,7 +299,7 @@ bn_suffrage |>
 
 
 ```{r}
-bn_suffrage |>
+bn_suffrage |> 
   add_count(bn_id, name="n_bn") |>
   count(bn_id, personLabel, bucket, n_bn, sort = T) |>
   mutate(personLabel =fct_reorder(personLabel, n_bn)) |>
@@ -331,21 +310,9 @@ bn_suffrage |>
   labs(y=NULL, x="number of actions")
 ```
 
-```{r}
-# Tried beeswarms for timelines, but they don't work well because activity is very concentrated in a short period of time and the rows are close together. 
-# bn_suffrage |>
-#   #count(bn_id, personLabel, year) |>
-#   filter(!is.na(year)) |>
-#   add_count(bn_id, name="n_bn") |> #filter(n_bn>1) |>
-#   mutate(personLabel = fct_rev(personLabel)) |>
-#   ggplot(aes(year, personLabel, colour=bucket)) +
-#   geom_beeswarm(size=1.5, cex = 1.8, corral = "gutter", corral.width = 0.9) +
-#   scale_colour_ptol() +
-#   labs(y=NULL)
-```
 
 ```{r}
-## TIL  cur_group_id() to give an number ID to each group in a grouped DF, hallelujah!
+## TIL  cur_group_id() to give a number ID to each group in a grouped DF, hallelujah!
 # df |>
 #   group_by(group) |>
 #     mutate(id = cur_group_id()) |>
@@ -467,7 +434,7 @@ bn_suffrage_barcode |>
   labs(y=NULL, x=NULL, title = "Women with only one recorded activity")
 ```
 
-And a dumbbell plot for the earliest and latest activities by each woman. There isn't very much overlap (among women with more than 1 activity) between women who were active before 1908 and those who started 1908 or later. (But is this an absence, or just absence of data?) I'm not familiar enough with the historiography to know whether this might be expected; if not, handle with caution.
+And a dumbbell plot for the earliest and latest activities by each woman. There isn't that much overlap (among women with more than 1 activity) between women who were active before 1908 and those who started 1908 or later. (But is this an absence, or just absence of data?) I'm not familiar enough with the historiography to know whether this might be expected; if not, handle with caution.
 
 ```{r}
 bn_suffrage_barcode |>
@@ -521,9 +488,8 @@ bn_suffrage |>
 
 ```
 
-Additionally, on average members of the 2+ group were several years younger than the 1 group at the time of their *first* recorded suffrage activity; median age at earliest activity for 2+ is 42 and for 1 is 46.
+**update December 2024**: with the addition of more data, initial observations here no longer hold; median and mean ages for each group are now virtually identical. 
 
-But NB that this is only true of "early starters" (pre 1908) and the numbers are small (6 early starters and 5 later starters). So this needs to be treated with caution. 
 
 ```{r}
 # average yob - would expect them to be born earlier, more time to get going!
@@ -543,7 +509,7 @@ But NB that this is only true of "early starters" (pre 1908) and the numbers are
 ```{r}
  bn_suffrage_ages |>
   filter(!is.na(bn_dob)) |>
-  filter(date == min(date), .by=bn_id) |> #count(group, started)
+   filter(date == min(date), .by=bn_id) |> #count(group, started)
   # group_by(group) |>
   # summarise(#mn_e = mean(earliest), med_e=median(earliest),
   #           mean_age_earliest= mean(age_earliest), median_age_earliest= median(age_earliest)) |>
@@ -596,28 +562,29 @@ bn_suffrage_ages |>
 
 ## Organisations and types of activity
 
-18 distinct organisations (not all activities are associated with a named organisation).
-
-[label partly cut off in legend = "was member of"]
+23 distinct organisations (not all activities are associated with a named organisation).
 
 ```{r}
-bn_suffrage |>
+bn_suffrage |>  #filter(!is.na(org)) |> count(activity)
+  #filter(!is.na(org)) |> count(org)
+  filter(!activity %in% c("attended", "founded")) |>
   add_count(org, name="n_org") |>
   count(org, activity, n_org) |>
-  filter(!is.na(org)) |>
-  #mutate(org = if_else(is.na(org), "nk", org)) |>
+  filter(!is.na(org)) |> 
   mutate(org = fct_reorder(org, n_org)) |>
   ggplot(aes(org, n, fill=activity)) +
   geom_col() +
   coord_flip() +
   scale_fill_colorblind() +
   scale_y_continuous(labels = number_format(accuracy = 1)) +
-  theme(legend.position = "bottom") +
+  # new legend.location option
+  theme(legend.position = "bottom", legend.location = "plot") +
   labs(x=NULL, y="count")
 ```
 
 
-There's even less overlap between pre-1908 and 1908- organisations than for the women themselves. (It looks as though local and regional organisations are only present in the earlier period.)
+
+There's perhaps even less overlap between pre-1908 and 1908- organisations than for the women themselves. (It looks as though local and regional organisations are only present in the earlier period.)
 
 ```{r}
 bn_suffrage |> 
@@ -677,7 +644,7 @@ reactable(
         sprintf('<a href="%s" target="_blank">%s</a>', bn_suffrage_reactable$person[index], value)
       })   ,
     bn_dob_yr = colDef(maxWidth = 60, name = "birth"),
-   activity = colDef(maxWidth = 100),
+   activity = colDef(maxWidth = 120),
     # collegeLabel = colDef(maxWidth = 250, name="college",
     #   html = TRUE,
     #   cell = function(value, index) {

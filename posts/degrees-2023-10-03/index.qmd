@@ -13,7 +13,7 @@ execute:
 ---
 
 ```{r finishing-up}
-# checked 14/12/24
+# finishing up: checked 14/12/24. RData degrees-2023-10-03
 # tidy old code; clean up degree categories a bit.
 # tweaked appearance of a chart that's got very tall.
 ```

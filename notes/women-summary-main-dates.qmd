@@ -16,12 +16,9 @@ page-layout: full
 ---
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked.  RData notes_women-summary-main-dates
 ```
 
-```{r}
-# if you need even more width change page-layout to custom then you'll have to work out how to add margins... text looks a bit bad as it is.
-```
 
 ## Wikibase query
 

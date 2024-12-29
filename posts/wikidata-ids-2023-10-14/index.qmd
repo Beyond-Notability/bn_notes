@@ -14,7 +14,7 @@ execute:
 
 
 ```{r finishing-up}
-# TODO finishing-up 
+# finishing up: checked  RData wikidata-ids-2023-10-14
 ```
 
 ```{r libraries-etc}
@@ -144,36 +144,7 @@ bn_women_key_ids_query |>
 ```
 
 
-```{r check-queries}
-#bn_women_key_ids_uh_oh <-
-# uh-oh this very clever construction is doing something bad
-# bn_properties |>
-#   filter(bn_id %in% c("P34", "P119", "P125")) |>
-#   mutate(ID = glue("bnwdt:{bn_id}")) |>
-#   summarise(bn_union = paste(ID, collapse = " | ")) |>
-#   # construct WHERE triples
-#   mutate(bn_triple_union = glue("?person ( {bn_union} ) ?id . ")) |>
-#   # construct the query string
-#   mutate(bn_query = glue(
-#     "{bn_prefixes} ",
-#     "select distinct ?person ?id ?id_type  where {{ ",
-#     "{bn_triple_woman} {bn_filter_project} ",
-#     "{bn_triple_union} ",
-#     "?person ?id_type ?id . }}"
-#   )) |>
-#   # make it a string
-#   pull(bn_query) |>
-#    sparql2df(endpoint=bn_endpoint) |>
-#    make_bn_item_id(person) |>
-#    mutate(id_type =  str_extract(id_type, "\\bP\\d+$")) |>
-#    relocate(bn_id, id_type) |>
-#    arrange( parse_number(str_remove(bn_id, "Q")) ) 
 
-
-# errrrm what
-# bn_women_key_ids_uh_oh |>
-#   count(id_type)
-```
 
 
 
